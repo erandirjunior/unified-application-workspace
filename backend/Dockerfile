@@ -1,19 +1,10 @@
-FROM golang:1.17 as builder
+FROM golang:1.22-alpine
 
+# Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Copia o arquivo de código fonte para o container
+COPY main.go .
 
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main .
-
-FROM alpine:latest
-
-WORKDIR /root/
-
-COPY --from=builder /app/main .
-
-CMD ["./main"]
+# Expõe a porta 8080 que o servidor utiliza
+EXPOSE 8080
