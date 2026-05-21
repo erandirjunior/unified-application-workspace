@@ -16,13 +16,15 @@ import (
 )
 
 type LoadTestRequest struct {
-    URL      string            `json:"url"`
-    Method   string            `json:"method"`
-    Threads  int               `json:"threads"`
-    Duration int               `json:"duration"`
-    Headers  map[string]string `json:"headers"`
-    Body     string            `json:"body"`
-    Single   bool              `json:"single"`
+    URL       string            `json:"url"`
+    Method    string            `json:"method"`
+    Threads   int               `json:"threads"`
+    Duration  int               `json:"duration"`
+    RampUp    int               `json:"rampUp"`
+    Headers   map[string]string `json:"headers"`
+    Body      string            `json:"body"`
+    Single    bool              `json:"single"`
+    Variables map[string]string `json:"variables"`
 }
 
 type LoadTestResult struct {
@@ -41,6 +43,7 @@ type RequestLogEntry struct {
 	ResponseBody   string            `json:"responseBody"`
 	RequestHeaders map[string]string `json:"requestHeaders"` // Adiciona headers da requisição
 	RequestBody    string            `json:"requestBody"`    // Adiciona body da requisição
+	RunningThreads int               `json:"runningThreads"`
 }
 
 // Template engine helpers
@@ -83,13 +86,20 @@ func translateLayout(format string) string {
 	return layout
 }
 
-func executeTemplate(parts []TemplatePart) string {
+func executeTemplate(parts []TemplatePart, env map[string]string) string {
 	var sb strings.Builder
 	for _, p := range parts {
 		if p.Var == "" {
 			sb.WriteString(p.Static)
 			continue
 		}
+
+		// Prioriza variáveis de ambiente definidas pelo usuário
+		if val, ok := env[p.Var]; ok {
+			sb.WriteString(val)
+			continue
+		}
+
 		switch strings.ToLower(p.Var) {
 		case "uuid":
 			sb.WriteString(generateUUID())
@@ -244,9 +254,11 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
         reqData.URL = "http://" + reqData.URL
     }
 
+    startTime := time.Now()
     fmt.Printf("Iniciando teste: %s | Threads: %d | Duração: %ds\n", reqData.URL, reqData.Threads, reqData.Duration)
 
     var success, errors int64
+    var activeThreads int64
     var wg sync.WaitGroup
     logChan := make(chan RequestLogEntry, 100)
 
@@ -264,66 +276,89 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		numThreads = 1
 	}
 
-	for i := 0; i < numThreads; i++ {
-        wg.Add(1)
-        go func() {
-            defer wg.Done()
-            for {
-				currentURL := executeTemplate(urlTemplate)
-				currentBody := executeTemplate(bodyTemplate)
-				currentHeaders := make(map[string]string)
+	// Calcula o intervalo de subida entre as threads (ramp-up)
+	var rampUpInterval time.Duration
+	if reqData.RampUp > 0 && numThreads > 1 && !reqData.Single {
+		rampUpInterval = time.Duration(float64(reqData.RampUp)/float64(numThreads)*float64(time.Second))
+	}
 
-				req, err := http.NewRequest(reqData.Method, currentURL, strings.NewReader(currentBody))
-                if err != nil {
-                    atomic.AddInt64(&errors, 1)
-                    continue
-                }
+	// Iniciamos a criação das threads em uma goroutine separada.
+	// Isso permite que o loop de streaming de logs (abaixo) comece a rodar imediatamente.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numThreads; i++ {
+			if i > 0 && rampUpInterval > 0 {
+				time.Sleep(rampUpInterval)
+			}
 
-				for k, tpl := range headerTemplates {
-					val := executeTemplate(tpl)
-					currentHeaders[k] = val
-					req.Header.Set(k, val)
+			// Interrompe a criação de novas threads se o tempo total do teste já expirou durante o ramp-up
+			if time.Now().After(deadline) {
+				break
+			}
+
+			wg.Add(1)
+			atomic.AddInt64(&activeThreads, 1)
+			go func() {
+				defer wg.Done()
+				defer atomic.AddInt64(&activeThreads, -1)
+				for {
+					currentURL := executeTemplate(urlTemplate, reqData.Variables)
+					currentBody := executeTemplate(bodyTemplate, reqData.Variables)
+					currentHeaders := make(map[string]string)
+
+					req, err := http.NewRequest(reqData.Method, currentURL, strings.NewReader(currentBody))
+					if err != nil {
+						atomic.AddInt64(&errors, 1)
+						continue
+					}
+
+					for k, tpl := range headerTemplates {
+						val := executeTemplate(tpl, reqData.Variables)
+						currentHeaders[k] = val
+						req.Header.Set(k, val)
+					}
+
+					start := time.Now()
+
+					resp, err := httpClient.Do(req)
+					elapsed := time.Since(start).Milliseconds()
+
+					responseHeaders := make(map[string]string)
+					if resp != nil {
+						for k, v := range resp.Header {
+							responseHeaders[k] = strings.Join(v, ", ")
+						}
+					}
+
+					responseBody := ""
+					if resp != nil && resp.Body != nil {
+						bodyBytes, _ := io.ReadAll(resp.Body)
+						responseBody = string(bodyBytes)
+						resp.Body.Close()
+					}
+
+					if err != nil {
+						atomic.AddInt64(&errors, 1)
+						logChan <- RequestLogEntry{URL: currentURL, Method: reqData.Method, StatusCode: 0, Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed, RequestHeaders: currentHeaders, RequestBody: currentBody, RunningThreads: int(atomic.LoadInt64(&activeThreads))}
+						time.Sleep(10 * time.Millisecond) // Evita loop frenético em caso de erro
+					} else {
+						if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+							atomic.AddInt64(&success, 1)
+						} else {
+							atomic.AddInt64(&errors, 1)
+						}
+						logChan <- RequestLogEntry{URL: currentURL, Method: reqData.Method, StatusCode: resp.StatusCode, Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed, ResponseHeaders: responseHeaders, ResponseBody: responseBody, RequestHeaders: currentHeaders, RequestBody: currentBody, RunningThreads: int(atomic.LoadInt64(&activeThreads))}
+					}
+
+					// Se for Single Run ou o tempo acabou, encerra a goroutine
+					if reqData.Single || time.Now().After(deadline) {
+						break
+					}
 				}
-
-                start := time.Now()
-                
-                resp, err := httpClient.Do(req)
-                elapsed := time.Since(start).Milliseconds()
-
-                responseHeaders := make(map[string]string)
-                if resp != nil {
-                    for k, v := range resp.Header {
-                        responseHeaders[k] = strings.Join(v, ", ")
-                    }
-                }
-
-                responseBody := ""
-                if resp != nil && resp.Body != nil {
-                    bodyBytes, _ := io.ReadAll(resp.Body)
-                    responseBody = string(bodyBytes)
-                    resp.Body.Close()
-                }
-
-                if err != nil {
-                    atomic.AddInt64(&errors, 1)
-                    logChan <- RequestLogEntry{URL: currentURL, Method: reqData.Method, StatusCode: 0, Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed, RequestHeaders: currentHeaders, RequestBody: currentBody}
-                    time.Sleep(10 * time.Millisecond) // Evita loop frenético em caso de erro
-                } else {
-                    if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-                        atomic.AddInt64(&success, 1)
-                    } else {
-                        atomic.AddInt64(&errors, 1)
-                    }
-                    logChan <- RequestLogEntry{URL: currentURL, Method: reqData.Method, StatusCode: resp.StatusCode, Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed, ResponseHeaders: responseHeaders, ResponseBody: responseBody, RequestHeaders: currentHeaders, RequestBody: currentBody}
-                }
-
-                // Se for Single Run ou o tempo acabou, encerra a goroutine
-                if reqData.Single || time.Now().After(deadline) {
-                    break
-                }
-            }
-        }()
-    }
+			}()
+		}
+	}()
 
     // Goroutine para fechar o canal quando o WaitGroup terminar
     go func() {
@@ -342,6 +377,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
     finalResult, _ := json.Marshal(struct {
         Type string `json:"type"`
         LoadTestResult
+        TotalDuration float64 `json:"totalDuration"`
     }{
         Type: "summary",
         LoadTestResult: LoadTestResult{
@@ -349,6 +385,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
         SuccessCount:  success,
         ErrorCount:    errors,
         },
+        TotalDuration: time.Since(startTime).Seconds(),
     })
     fmt.Fprintf(w, "%s\n", finalResult)
     flusher.Flush()
