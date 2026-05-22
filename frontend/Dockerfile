@@ -1,18 +1,11 @@
-FROM node:14 as builder
+FROM node:18-alpine
 
 WORKDIR /app
 
+# Copia apenas os arquivos de dependências primeiro (otimização de cache)
 COPY package*.json ./
-
 RUN npm install
 
 COPY . .
 
-RUN npm run build
-
-
-FROM nginx:alpine
-
-COPY --from=builder /app/build /usr/share/nginx/html
-
-CMD ["nginx", "-g", "daemon off;"]
+EXPOSE 3000
