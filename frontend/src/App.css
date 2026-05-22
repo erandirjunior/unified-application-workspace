@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scrollbar-gutter: stable; }
+  html, body { @apply m-0 p-0; box-sizing: border-box; }
+}
+
+@layer components {
+  .input-base {
+    @apply w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm;
+  }
+  .label-base {
+    @apply block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+  }
+  .collapse-card {
+    @apply border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-4 bg-white dark:bg-slate-900/50 shadow-sm;
+  }
+  .collapse-trigger {
+    @apply p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-slate-700 dark:text-slate-200 font-semibold;
+  }
+}
+
+/* Estilização Customizada do Input de Arquivo para Tailwind */
+.file-input-custom {
+  @apply block w-full text-sm text-slate-500
+  file:mr-4 file:py-2 file:px-4
+  file:rounded-full file:border-0
+  file:text-xs file:font-bold file:uppercase
+  file:bg-blue-50 file:text-blue-700
+  hover:file:bg-blue-100 dark:file:bg-slate-800 dark:file:text-blue-400;
+}
+
+/* Estilização dos textos dentro do Select */
+select option {
+  @apply bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100;
+}
+
+option[value="GET"] { color: #00c853; }
+option[value="POST"] { color: #ff9100; }
+option[value="PUT"] { color: #0091ea; }
+option[value="PATCH"] { color: #aa00ff; }
+option[value="DELETE"] { color: #ff1744; }
+option[value="HEAD"] { color: #90a4ae; }
+option[value="OPTIONS"] { color: #ffd600; }
+
+/* Cores dos Métodos HTTP */
+.method-get { @apply border-[#00c853] text-[#00c853] !important; }
+.method-post { @apply border-l-4 border-[#ff9100] text-[#ff9100] !important; }
+.method-put { @apply border-l-4 border-[#0091ea] text-[#0091ea] !important; }
+.method-patch { @apply border-l-4 border-[#aa00ff] text-[#aa00ff] !important; }
+.method-delete { @apply border-l-4 border-[#ff1744] text-[#ff1744] !important; }
+.method-head { @apply border-l-4 border-[#90a4ae] text-[#90a4ae] !important; }
+.method-options { @apply border-l-4 border-[#ffd600] text-[#ffd600] !important; }
+
+/* Ajuste fino para contraste de títulos no Dark Mode */
+.collapse-trigger span {
+  @apply transition-colors duration-300;
+}
+
+.collapse-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease-in-out;
+}
+
+.collapse-content.show {
+  grid-template-rows: 1fr;
+}
+
+.collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+}
