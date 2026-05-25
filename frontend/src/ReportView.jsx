@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme }) {
-  const [selectedLog, setSelectedLog] = useState(null);
+export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, lastExecutedPayload }) {
+  const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -69,6 +69,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
           th { text-align: left; background: ${colors.tableHeader}; padding: 12px; border-bottom: 2px solid ${colors.border}; color: ${colors.text}; }
           td { padding: 10px 12px; border-bottom: 1px solid ${colors.border}; }
           .status-ok { color: #10b981; font-weight: bold; }
+          .status-warn { color: #f59e0b; font-weight: bold; }
           .status-err { color: #f43f5e; font-weight: bold; }
           @media print { .no-print { display: none; } body { padding: 20px; } }
         </style>
@@ -96,18 +97,22 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
         <h2>Logs de Execução (Últimas ${requestLogs.length})</h2>
         <table>
           <thead>
-            <tr><th>Hora</th><th>Status</th><th>Método</th><th>URL</th><th>Latência</th></tr>
+            <tr><th>Hora</th><th>Status</th><th>Validação</th><th>Método</th><th>URL</th><th>Latência</th></tr>
           </thead>
           <tbody>
-            ${requestLogs.map(log => `
+            ${requestLogs.map(log => {
+              const isStatusOk = log.statusCode >= 200 && log.statusCode < 300;
+              const validationClass = log.success ? 'status-ok' : (isStatusOk ? 'status-warn' : 'status-err');
+              return `
               <tr>
                 <td>${log.timestamp}</td>
-                <td class="${log.statusCode >= 200 && log.statusCode < 300 ? 'status-ok' : 'status-err'}">${log.statusCode || 'ERR'}</td>
+                <td class="${isStatusOk ? 'status-ok' : 'status-err'}">${log.statusCode || 'ERR'}</td>
+                <td class="${validationClass}">${log.success ? 'PASS' : 'FAIL'}</td>
                 <td>${log.method}</td>
                 <td>${log.url}</td>
                 <td>${log.responseTime}ms</td>
-              </tr>
-            `).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </body>
@@ -160,9 +165,9 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
   // Lógica de filtragem dos logs
   const filteredLogs = requestLogs.filter(log => {
-    const isSuccess = log.statusCode >= 200 && log.statusCode < 300;
-    if (logFilter === 'success') return isSuccess;
-    if (logFilter === 'error') return !isSuccess;
+    const isLogSuccess = log.success;
+    if (logFilter === 'success') return isLogSuccess;
+    if (logFilter === 'error') return !isLogSuccess;
     return true;
   });
 
@@ -175,9 +180,15 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center mb-8">
-        <div class="flex items-center gap-4">
+        <div className="flex items-center gap-4">
           <button
-            onClick={() => setView('config')} // Mantém a funcionalidade de voltar para a configuração
+            onClick={() => {
+              // Se estamos em um cenário, volta para a coleção. Senão, para a configuração padrão.
+              if (activeCollectionId && activeScenarioId) {
+                setView('collection-detail');
+              } else {
+                setView('config');
+              }}}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             title="Voltar para Configuração"
           >
@@ -222,21 +233,27 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
           </div>
           <button
             onClick={() => {
-              const headerMap = {};
-              (config.headers || []).forEach(h => {
-                if (h.key) headerMap[h.key] = h.value;
-              });
+              if (lastExecutedPayload) {
+                sendRequests(lastExecutedPayload);
+              } else {
+                const headerMap = {};
+                (config.headers || []).forEach(h => {
+                  if (h.key) headerMap[h.key] = h.value;
+                });
 
-              const payload = {
-                url: config.url,
-                method: config.method,
-                threads: parseInt(config.threads),
-                duration: parseInt(config.duration),
-                rampUp: parseInt(config.rampUp || 0),
-                headers: headerMap,
-                body: config.body // config.body is already bodyRaw
-              };
-              sendRequests(payload);
+                const payload = {
+                  url: config.url,
+                  method: config.method,
+                  totalRequests: parseInt(config.totalRequests),
+                  duration: parseInt(config.duration),
+                  rampUp: parseInt(config.rampUp || 0),
+                  headers: headerMap,
+                  body: config.body,
+                  assertions: config.assertions || [],
+                  extractions: config.extractions || []
+                };
+                sendRequests(payload);
+              }
             }}
             className="px-4 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
             title="Rodar o teste novamente com a mesma configuração"
@@ -259,25 +276,29 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-1">
           <span className="label-base !mb-1">Method</span>
-          <span className={`font-bold method-${config.method.toLowerCase()}`}>{config.method}</span>
+          <span className={`font-bold method-${(config.method || 'multi').toLowerCase()}`}>{config.method || 'SCENARIO'}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-3">
           <span className="label-base !mb-1">Target URL</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold truncate block" title={resolveVariables(config.url)}>{resolveVariables(config.url)}</span>
+          <span className="text-slate-700 dark:text-slate-200 font-bold truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : "Múltiplas Requisições (Cenário)"}</span>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1 text-blue-600 dark:text-blue-400">Active Threads</span>
-          <span className="text-blue-600 dark:text-blue-400 font-black">{isRunning ? (requestLogs[0]?.runningThreads || 0) : 0}</span>
-        </div>
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1">Threads Sent</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.threads}</span>
+          <span className="label-base !mb-1">Total Planejado</span>
+          <span className="text-slate-700 dark:text-slate-200 font-bold">
+            {config.method === '' ? 'Varia por passo' : (
+              config.duration > 0 ? (
+                config.rampUp > 0 && config.rampUp < config.duration 
+                  ? (config.totalRequests * (config.duration - (config.rampUp / 2)))
+                  : config.totalRequests * config.duration
+              ) : config.totalRequests
+            )}
+          </span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">Duration</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.duration}s</span>
+          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.method === '' ? 'Varia por passo' : `${config.duration}s`}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">Real Time</span>
@@ -326,15 +347,15 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-center">
           <span className="text-blue-600 dark:text-blue-400 text-sm font-bold uppercase tracking-widest">Total Requests</span>
-          <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mt-2">{reportData?.totalRequests || '...'}</div>
+          <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mt-2">{reportData?.totalRequests ?? '...'}</div>
         </div>
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
           <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold uppercase tracking-widest">Sucesso</span>
-          <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{reportData?.successCount || '...'}</div>
+          <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{reportData?.successCount ?? '...'}</div>
         </div>
         <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
           <span className="text-rose-600 dark:text-rose-400 text-sm font-bold uppercase tracking-widest">Falhas</span>
-          <div className="text-4xl font-black text-rose-600 dark:text-rose-400 mt-2">{reportData?.errorCount || '...'}</div>
+          <div className="text-4xl font-black text-rose-600 dark:text-rose-400 mt-2">{reportData?.errorCount ?? '...'}</div>
         </div>
       </div>
 
@@ -374,10 +395,13 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
               <div 
                 key={i} 
                 onClick={() => setSelectedLog(log)}
-                className="flex gap-4 px-4 py-3 border-b border-slate-800/50 items-center cursor-pointer hover:bg-slate-900 transition-colors group"
+                className={`flex gap-4 px-4 py-3 border-b border-slate-800/50 items-center cursor-pointer hover:bg-slate-900 transition-colors group ${!log.success ? 'bg-rose-500/5' : ''}`}
               >
                 <span className="text-slate-500 w-[75px] flex-shrink-0">{log.timestamp}</span>
-                <span className={`w-[45px] font-bold flex-shrink-0 ${log.statusCode >= 200 && log.statusCode < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{log.statusCode || 'ERR'}</span>
+                <div className="flex flex-col w-[45px] flex-shrink-0">
+                  <span className={`font-bold ${log.statusCode >= 200 && log.statusCode < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{log.statusCode || 'ERR'}</span>
+                  {!log.success && <span className="text-[8px] text-amber-500 font-black leading-none">WARN</span>}
+                </div>
                 <span className="w-[50px] text-blue-400 font-bold flex-shrink-0 uppercase">{log.method}</span>
                 <span className="flex-1 truncate text-slate-400 group-hover:text-slate-200">{log.url}</span>
                 <span className="text-slate-500 w-[70px] text-right">{log.responseTime}ms</span>
@@ -397,8 +421,18 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
             </div>
             
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {!selectedLog.success && (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2">
+                  <svg className="w-5 h-5 text-rose-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <div>
+                    <p className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Falha na Validação</p>
+                    <p className="text-xs text-rose-500 dark:text-rose-500 font-mono mt-1">{selectedLog.errorMessage || "A resposta não atende aos critérios das asserções definidas."}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div><p className="label-base">Status</p><p className={`text-xl font-black ${selectedLog.statusCode < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{selectedLog.statusCode || 'ERROR'}</p></div>
+                <div><p className="label-base">Status</p><p className={`text-xl font-black ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{selectedLog.statusCode || 'ERROR'}</p></div>
                 <div><p className="label-base">Time</p><p className="text-xl font-black dark:text-white">{selectedLog.responseTime}ms</p></div>
                 <div className="col-span-2"><p className="label-base">Method & URL</p><p className="dark:text-slate-200 font-bold truncate"><span className="text-blue-500 uppercase mr-2">{selectedLog.method}</span>{selectedLog.url}</p></div>
               </div>
