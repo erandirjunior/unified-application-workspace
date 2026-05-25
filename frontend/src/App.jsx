@@ -5,160 +5,76 @@ import SaveRequestForm from './SaveRequestForm';
 import CollectionsView from './CollectionsView';
 import CollectionView from './CollectionView';
 import DocumentationView from './DocumentationView';
+import { useCollections } from './hooks/useCollections';
+import { useRequestForm } from './hooks/useRequestForm';
+import { useTestRunner } from './hooks/useTestRunner';
 
 function App() {
+  // Hooks de Estado de UI e Navegação
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [view, setView] = useState('collections');
-
-  const [url, setUrl] = useState('https://google.com');
-  const [method, setMethod] = useState('GET');
-
-  const [threads, setThreads] = useState(1);
-  const [duration, setDuration] = useState(10);
-  const [rampUp, setRampUp] = useState(0);
-
-  const [headers, setHeaders] = useState([{ key: '', value: '' }]);
-
-  const [bodyType, setBodyType] = useState('none');
-  const [bodyRaw, setBodyRaw] = useState('');
-
-  const [pathParams, setPathParams] = useState([]);
-  const [bodyParams, setBodyParams] = useState([]);
-
-  const [authType, setAuthType] = useState('none');
-
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isHeadersOpen, setIsHeadersOpen] = useState(false);
-  const [isBodyOpen, setIsBodyOpen] = useState(false);
-  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
-
   const [results, setResults] = useState('Aguardando comando...');
-  const [reportData, setReportData] = useState(null);
   const [isVarsModalOpen, setIsVarsModalOpen] = useState(false);
-  const [requestLogs, setRequestLogs] = useState([]);
-  const [selectedLog, setSelectedLog] = useState(null);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
-  const [activeRequestId, setActiveRequestId] = useState(null);
   const [selectedRequestIds, setSelectedRequestIds] = useState([]);
-  const [requestName, setRequestName] = useState('');
-  const [description, setDescription] = useState('');
-  const [bodyRawDoc, setBodyRawDoc] = useState('');
-  const [authDoc, setAuthDoc] = useState('');
-
-  const [isRunning, setIsRunning] = useState(false);
-  const abortControllerRef = useRef(null);
-
-  // Estados para notificações estilizadas
+  // Notificações e Modais
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success'); // 'success', 'error', 'info'
+  const [toastType, setToastType] = useState('success');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [onConfirmCallback, setOnConfirmCallback] = useState(null);
 
-  const [collections, setCollections] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ast_collections');
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (!Array.isArray(parsed)) {
-        return [{ 
-          id: '1', 
-          name: 'Minha Coleção', 
-          requests: [], 
-          environments: [{ id: 'default', name: 'Global', variables: [] }],
-          activeEnvironmentId: 'default'
-        }];
-      }
-      
-      // Migração automática: garante que coleções antigas funcionem no novo formato
-      return parsed.map(col => ({
-        ...col,
-        environments: col.environments || [
-          { id: 'default', name: 'Global', variables: col.variables || [] }
-        ],
-        activeEnvironmentId: col.activeEnvironmentId || 'default'
-      }));
-    } catch (e) {
-      return [{ 
-        id: '1', 
-        name: 'Minha Coleção', 
-        requests: [], 
-        environments: [{ id: 'default', name: 'Global', variables: [] }],
-        activeEnvironmentId: 'default'
-      }];
-    }
-  });
+  // UI Helpers (Devem ser declarados antes de serem usados por outros hooks)
+  const showCustomToast = (message, type = 'success') => { setToastMessage(message); setToastType(type); setShowToast(true); };
+  const showCustomConfirm = (message, callback) => { setConfirmMessage(message); setOnConfirmCallback(() => callback); setShowConfirmModal(true); };
 
+  // Hooks Customizados
+  const { collections, setCollections, ...colMethods } = useCollections();
+  const { form, updateField, updateIndexedField, addListItem, removeListItem, resetForm, loadRequest, getPayload } = useRequestForm();
   // Encontra a coleção ativa de forma reativa aos dados
   const activeCollection = collections.find(c => c.id === activeCollectionId);
+  const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast);
 
-  useEffect(() => {
+  const sendRequests = async (payload = null) => {
+    setView('report');
+    await runRequests(payload);
+  };
+
+  // Efeitos e Lógica de UI (Toast e Tema)
+  useEffect(() => { // Lógica para o tema
     const root = window.document.documentElement;
-
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-
+    if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Lógica para o Toast
-  useEffect(() => {
+  useEffect(() => { // Lógica para o Toast
     if (showToast) {
       const timer = setTimeout(() => {
         setShowToast(false);
         setToastMessage('');
         setToastType('success');
-      }, 3000); // Toast desaparece após 3 segundos
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [showToast]);
-
-
-  useEffect(() => {
-    localStorage.setItem('ast_collections', JSON.stringify(collections));
-  }, [collections]);
-
   const saveCurrentRequest = (name, colId) => {
     const newRequest = {
       id: Date.now().toString(),
       name: name || 'Nova Requisição',
-      description, url, method, threads, duration, rampUp, headers, bodyType, bodyRaw, bodyParams, authType
+      ...form
     };
-    newRequest.bodyRawDoc = bodyRawDoc;
-    newRequest.authDoc = authDoc;
-    
+
     setCollections(prev => prev.map(col => 
       col.id === colId ? { ...col, requests: [...col.requests, newRequest] } : col
     ));
   };
 
-  const loadSavedRequest = (req, targetView = 'config') => {
-    setActiveRequestId(req.id);
-    setRequestName(req.name);
-    setDescription(req.description || '');
-    setUrl(req.url);
-    setMethod(req.method);
-    setThreads(req.threads);
-    setDuration(req.duration);
-    setRampUp(req.rampUp);
-    setHeaders(req.headers || [{ key: '', value: '', docDescription: '', docRequired: false, docExample: '' }]);
-    setBodyType(req.bodyType);
-    setBodyRaw(req.bodyRaw);
-    setPathParams(req.pathParams || []);
-    setBodyParams(req.bodyParams ? req.bodyParams.filter(p => p.key !== '') : []);
-    setBodyRawDoc(req.bodyRawDoc || '');
-    setAuthType(req.authType);
-    setAuthDoc(req.authDoc || '');
-    if (targetView) setView(targetView);
-  };
-
   const viewDocumentation = (req) => {
     if (req) {
       setSelectedRequestIds([req.id]);
-      loadSavedRequest(req, 'documentation');
+      loadRequest(req);
+      setView('documentation');
     } else {
       setView('documentation');
     }
@@ -185,113 +101,51 @@ function App() {
     return allReqs;
   };
 
+  const updateCollectionScenarios = (colId, scenarios) => {
+    setCollections(prev => prev.map(col => 
+      col.id === colId ? { ...col, scenarios } : col
+    ));
+  };
+
   const handleEnterCollection = (col) => {
     setActiveCollectionId(col.id);
     setSelectedRequestIds([]); // Limpa a seleção ao entrar em uma nova coleção para evitar lixo de estado
     setView('collection-detail');
   };
 
-  const addRequestToCollection = (colId, name, folderId = null) => {
-    const newReq = {
-      id: Date.now().toString(),
-      type: 'request',
-      name: name || 'Nova Requisição',
-      url: 'https://api.example.com',
-      method: 'GET',
-      threads: 1,
-      duration: 10,
-      rampUp: 0,
-      headers: [{ key: '', value: '', docDescription: '', docRequired: false, docExample: '' }],
-      bodyType: 'none',
-      bodyRaw: '',
-      bodyRawDoc: '',
-      description: '',
-      pathParams: [],
-      bodyParams: [],
-      authType: 'none',
-      authDoc: ''
-    };
-
-    setCollections(prev => prev.map(col => {
-      if (col.id === colId) {
-        if (!folderId) return { ...col, requests: [...col.requests, newReq] };
-        return {
-          ...col,
-          requests: col.requests.map(item => 
-            item.id === folderId ? { ...item, requests: [...item.requests, newReq] } : item
-          )
-        };
-      }
-      return col;
-    }));
-  };
-
-  const addFolderToCollection = (colId, name) => {
-    const newFolder = { id: Date.now().toString(), type: 'folder', name: name || 'Nova Pasta', requests: [] };
-    setCollections(prev => prev.map(col => 
-      col.id === colId ? { ...col, requests: [...col.requests, newFolder] } : col
-    ));
-  };
-
-  const moveRequestInCollection = (colId, requestId, targetFolderId = null) => {
-    setCollections(prev => prev.map(col => {
-      if (col.id !== colId) return col;
-
-      let requestToMove = null;
-
-      const extract = (items) => {
-        const result = [];
-        for (const item of items) {
-          if (item.id === requestId) {
-            requestToMove = item;
-          } else if (item.type === 'folder') {
-            result.push({ ...item, requests: extract(item.requests || []) });
-          } else {
-            result.push(item);
-          }
-        }
-        return result;
-      };
-
-      const cleanedRequests = extract(col.requests);
-      if (!requestToMove) return col;
-
-      const insert = (items) => {
-        return items.map(item => {
-          if (item.id === targetFolderId) {
-            return { ...item, requests: [...(item.requests || []), requestToMove] };
-          }
-          if (item.type === 'folder') {
-            return { ...item, requests: insert(item.requests || []) };
-          }
-          return item;
-        });
-      };
-
-      return { 
-        ...col, 
-        requests: !targetFolderId ? [...cleanedRequests, requestToMove] : insert(cleanedRequests) 
-      };
-    }));
-  };
-
   const updateRequestInCollection = (silent = false) => {
-    if (!activeCollectionId || !activeRequestId) return;
+    if (!activeCollectionId) return;
+
+    if (form.activeScenarioId !== null && form.activeStepIndex !== null) {
+      setCollections(prev => prev.map(col => {
+        if (col.id !== activeCollectionId) return col;
+        const newScenarios = (col.scenarios || []).map(scen => {
+          if (scen.id !== form.activeScenarioId) return scen;
+          const newSteps = [...scen.steps];
+          newSteps[form.activeStepIndex] = {
+            ...newSteps[form.activeStepIndex],
+            ...form,
+            name: form.requestName
+          };
+          return { ...scen, steps: newSteps };
+        });
+        return { ...col, scenarios: newScenarios };
+      }));
+      if (!silent) showCustomToast('Passo do cenário atualizado!', 'success');
+      return;
+    }
+
+    if (!form.activeRequestId) return;
 
     setCollections(prev => prev.map(col => {
-      console.log("updateRequestInCollection: silent =", silent); // Adicione esta linha
       if (col.id !== activeCollectionId) return col;
-
       const recursiveUpdate = (items) => {
         return items.map(item => {
-          if (item.id === activeRequestId) {
+          if (item.id === form.activeRequestId) {
             return { 
               ...item, 
-              name: requestName,
-              description,
-              url, method, threads, duration, rampUp, headers, pathParams, bodyType, bodyRaw, bodyParams, authType,
-              bodyRawDoc,
-              authDoc
+              ...form,
+              name: form.requestName
             };
           }
           if (item.type === 'folder') {
@@ -303,12 +157,6 @@ function App() {
       return { ...col, requests: recursiveUpdate(col.requests) };
     }));
     if (!silent) showCustomToast('Requisição atualizada com sucesso!', 'success');
-  };
-
-  const showCustomToast = (message, type = 'success') => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
   };
 
   const reorderCollection = (id, direction) => {
@@ -361,13 +209,20 @@ function App() {
     });
   };
 
-  const createCollection = (name) => setCollections([...collections, { 
-    id: Date.now().toString(), 
-    name,
-    requests: [], 
-    environments: [{ id: 'default', name: 'Global', variables: [] }],
-    activeEnvironmentId: 'default'
-  }]); // Não mostra toast aqui, pois é uma ação de criação visível
+  const createCollection = (name, importedData = null) => {
+    if (importedData) {
+      setCollections([...collections, importedData]);
+    } else {
+      setCollections([...collections, { 
+        id: Date.now().toString(), 
+        name,
+        requests: [], 
+        environments: [{ id: 'default', name: 'Global', variables: [] }],
+        activeEnvironmentId: 'default',
+        scenarios: []
+      }]);
+    }
+  }; // Não mostra toast aqui, pois é uma ação de criação visível
   const deleteRequest = (colId, reqId) => {
     showCustomConfirm('Tem certeza que deseja excluir esta requisição?', () => {
       setCollections(prev => prev.map(collection => {
@@ -483,21 +338,9 @@ function App() {
   };
 
   const handleRunSingleSavedRequest = (req) => {
-    setActiveRequestId(req.id);
-    setRequestName(req.name);
-    setDescription(req.description || '');
-    setUrl(req.url);
-    setMethod(req.method);
-    setThreads(1);
-    setDuration(1);
-    setRampUp(req.rampUp || 0);
-    setHeaders(req.headers || [{ key: '', value: '', docDescription: '', docRequired: false, docExample: '' }]);
-    setBodyType(req.bodyType || 'none');
-    setBodyRaw(req.bodyRaw || '');
-    setBodyRawDoc(req.bodyRawDoc || '');
-    setPathParams(req.pathParams || []);
-    setBodyParams(req.bodyParams ? req.bodyParams.filter(p => p.key !== '') : []);
-    setAuthType(req.authType || 'none');
+    loadRequest(req);
+    updateField('totalRequests', 1);
+    updateField('duration', 1);
 
     const headerMap = {};
     (req.headers || []).forEach(h => {
@@ -507,33 +350,32 @@ function App() {
     const payload = {
       url: req.url,
       method: req.method,
-      threads: 1,
+      totalRequests: 1,
       duration: 1,
       headers: headerMap,
-      body: req.bodyRaw,
+      body: req.bodyRaw || '',
+      assertions: req.assertions || [],
+      extractions: req.extractions || [],
       single: true
     };
 
     sendRequests(payload);
   };
 
-  const handleRunSavedRequest = (req) => {
-    setActiveRequestId(req.id);
-    setRequestName(req.name);
-    setDescription(req.description || '');
-    // Sincroniza o estado para que o ReportView e ConfigView fiquem consistentes
-    setUrl(req.url);
-    setMethod(req.method);
-    setThreads(req.threads);
-    setDuration(req.duration);
-    setRampUp(req.rampUp);
-    setHeaders(req.headers || [{ key: '', value: '', docDescription: '', docRequired: false, docExample: '' }]);
-    setPathParams(req.pathParams || []);
-    setBodyType(req.bodyType);
-    setBodyRaw(req.bodyRaw);
-    setBodyRawDoc(req.bodyRawDoc || '');
-    setBodyParams(req.bodyParams ? req.bodyParams.filter(p => p.key !== '') : []);
-    setAuthType(req.authType);
+  const handleRunSavedRequest = (req, scenId = null) => {
+    // Caso o parâmetro seja um array, trata como execução de cenário
+    if (Array.isArray(req) && req.length > 0) {
+      if (scenId) updateField('activeScenarioId', scenId);
+      updateField('method', ''); // Limpa para sinalizar "Múltiplas" no ReportView
+      updateField('url', '');    // Limpa para sinalizar "Cenário" no ReportView
+      updateField('totalRequests', 0); // Sinaliza carga variável por passo
+      updateField('duration', 0);
+      updateField('rampUp', 0);
+      sendRequests(req);
+      return;
+    }
+
+    loadRequest(req);
 
     // Prepara o payload diretamente do objeto 'req' para execução imediata
     const headerMap = {};
@@ -544,121 +386,16 @@ function App() {
     const payload = {
       url: req.url,
       method: req.method,
-      threads: parseInt(req.threads),
+      totalRequests: parseInt(req.totalRequests || req.threads || 1),
       duration: parseInt(req.duration),
       rampUp: parseInt(req.rampUp || 0),
       headers: headerMap,
-      body: req.bodyRaw
+      body: req.bodyRaw || '',
+      assertions: req.assertions || [],
+      extractions: req.extractions || []
     };
 
     sendRequests(payload);
-  };
-
-  const showCustomConfirm = (message, callback) => {
-    setConfirmMessage(message);
-    setOnConfirmCallback(() => callback); // Armazena a função de callback
-    setShowConfirmModal(true);
-  };
-
-  const stopTest = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-  };
-
-  const sendRequests = async (overridePayload = null) => {
-    setView('report');
-    setRequestLogs([]);
-    setSelectedLog(null);
-    setReportData(null);
-
-    let payload;
-    // Verifica se overridePayload é um objeto de configuração válido e não um evento do React
-    if (overridePayload && typeof overridePayload === 'object' && 'url' in overridePayload) {
-      payload = overridePayload;
-    } else {
-      const headerMap = {};
-      headers.forEach(h => {
-        if (h.key) headerMap[h.key] = h.value;
-      });
-      payload = {
-        url,
-        method,
-        threads: parseInt(threads),
-        duration: parseInt(duration),
-        rampUp: parseInt(rampUp),
-        headers: headerMap,
-        body: bodyRaw
-      };
-    }
-
-    const envVars = {};
-    if (activeCollection?.environments && activeCollection.activeEnvironmentId) {
-      const activeEnv = activeCollection.environments.find(e => e.id === activeCollection.activeEnvironmentId);
-      if (activeEnv) {
-        activeEnv.variables.forEach(v => { if(v.key) envVars[v.key] = v.value; });
-      }
-    }
-
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setIsRunning(true);
-
-    try {
-      const response = await fetch('http://localhost:8080/run', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ...payload, variables: envVars }),
-        signal: controller.signal
-      });
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        // Remove o último elemento do array e guarda no buffer. 
-        // Se a linha estiver completa, o pop() pega uma string vazia (devido ao \n final).
-        // Se estiver incompleta, guarda o fragmento para o próximo chunk.
-        buffer = lines.pop();
-
-        lines.forEach(line => {
-          if (line.trim() === '') return;
-          try {
-            const data = JSON.parse(line);
-
-            if (data.type === 'summary') {
-              setReportData(data);
-            } else {
-              setRequestLogs(prev =>
-                [data, ...prev].slice(0, 100)
-              );
-            }
-          } catch (e) {
-            console.error('Erro ao processar chunk:', e);
-          }
-        });
-      }
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Teste interrompido pelo usuário');
-      } else {
-        console.error(error);
-        setResults('Erro na conexão com o backend.');
-      }
-    } finally {
-      setIsRunning(false);
-      abortControllerRef.current = null;
-    }
   };
 
   return (
@@ -670,13 +407,18 @@ function App() {
           <span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tighter uppercase">AST DevTools</span>
           <nav className="flex gap-4">
             <button 
-              onClick={() => { setView('collections'); setActiveCollectionId(null); setActiveRequestId(null); setRequestName(''); setDescription(''); }}
+              onClick={() => { setView('collections'); setActiveCollectionId(null); resetForm(); setReportData(null); }}
               className={`text-sm font-bold transition-colors ${view === 'collections' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
               Minhas Coleções
             </button>
             <button 
-              onClick={() => { setView('config'); setReportData(null); setActiveCollectionId(null); setActiveRequestId(null); setRequestName(''); setDescription(''); }}
+              onClick={() => {
+                setView('config');
+                setReportData(null);
+                resetForm();
+                setActiveCollectionId(null);
+              }}
               className={`text-sm font-bold transition-colors ${view === 'config' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
               Teste Rápido
@@ -697,15 +439,17 @@ function App() {
               <ReportView 
                 reportData={reportData} 
                 requestLogs={requestLogs} 
-                setView={setView} 
+                setView={setView}
                 results={results}
-                config={{ method, url, threads, duration, body: bodyRaw, rampUp, activeRequestId, headers, bodyType, bodyParams, authType }}
+                config={{ ...form, body: form.bodyRaw }}
                 activeCollectionId={activeCollectionId}
+                activeScenarioId={form.activeScenarioId} 
                 activeCollection={activeCollection}
                 theme={theme}
                 sendRequests={sendRequests}
                 isRunning={isRunning}
                 onStop={stopTest}
+                lastExecutedPayload={lastExecutedPayload}
               />
             ) : view === 'collections' ? (
               <CollectionsView 
@@ -718,56 +462,60 @@ function App() {
             ) : view === 'collection-detail' ? (
               <CollectionView 
                 collection={activeCollection}
-                onSelectRequest={loadSavedRequest}
+                onSelectRequest={(req, targetView, scenId, stepIdx) => { loadRequest(req, scenId, stepIdx); setView(targetView || 'config'); }}
                 onViewDocumentation={viewDocumentation}
                 onRunRequest={handleRunSavedRequest}
                 onRunSingleRequest={handleRunSingleSavedRequest}
                 onBack={() => setView('collections')}
-              onAddRequest={addRequestToCollection}
-              onAddFolder={addFolderToCollection}
-              onMoveRequest={moveRequestInCollection}
+              onAddRequest={colMethods.addRequestToCollection}
+              onAddFolder={colMethods.addFolderToCollection}
+              onMoveRequest={colMethods.moveRequestInCollection}
               onDeleteRequest={deleteRequest}
               onDeleteFolder={deleteFolder}
               onReorderItem={reorderItemInCollection}
               onUpdateEnvironments={updateCollectionEnvironments}
-              onSetActiveEnvironment={setActiveEnvironment}
+              onUpdateScenarios={updateCollectionScenarios}
+              activeScenarioId={form.activeScenarioId}
+              setActiveScenarioId={(id) => updateField('activeScenarioId', id)}
+              setActiveStepIndex={(idx) => updateField('activeStepIndex', idx)}
+              onSetActiveEnvironment={colMethods.setActiveEnvironment}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
               onViewUnifiedDoc={() => setView('documentation')}
               />
             ) : view === 'documentation' ? (
               <DocumentationView 
-                request={{ id: activeRequestId, name: requestName, description, url, method, headers, pathParams, bodyType, bodyRaw, bodyParams, authType, threads }}
+                request={{ ...form, id: form.activeRequestId, name: form.requestName }}
                 requests={getSelectedRequests()}
-                activeRequestId={activeRequestId}
+                activeRequestId={form.activeRequestId}
                 onSelectForEdit={(req) => {
                   updateRequestInCollection(true); // Salva a atual silenciosamente
-                  loadSavedRequest(req, 'documentation'); // Carrega a próxima
+                  loadRequest(req); // Carrega a próxima
                 }}
                 collection={activeCollection}
-                bodyRawDoc={bodyRawDoc}
-                authDoc={authDoc}
+                bodyRawDoc={form.bodyRawDoc}
+                authDoc={form.authDoc}
                 isRunning={isRunning}
-                updateHeader={updateHeader}
-                updatePathParam={updatePathParam}
-                updateBodyParam={updateBodyParam}
+                updateHeader={(i, f, v) => updateIndexedField('headers', i, f, v)}
+                updatePathParam={(i, f, v) => updateIndexedField('pathParams', i, f, v)}
+                updateBodyParam={(i, f, v) => updateIndexedField('bodyParams', i, f, v)}
                 updateRequestInCollection={updateRequestInCollection}
-                bodyParams={bodyParams}
-                addHeader={addHeader}
-                addPathParam={addPathParam}
-                removeHeader={removeHeader}
-                removePathParam={removePathParam}
-                addBodyParam={addBodyParam}
-                removeBodyParam={removeBodyParam}
-                onClearBodyParams={handleClearBodyParams}
-                setBodyRawDoc={setBodyRawDoc}
-                setAuthDoc={setAuthDoc}
-                setUrl={setUrl}
-                setMethod={setMethod}
-                setDescription={setDescription}
-                setBodyRaw={setBodyRaw}
-                setAuthType={setAuthType}
-                setRequestName={setRequestName}
+                bodyParams={form.bodyParams}
+                addHeader={() => addListItem('headers', { key: '', value: '' })}
+                addPathParam={() => addListItem('pathParams', { key: '', value: '', docRequired: true })}
+                removeHeader={(i) => removeListItem('headers', i)}
+                removePathParam={(i) => removeListItem('pathParams', i)}
+                addBodyParam={(p) => addListItem('bodyParams', p && !p.nativeEvent ? p : { key: '', value: '', type: 'text' })}
+                removeBodyParam={(i) => removeListItem('bodyParams', i)}
+                onClearBodyParams={() => updateField('bodyParams', [])}
+                setBodyRawDoc={(v) => updateField('bodyRawDoc', v)}
+                setAuthDoc={(v) => updateField('authDoc', v)}
+                setUrl={(v) => updateField('url', v)}
+                setMethod={(v) => updateField('method', v)}
+                setDescription={(v) => updateField('description', v)}
+                setBodyRaw={(v) => updateField('bodyRaw', v)}
+                setAuthType={(v) => updateField('authType', v)}
+                setRequestName={(v) => updateField('requestName', v)}
                 showCustomToast={showCustomToast} // Passa a função de toast
                 onBack={() => setView('collection-detail')}
                 onEdit={() => setView('config')}
@@ -778,49 +526,51 @@ function App() {
             ) : (
               <div className="animate-in fade-in duration-500">
                 {/* Ação de voltar para a coleção posicionada no topo absoluto */}
-                {activeCollectionId && activeRequestId && (
+                {activeCollectionId && form.activeRequestId && (
                   <div className="mb-6">
                     <button 
-                      onClick={() => setView('collection-detail')}
+                      onClick={() => {
+                        setView('collection-detail');
+                        updateField('activeStepIndex', null);
+                      }}
                       className="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                      Voltar para Coleção
+                      {form.activeScenarioId ? 'Voltar para o Cenário' : 'Voltar para Coleção'}
                     </button>
                   </div>
                 )}
                 <SaveRequestForm 
                   collections={collections} 
                   onSaveRequest={saveCurrentRequest} 
-                  requestName={requestName}
-                  setRequestName={setRequestName}
+                  requestName={form.requestName}
+                  setRequestName={(v) => updateField('requestName', v)}
                 />
                 <ConfigView
-                  url={url} setUrl={setUrl}
-                  method={method} setMethod={setMethod}
-                  threads={threads} setThreads={setThreads}
-                  duration={duration} setDuration={setDuration}
-                  rampUp={rampUp} setRampUp={setRampUp}
+                  {...form}
+                  setUrl={(v) => updateField('url', v)} setMethod={(v) => updateField('method', v)}
+                  setTotalRequests={(v) => updateField('totalRequests', v)} setDuration={(v) => updateField('duration', v)} setRampUp={(v) => updateField('rampUp', v)}
                   methodStyles={methodStyles}
-                  isHeadersOpen={isHeadersOpen} setIsHeadersOpen={setIsHeadersOpen}
-                  isBodyOpen={isBodyOpen} setIsBodyOpen={setIsBodyOpen}
-                  isAuthOpen={isAuthOpen} setIsAuthOpen={setIsAuthOpen}
-                  headers={headers} addHeader={addHeader} removeHeader={removeHeader} updateHeader={updateHeader}
-                  bodyType={bodyType} setBodyType={setBodyType}
-                  bodyRaw={bodyRaw} setBodyRaw={setBodyRaw}
-                  bodyParams={bodyParams} addBodyParam={addBodyParam} removeBodyParam={removeBodyParam} updateBodyParam={updateBodyParam}
-                  authType={authType} setAuthType={setAuthType}
-                  bodyRawDoc={bodyRawDoc} setBodyRawDoc={setBodyRawDoc}
-                  authDoc={authDoc} setAuthDoc={setAuthDoc}
+                  addHeader={() => addListItem('headers', { key: '', value: '' })} 
+                  removeHeader={(i) => removeListItem('headers', i)} 
+                  updateHeader={(i, f, v) => updateIndexedField('headers', i, f, v)}
+                  setBodyType={(v) => updateField('bodyType', v)} 
+                  setBodyRaw={(v) => updateField('bodyRaw', v)}
+                  addBodyParam={(p) => addListItem('bodyParams', p && !p.nativeEvent ? p : { key: '', value: '', type: 'text' })} 
+                  removeBodyParam={(i) => removeListItem('bodyParams', i)} 
+                  updateBodyParam={(i, f, v) => updateIndexedField('bodyParams', i, f, v)}
+                  setAuthType={(v) => updateField('authType', v)} 
+                  setBodyRawDoc={(v) => updateField('bodyRawDoc', v)} 
+                  setAuthDoc={(v) => updateField('authDoc', v)}
                   sendRequests={sendRequests}
-                  description={description}
-                  setDescription={setDescription}
-                  isDescriptionOpen={isDescriptionOpen}
-                  setIsDescriptionOpen={setIsDescriptionOpen}
+                  setDescription={(v) => updateField('description', v)}
                   updateRequestInCollection={updateRequestInCollection}
-                  isVarsModalOpen={isVarsModalOpen}
+                  isVarsModalOpen={isVarsModalOpen} 
                   setIsVarsModalOpen={setIsVarsModalOpen}
-                  activeRequestId={activeRequestId}
+                  activeRequestId={form.activeRequestId}
+                  setAssertions={(v) => updateField('assertions', v)} 
+                  setExtractions={(v) => updateField('extractions', v)}
+                  isScenarioMode={form.activeScenarioId !== null}
                   showCustomToast={showCustomToast} // Passa a função de toast
                 />
               </div>
