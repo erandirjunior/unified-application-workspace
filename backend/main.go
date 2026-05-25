@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "math"
     mrand "math/rand"
     "net/http"
     "regexp"
@@ -31,7 +32,7 @@ type Extraction struct {
 type LoadTestRequest struct {
 	URL         string            `json:"url"`
 	Method      string            `json:"method"`
-	Threads     int               `json:"threads"`
+	TotalRequests int               `json:"totalRequests"`
 	Duration    int               `json:"duration"`
 	RampUp      int               `json:"rampUp"`
 	Headers     map[string]string `json:"headers"`
@@ -233,86 +234,49 @@ func generateUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-// getJsonValue extracts a value from a JSON string using a simplified JSONPath (dot notation and array indexing).
-// Example paths: "name", "address.city", "items[0].id", "$.items[0]"
 func getJsonValue(jsonString string, path string) (string, error) {
 	var data interface{}
-	err := json.Unmarshal([]byte(jsonString), &data)
-	if err != nil {
+	if err := json.Unmarshal([]byte(jsonString), &data); err != nil {
 		return "", fmt.Errorf("falha ao parsear JSON: %w", err)
 	}
 
-	// Normaliza o path: remove prefixos comuns de JSONPath para busca direta
 	path = strings.TrimPrefix(path, "$.")
 	path = strings.TrimPrefix(path, "$")
 	path = strings.TrimPrefix(path, ".")
 
 	if path == "" {
-		// Return the whole JSON as a string if the path is empty (root)
-		if dataBytes, err := json.Marshal(data); err == nil {
-			return string(dataBytes), nil
-		}
-		return fmt.Sprintf("%v", data), nil // Fallback
+		res, _ := json.Marshal(data)
+		return string(res), nil
 	}
 
 	current := data
-	// Split path by '.' but handle array indices within parts
 	segments := strings.Split(path, ".")
+	reArrayIndex := regexp.MustCompile(`^([a-zA-Z0-9_]*)\[(\d+)\]$`)
 
 	for _, segment := range segments {
-		// Handle array index like "items[0]" or just "[0]"
-		reArrayIndex := regexp.MustCompile(`^([a-zA-Z0-9_]*)\[(\d+)\]$`)
 		arrayMatch := reArrayIndex.FindStringSubmatch(segment)
-
 		if arrayMatch != nil {
-			key := arrayMatch[1]
-			indexStr := arrayMatch[2]
-
+			key, indexStr := arrayMatch[1], arrayMatch[2]
 			if key != "" {
-				if currentMap, ok := current.(map[string]interface{}); ok {
-					if val, found := currentMap[key]; found {
-						current = val
-					} else {
-						return "", fmt.Errorf("campo '%s' não encontrado", key)
-					}
-				} else {
-					return "", fmt.Errorf("não é possível acessar chave '%s' em um não-objeto", key)
+				if m, ok := current.(map[string]interface{}); ok {
+					current = m[key]
 				}
 			}
-
-			if currentArray, ok := current.([]interface{}); ok {
-				index, _ := strconv.Atoi(indexStr)
-				if index >= 0 && index < len(currentArray) {
-					current = currentArray[index]
-				} else {
-					return "", fmt.Errorf("índice %d fora dos limites", index)
-				}
-			} else {
-				return "", fmt.Errorf("segmento '%s' indica array, mas o dado não é uma lista", segment)
+			if arr, ok := current.([]interface{}); ok {
+				idx, _ := strconv.Atoi(indexStr)
+				if idx >= 0 && idx < len(arr) {
+					current = arr[idx]
+				} else { return "", fmt.Errorf("index out of bounds") }
 			}
-		} else {
-			if currentMap, ok := current.(map[string]interface{}); ok {
-				if val, found := currentMap[segment]; found {
-					current = val
-				} else {
-					return "", fmt.Errorf("campo '%s' não encontrado", segment)
-				}
-			} else {
-				return "", fmt.Errorf("caminho inválido: tentando acessar '%s' em um valor que não é objeto", segment)
-			}
-		}
+		} else if m, ok := current.(map[string]interface{}); ok {
+			current = m[segment]
+		} else { return "", fmt.Errorf("campo não encontrado") }
 	}
 
-	if current == nil {
-		return "null", nil
-	}
-	if strVal, ok := current.(string); ok {
-		return strVal, nil
-	}
-	if dataBytes, err := json.Marshal(current); err == nil {
-		return string(dataBytes), nil
-	}
-	return fmt.Sprintf("%v", current), nil
+	if current == nil { return "null", nil }
+	if s, ok := current.(string); ok { return s, nil }
+	res, _ := json.Marshal(current)
+	return string(res), nil
 }
 
 func validateResponse(resp *http.Response, body string, assertions []Assertion) (bool, string) {
@@ -433,23 +397,70 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Goroutine principal para orquestrar as fases
 	go func() {
+		ctx := r.Context()
 		defer close(logChan)
 
 		for _, rd := range requests {
-			numThreads := rd.Threads
-			if rd.Single { numThreads = 1 }
-			
-			deadline := time.Now().Add(time.Duration(rd.Duration) * time.Second)
-			var phaseWg sync.WaitGroup
-
-			rampUpInterval := time.Duration(0)
-			if rd.RampUp > 0 && numThreads > 1 && !rd.Single {
-				rampUpInterval = time.Duration(float64(rd.RampUp) / float64(numThreads) * float64(time.Second))
+			// Suporte a passo de "Espera" (Think Time)
+			if strings.ToLower(rd.Method) == "wait" {
+				waitSec, _ := strconv.Atoi(rd.URL)
+				time.Sleep(time.Duration(waitSec) * time.Second)
+				continue
 			}
 
-			for i := 0; i < numThreads; i++ {
-				if i > 0 && rampUpInterval > 0 { time.Sleep(rampUpInterval) }
-				if time.Now().After(deadline) { break }
+			// No modo RPS, o total de requests é RPS * Duração.
+			// Se Duração for 0, tratamos o campo como volume total fixo.
+			targetRPS := rd.TotalRequests
+			if rd.Single { targetRPS = 1 }
+
+			// Calcula o volume total considerando que durante o ramp-up a média de RPS é a metade do alvo
+			totalToFire := 0
+			if rd.Duration > 0 && !rd.Single {
+				if rd.RampUp > 0 && rd.RampUp < rd.Duration {
+					rampReqs := (targetRPS * rd.RampUp) / 2
+					stableReqs := targetRPS * (rd.Duration - rd.RampUp)
+					totalToFire = rampReqs + stableReqs
+				} else {
+					totalToFire = targetRPS * rd.Duration
+				}
+			} else {
+				totalToFire = targetRPS
+			}
+			
+			var phaseWg sync.WaitGroup
+			firingInterval := time.Duration(0)
+			if targetRPS > 0 {
+				firingInterval = time.Second / time.Duration(targetRPS)
+			}
+
+			startTimePhase := time.Now()
+			rampUpDuration := time.Duration(rd.RampUp) * time.Second
+			numRampRequests := (targetRPS * rd.RampUp) / 2
+
+			for i := 0; i < totalToFire; i++ {
+				select {
+				case <-ctx.Done(): return // Interrompe se o cliente desconectar (STOP)
+				default:
+				}
+
+				var targetTime time.Time
+				if rd.RampUp > 0 && i < numRampRequests {
+					// Fase de aceleração: curva quadrática para atingir RPS linearmente
+					// t = sqrt( (2 * RampUp * i) / targetRPS )
+					t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
+					targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
+				} else if rd.RampUp > 0 && !rd.Single {
+					// Fase estável pós ramp-up
+					offsetStable := float64(i-numRampRequests) / float64(targetRPS)
+					targetTime = startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
+				} else if firingInterval > 0 {
+					// Sem ramp-up (comportamento original)
+					targetTime = startTimePhase.Add(time.Duration(i) * firingInterval)
+				}
+
+				if !targetTime.IsZero() {
+					time.Sleep(time.Until(targetTime))
+				}
 
 				phaseWg.Add(1)
 				atomic.AddInt64(&activeThreads, 1)
@@ -458,48 +469,43 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 					defer phaseWg.Done()
 					defer atomic.AddInt64(&activeThreads, -1)
 
-					for {
-						if time.Now().After(deadline) { break }
+					varsMu.RLock()
+					uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
+					currentURL := executeTemplate(uT, sharedVars)
+					currentBody := executeTemplate(bT, sharedVars)
+					if !strings.HasPrefix(currentURL, "http") { currentURL = "http://" + currentURL }
+					
+					req, _ := http.NewRequest(currentRd.Method, currentURL, strings.NewReader(currentBody))
+					for k, v := range currentRd.Headers {
+						req.Header.Set(k, executeTemplate(parseTemplate(v), sharedVars))
+					}
+					varsMu.RUnlock()
 
-						varsMu.RLock()
-						uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
-						currentURL := executeTemplate(uT, sharedVars)
-						currentBody := executeTemplate(bT, sharedVars)
-						if !strings.HasPrefix(currentURL, "http") { currentURL = "http://" + currentURL }
-						
-						req, _ := http.NewRequest(currentRd.Method, currentURL, strings.NewReader(currentBody))
-						for k, v := range currentRd.Headers {
-							req.Header.Set(k, executeTemplate(parseTemplate(v), sharedVars))
+					start := time.Now()
+					resp, err := httpClient.Do(req)
+					elapsed := time.Since(start).Milliseconds()
+
+					if err == nil {
+						b, _ := io.ReadAll(resp.Body)
+						respBody := string(b)
+						resp.Body.Close()
+
+						valid, errMsg := validateResponse(resp, respBody, currentRd.Assertions)
+						if valid { atomic.AddInt64(&success, 1) } else { atomic.AddInt64(&errors, 1) }
+
+						varsMu.Lock()
+						extractVars(resp, respBody, currentRd.Extractions, sharedVars)
+						varsMu.Unlock()
+
+						logChan <- RequestLogEntry{
+							URL: currentURL, Method: currentRd.Method, StatusCode: resp.StatusCode,
+							Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed,
+							ResponseBody: respBody, Success: valid, ErrorMessage: errMsg,
+							RunningThreads: int(atomic.LoadInt64(&activeThreads)),
 						}
-						varsMu.RUnlock()
-
-						start := time.Now()
-						resp, err := httpClient.Do(req)
-						elapsed := time.Since(start).Milliseconds()
-
-						if err == nil {
-							b, _ := io.ReadAll(resp.Body)
-							respBody := string(b)
-							resp.Body.Close()
-
-							valid, errMsg := validateResponse(resp, respBody, currentRd.Assertions)
-							if valid { atomic.AddInt64(&success, 1) } else { atomic.AddInt64(&errors, 1) }
-
-							varsMu.Lock()
-							extractVars(resp, respBody, currentRd.Extractions, sharedVars)
-							varsMu.Unlock()
-
-							logChan <- RequestLogEntry{
-								URL: currentURL, Method: currentRd.Method, StatusCode: resp.StatusCode,
-								Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed,
-								ResponseBody: respBody, Success: valid, ErrorMessage: errMsg,
-								RunningThreads: int(atomic.LoadInt64(&activeThreads)),
-							}
-						} else {
-							atomic.AddInt64(&errors, 1)
-							logChan <- RequestLogEntry{URL: currentURL, Method: currentRd.Method, StatusCode: 0, Success: false, ErrorMessage: err.Error()}
-						}
-						if currentRd.Single { break }
+					} else {
+						atomic.AddInt64(&errors, 1)
+						logChan <- RequestLogEntry{URL: currentURL, Method: currentRd.Method, StatusCode: 0, Success: false, ErrorMessage: err.Error()}
 					}
 				}(rd)
 			}
