@@ -1,21 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ScenarioView from './ScenarioView';
+import ScenarioEditorView from './ScenarioEditorView';
 
 export default function CollectionView({ 
-  collection, onSelectRequest, onViewDocumentation, onRunRequest, 
+  collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, 
   onMoveRequest, onDeleteRequest, onDeleteFolder, onReorderItem, 
-  onUpdateEnvironments, onSetActiveEnvironment, selectedRequestIds = [], 
-  onToggleSelection, onViewUnifiedDoc 
+  onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, selectedRequestIds = [], 
+  onToggleSelection, onViewUnifiedDoc,
+  activeScenarioId,
+  setActiveScenarioId, setActiveStepIndex
 }) {
-  const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'scenarios'
+  const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : 'requests'); // 'requests' | 'scenarios'
   const [newItemName, setNewItemName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isDraggingOverRoot, setIsDraggingOverRoot] = useState(false);
   const [search, setSearch] = useState('');
   const [dragOverFolderId, setDragOverFolderId] = useState(null);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
+  // Inicializa com activeScenarioId para persistir o editor ao voltar da configuração
+  const [editingScenarioId, setEditingScenarioId] = useState(activeScenarioId || null); 
+  const [isRenamingCollection, setIsRenamingCollection] = useState(false);
   const [editingEnvId, setEditingEnvId] = useState(collection.activeEnvironmentId || (collection.environments?.[0]?.id));
   const [isRenamingEnv, setIsRenamingEnv] = useState(null);
+
+  useEffect(() => {
+    if (activeScenarioId) {
+      setActiveTab('scenarios');
+      setEditingScenarioId(activeScenarioId); // Ensure the editor is open if we came from editing a step
+    } else {
+      // If activeScenarioId becomes null, ensure we are not in scenario editor mode
+      setEditingScenarioId(null);
+    }
+  }, [activeScenarioId]);
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
@@ -335,14 +352,43 @@ export default function CollectionView({
       <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
         <div className="flex items-center gap-4">
           <button 
-            onClick={onBack}
+            onClick={() => {
+              // Se estiver editando um cenário, volta para a lista da coleção
+              if (editingScenarioId) {
+                setEditingScenarioId(null);
+                setActiveScenarioId(null);
+              } else {
+                onBack(); // Volta para o Dashboard
+              }
+            }}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             title="Voltar para o Dashboard"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           </button>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{collection.name}</h1>
+            {isRenamingCollection ? (
+              <input 
+                autoFocus
+                className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 -ml-2"
+                defaultValue={collection.name}
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  if (val && val !== collection.name) {
+                    onUpdateName(collection.id, val);
+                  }
+                  setIsRenamingCollection(false);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+              />
+            ) : (
+              <h1 
+                onClick={() => setIsRenamingCollection(true)}
+                className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                {collection.name}
+              </h1>
+            )}
             <p className="text-slate-500 text-sm italic">Ambiente de trabalho da coleção</p>
           </div>
         </div>
@@ -372,20 +418,28 @@ export default function CollectionView({
         </div>
 
         {/* Menu de Abas Interno */}
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
-          <button 
-            onClick={() => setActiveTab('requests')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'requests' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-          >
-            Requests
-          </button>
-          <button 
-            onClick={() => setActiveTab('scenarios')}
-            className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'scenarios' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-          >
-            Cenários
-          </button>
-        </div>
+        {!editingScenarioId && (
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+            <button 
+              onClick={() => {
+                setActiveTab('requests');
+                setEditingScenarioId(null);
+                setActiveScenarioId(null);
+              }}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'requests' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Requests
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('scenarios');
+              }}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'scenarios' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Cenários
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Barra de Ações em Massa (Aparece apenas quando houver seleção) */}
@@ -425,13 +479,13 @@ export default function CollectionView({
               />
               <div className="flex gap-3">
                 <button 
-                  onClick={() => { onAddRequest(collection.id, newItemName); setNewItemName(''); }}
+                  onClick={() => { if (newItemName.trim()) { onAddRequest(collection.id, newItemName.trim()); setNewItemName(''); } }}
                   className="whitespace-nowrap bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-blue-700 transition-all flex items-center gap-2"
                 >
                   + Request
                 </button>
                 <button 
-                  onClick={() => { onAddFolder(collection.id, newItemName); setNewItemName(''); }}
+                  onClick={() => { if (newItemName.trim()) { onAddFolder(collection.id, newItemName.trim()); setNewItemName(''); } }}
                   className="whitespace-nowrap bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-xs hover:bg-slate-300 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
                 >
                   + Pasta
@@ -475,9 +529,38 @@ export default function CollectionView({
             </div>
           </div>
         ) : (
-          <div className="text-center py-20">
-            <p className="text-slate-500 italic">Módulo de Cenários em breve: Crie fluxos encadeados de testes de carga.</p>
-          </div>
+          editingScenarioId ? (
+            <ScenarioEditorView 
+              scenario={collection.scenarios.find(s => s.id === editingScenarioId)}
+              collection={collection}
+              onBack={() => {
+                setEditingScenarioId(null);
+                setActiveScenarioId(null); // Agora limpamos para permitir a navegação correta
+              }}
+              onUpdateScenario={(updatedScen) => {
+                const newScens = (collection.scenarios || []).map(s => s.id === updatedScen.id ? updatedScen : s);
+                onUpdateScenarios(collection.id, newScens);
+              }}
+              onRun={(reqs, scenId) => {
+                setActiveScenarioId(scenId);
+                onRunRequest(reqs, scenId);
+              }}
+                onEditStep={(step, index) => {
+                  if (!step) return;
+                  onSelectRequest(step, 'config', editingScenarioId, index);
+                }}
+              />
+            ) : (
+              <ScenarioView 
+                collection={collection} 
+            onRunScenario={(reqs, scenId) => {
+              setActiveScenarioId(scenId);
+              onRunRequest(reqs, scenId);
+            }} 
+                onUpdateScenarios={onUpdateScenarios} 
+                onEditScenario={setEditingScenarioId}
+              />
+            )
         )}
       </div>
     </div>
