@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 
 export default function ScenarioEditorView({ scenario, collection, onUpdateScenario, onBack, onEditStep, onRun }) {
-  const [name, setName] = useState(scenario.name);
-  const [description, setDescription] = useState(scenario.description || '');
-  const [steps, setSteps] = useState(scenario.steps || []);
+  if (!scenario) return null;
+
+  const [name, setName] = useState(scenario?.name || '');
+  const [description, setDescription] = useState(scenario?.description || '');
+  const [steps, setSteps] = useState(scenario?.steps || []);
+  const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+  const [copySearch, setCopySearch] = useState('');
 
   const getAllRequests = (items) => {
     let reqs = [];
@@ -67,6 +71,21 @@ export default function ScenarioEditorView({ scenario, collection, onUpdateScena
     setSteps(prev => [...prev, waitStep]);
   };
 
+  const copyRequestToScenario = (originalReq) => {
+    const newStep = {
+      ...originalReq,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      // Mantém os parâmetros de carga padrão do cenário se não existirem
+      totalRequests: originalReq.totalRequests || 1,
+      duration: originalReq.duration || 10,
+      rampUp: originalReq.rampUp || 0,
+    };
+
+    setSteps(prev => [...prev, newStep]);
+    setIsCopyModalOpen(false);
+    setCopySearch('');
+  };
+
   const removeRequest = (index) => {
     setSteps(prev => prev.filter((_, i) => i !== index));
   };
@@ -89,15 +108,10 @@ export default function ScenarioEditorView({ scenario, collection, onUpdateScena
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
-        <div></div>
-        <div className="flex gap-3">
-          <button onClick={handleRun} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
-            EXECUTAR CENÁRIO
-          </button>
-          <button onClick={handleSave} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all">
-            SALVAR ALTERAÇÕES
-          </button>
+        <h2 className="text-xl font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">Editor de Cenário: {name}</h2>
+        <div className="flex gap-2">
+          <button onClick={handleSave} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">SALVAR</button>
+          <button onClick={handleRun} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20">EXECUTAR</button>
         </div>
       </div>
 
@@ -111,13 +125,38 @@ export default function ScenarioEditorView({ scenario, collection, onUpdateScena
             <label className="label-base">Comentário / Descrição</label>
             <textarea className="input-base min-h-[120px]" value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o objetivo deste fluxo..." />
           </div>
-          <div className="flex gap-4">
-            <button onClick={addNewStep} className="flex-1 py-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold hover:text-blue-500 hover:border-blue-500 transition-all flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth="2.5"/></svg> REQUISIÇÃO
-            </button>
-            <button onClick={addWaitStep} className="flex-1 py-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 font-bold hover:text-amber-500 hover:border-amber-500 transition-all flex items-center justify-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2.5"/></svg> PAUSA (WAIT)
-            </button>
+
+          <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Adicionar Componentes</h3>
+            <div className="grid gap-3">
+              <button onClick={addNewStep} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-500 transition-all">
+                <div className="w-8 h-8 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" strokeWidth="2"/></svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold dark:text-white">Nova Requisição</p>
+                  <p className="text-[10px] text-slate-500">Adicionar passo manual</p>
+                </div>
+              </button>
+              <button onClick={() => setIsCopyModalOpen(true)} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-emerald-500 transition-all">
+                <div className="w-8 h-8 bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" strokeWidth="2"/></svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold dark:text-white">Copiar da Coleção</p>
+                  <p className="text-[10px] text-slate-500">Importar request salva</p>
+                </div>
+              </button>
+              <button onClick={addWaitStep} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-amber-500 transition-all">
+                <div className="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2"/></svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold dark:text-white">Pausa (Wait)</p>
+                  <p className="text-[10px] text-slate-500">Tempo de espera (Think Time)</p>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -195,6 +234,48 @@ export default function ScenarioEditorView({ scenario, collection, onUpdateScena
           </div>
         </div>
       </div>
+
+      {/* Modal de Seleção para Cópia */}
+      {isCopyModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <h3 className="text-xl font-bold dark:text-white">Copiar para Cenário</h3>
+                <p className="text-xs text-slate-500 mt-1">Selecione uma requisição existente para adicionar como passo.</p>
+              </div>
+              <button onClick={() => setIsCopyModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="Pesquisar requisições na coleção..." 
+                className="input-base text-sm"
+                value={copySearch}
+                onChange={(e) => setCopySearch(e.target.value)}
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {getAllRequests(collection?.requests || [])
+                .filter(r => r.name.toLowerCase().includes(copySearch.toLowerCase()) || r.url.toLowerCase().includes(copySearch.toLowerCase()))
+                .map(req => (
+                  <div 
+                    key={req.id} 
+                    onClick={() => copyRequestToScenario(req)}
+                    className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-500 transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-4 overflow-hidden">
+                      <span className="text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-500/20 text-blue-500 uppercase">{req.method}</span>
+                      <span className="text-sm font-bold dark:text-white truncate">{req.name}</span>
+                    </div>
+                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 font-bold text-xs transition-opacity">Adicionar Passo →</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
