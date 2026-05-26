@@ -4,6 +4,7 @@ import (
     "crypto/rand"
     "encoding/json"
     "fmt"
+    "context"
     "io"
     "math"
     mrand "math/rand"
@@ -42,6 +43,12 @@ type LoadTestRequest struct {
 	Assertions  []Assertion       `json:"assertions"`
 	Extractions []Extraction      `json:"extractions"`
 	Name        string            `json:"name"`
+}
+
+type WorkflowStep struct {
+	Type     string            `json:"type"`     // "request", "parallel", "wait"
+	Requests []LoadTestRequest `json:"requests"` // Usado para 'parallel'
+	LoadTestRequest                    // Usado para 'request' e metadados
 }
 
 type LoadTestResult struct {
@@ -369,7 +376,7 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 
 	var payload struct {
 		LoadTestRequest
-		Requests []LoadTestRequest `json:"requests"`
+		Requests []WorkflowStep `json:"requests"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -380,13 +387,14 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	// Se vier uma lista, usamos ela, caso contrário tratamos como teste único
 	requests := payload.Requests
 	if len(requests) == 0 {
-		requests = []LoadTestRequest{payload.LoadTestRequest}
+		requests = []WorkflowStep{{Type: "request", LoadTestRequest: payload.LoadTestRequest}}
 	}
 
 	startTime := time.Now()
 	var success, errors int64
 	var activeThreads int64
 	logChan := make(chan RequestLogEntry, 100)
+	var allWorkersWg sync.WaitGroup
 
 	// Variáveis compartilhadas entre todas as fases do cenário
 	sharedVars := make(map[string]string)
@@ -398,118 +406,116 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 	// Goroutine principal para orquestrar as fases
 	go func() {
 		ctx := r.Context()
-		defer close(logChan)
+		defer func() {
+			allWorkersWg.Wait() // Espera ABSOLUTAMENTE todos os workers antes de fechar
+			close(logChan)
+		}()
 
-		for _, rd := range requests {
+		mainLoop:
+		for _, step := range requests {
+			select {
+			case <-ctx.Done():
+				break mainLoop
+			default:
+			}
+
+			// Lógica para execução paralela dentro de um Workflow
+			if step.Type == "parallel" {
+				var stepWg sync.WaitGroup
+				for _, rd := range step.Requests {
+					stepWg.Add(1)
+					allWorkersWg.Add(1)
+					atomic.AddInt64(&activeThreads, 1)
+					go func(currentRd LoadTestRequest) {
+						defer stepWg.Done()
+						defer allWorkersWg.Done()
+						defer atomic.AddInt64(&activeThreads, -1)
+						executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads)
+					}(rd)
+				}
+				stepWg.Wait()
+				continue
+			}
+
+			// Lógica original (Sequencial)
+			rd := step.LoadTestRequest
+			
+			// Se for um passo de Workflow (sem duração ou marcado como single), forçamos 1 execução
+			isWorkflowStep := step.Type == "request" && rd.Duration <= 0
+
+			// Fallback de tipo
+			if step.Type == "" && rd.URL != "" {
+				step.Type = "request"
+			}
+
 			// Suporte a passo de "Espera" (Think Time)
-			if strings.ToLower(rd.Method) == "wait" {
+			if strings.ToLower(rd.Method) == "wait" || step.Type == "wait" {
 				waitSec, _ := strconv.Atoi(rd.URL)
 				time.Sleep(time.Duration(waitSec) * time.Second)
 				continue
 			}
 
-			// No modo RPS, o total de requests é RPS * Duração.
-			// Se Duração for 0, tratamos o campo como volume total fixo.
-			targetRPS := rd.TotalRequests
-			if rd.Single { targetRPS = 1 }
+			if rd.URL != "" {
+				targetRPS := rd.TotalRequests
+				if rd.Single || isWorkflowStep { targetRPS = 1 }
 
-			// Calcula o volume total considerando que durante o ramp-up a média de RPS é a metade do alvo
-			totalToFire := 0
-			if rd.Duration > 0 && !rd.Single {
-				if rd.RampUp > 0 && rd.RampUp < rd.Duration {
-					rampReqs := (targetRPS * rd.RampUp) / 2
-					stableReqs := targetRPS * (rd.Duration - rd.RampUp)
-					totalToFire = rampReqs + stableReqs
-				} else {
-					totalToFire = targetRPS * rd.Duration
-				}
-			} else {
-				totalToFire = targetRPS
-			}
-			
-			var phaseWg sync.WaitGroup
-			firingInterval := time.Duration(0)
-			if targetRPS > 0 {
-				firingInterval = time.Second / time.Duration(targetRPS)
-			}
-
-			startTimePhase := time.Now()
-			rampUpDuration := time.Duration(rd.RampUp) * time.Second
-			numRampRequests := (targetRPS * rd.RampUp) / 2
-
-			for i := 0; i < totalToFire; i++ {
-				select {
-				case <-ctx.Done(): return // Interrompe se o cliente desconectar (STOP)
-				default:
-				}
-
-				var targetTime time.Time
-				if rd.RampUp > 0 && i < numRampRequests {
-					// Fase de aceleração: curva quadrática para atingir RPS linearmente
-					// t = sqrt( (2 * RampUp * i) / targetRPS )
-					t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
-					targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
-				} else if rd.RampUp > 0 && !rd.Single {
-					// Fase estável pós ramp-up
-					offsetStable := float64(i-numRampRequests) / float64(targetRPS)
-					targetTime = startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
-				} else if firingInterval > 0 {
-					// Sem ramp-up (comportamento original)
-					targetTime = startTimePhase.Add(time.Duration(i) * firingInterval)
-				}
-
-				if !targetTime.IsZero() {
-					time.Sleep(time.Until(targetTime))
-				}
-
-				phaseWg.Add(1)
-				atomic.AddInt64(&activeThreads, 1)
-
-				go func(currentRd LoadTestRequest) {
-					defer phaseWg.Done()
-					defer atomic.AddInt64(&activeThreads, -1)
-
-					varsMu.RLock()
-					uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
-					currentURL := executeTemplate(uT, sharedVars)
-					currentBody := executeTemplate(bT, sharedVars)
-					if !strings.HasPrefix(currentURL, "http") { currentURL = "http://" + currentURL }
-					
-					req, _ := http.NewRequest(currentRd.Method, currentURL, strings.NewReader(currentBody))
-					for k, v := range currentRd.Headers {
-						req.Header.Set(k, executeTemplate(parseTemplate(v), sharedVars))
-					}
-					varsMu.RUnlock()
-
-					start := time.Now()
-					resp, err := httpClient.Do(req)
-					elapsed := time.Since(start).Milliseconds()
-
-					if err == nil {
-						b, _ := io.ReadAll(resp.Body)
-						respBody := string(b)
-						resp.Body.Close()
-
-						valid, errMsg := validateResponse(resp, respBody, currentRd.Assertions)
-						if valid { atomic.AddInt64(&success, 1) } else { atomic.AddInt64(&errors, 1) }
-
-						varsMu.Lock()
-						extractVars(resp, respBody, currentRd.Extractions, sharedVars)
-						varsMu.Unlock()
-
-						logChan <- RequestLogEntry{
-							URL: currentURL, Method: currentRd.Method, StatusCode: resp.StatusCode,
-							Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed,
-							ResponseBody: respBody, Success: valid, ErrorMessage: errMsg,
-							RunningThreads: int(atomic.LoadInt64(&activeThreads)),
-						}
+				totalToFire := 0
+				if rd.Duration > 0 && !rd.Single {
+					if rd.RampUp > 0 && rd.RampUp < rd.Duration {
+						rampReqs := (targetRPS * rd.RampUp) / 2
+						stableReqs := targetRPS * (rd.Duration - rd.RampUp)
+						totalToFire = rampReqs + stableReqs
 					} else {
-						atomic.AddInt64(&errors, 1)
-						logChan <- RequestLogEntry{URL: currentURL, Method: currentRd.Method, StatusCode: 0, Success: false, ErrorMessage: err.Error()}
+						totalToFire = targetRPS * rd.Duration
 					}
-				}(rd)
+				} else {
+					totalToFire = targetRPS
+				}
+				
+				var phaseWg sync.WaitGroup
+				firingInterval := time.Duration(0)
+				if targetRPS > 0 {
+					firingInterval = time.Second / time.Duration(targetRPS)
+				}
+
+				startTimePhase := time.Now()
+				rampUpDuration := time.Duration(rd.RampUp) * time.Second
+				numRampRequests := (targetRPS * rd.RampUp) / 2
+
+				for i := 0; i < totalToFire; i++ {
+					select {
+					case <-ctx.Done(): break mainLoop
+					default:
+					}
+
+					var targetTime time.Time
+					if rd.RampUp > 0 && i < numRampRequests {
+						t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
+						targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
+					} else if rd.RampUp > 0 && !rd.Single {
+						offsetStable := float64(i-numRampRequests) / float64(targetRPS)
+						targetTime = startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
+					} else if firingInterval > 0 {
+						targetTime = startTimePhase.Add(time.Duration(i) * firingInterval)
+					}
+
+					if !targetTime.IsZero() {
+						time.Sleep(time.Until(targetTime))
+					}
+
+					phaseWg.Add(1)
+					allWorkersWg.Add(1)
+					atomic.AddInt64(&activeThreads, 1)
+
+					go func(currentRd LoadTestRequest) {
+						defer phaseWg.Done()
+						defer allWorkersWg.Done()
+						defer atomic.AddInt64(&activeThreads, -1)
+						executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads)
+					}(rd)
+				}
+				phaseWg.Wait() 
 			}
-			phaseWg.Wait() // Aguarda a fase atual terminar antes de ir para o próximo passo
 		}
 	}()
 
@@ -536,6 +542,87 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
     })
     fmt.Fprintf(w, "%s\n", finalResult)
     flusher.Flush()
+}
+
+func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, sharedVars map[string]string, varsMu *sync.RWMutex, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
+	varsMu.RLock()
+	uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
+	currentURL := executeTemplate(uT, sharedVars)
+	currentBody := executeTemplate(bT, sharedVars)
+	if !strings.HasPrefix(currentURL, "http") { currentURL = "http://" + currentURL }
+	
+	req, err := http.NewRequest(currentRd.Method, currentURL, strings.NewReader(currentBody))
+	if err != nil {
+		atomic.AddInt64(errors, 1)
+		
+		select {
+		case <-ctx.Done():
+		case logChan <- RequestLogEntry{
+			URL: currentURL, Method: currentRd.Method, StatusCode: 0, 
+			Success: false, ErrorMessage: fmt.Sprintf("Erro ao criar request: %v", err),
+		}:
+		}
+		varsMu.RUnlock()
+		return
+	}
+
+	// Captura os headers da requisição para o log
+	sentHeaders := make(map[string]string)
+	for k, v := range currentRd.Headers {
+		val := executeTemplate(parseTemplate(v), sharedVars)
+		req.Header.Set(k, val)
+		sentHeaders[k] = val
+	}
+	varsMu.RUnlock()
+
+	start := time.Now()
+	resp, err := httpClient.Do(req)
+	elapsed := time.Since(start).Milliseconds()
+
+	if err == nil && resp != nil {
+		b, _ := io.ReadAll(resp.Body)
+		respBody := string(b)
+		resp.Body.Close()
+
+		// Captura os headers da resposta para o log
+		respHeaders := make(map[string]string)
+		for k, v := range resp.Header {
+			respHeaders[k] = strings.Join(v, ", ")
+		}
+
+		valid, errMsg := validateResponse(resp, respBody, currentRd.Assertions)
+		if valid { atomic.AddInt64(success, 1) } else { atomic.AddInt64(errors, 1) }
+
+		varsMu.Lock()
+		extractVars(resp, respBody, currentRd.Extractions, sharedVars)
+		varsMu.Unlock()
+
+		select {
+		case <-ctx.Done():
+		case logChan <- RequestLogEntry{
+			URL: currentURL, Method: currentRd.Method, StatusCode: resp.StatusCode,
+			Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed,
+			ResponseBody: respBody, ResponseHeaders: respHeaders,
+			RequestBody: currentBody, RequestHeaders: sentHeaders,
+			Success: valid, ErrorMessage: errMsg,
+			RunningThreads: int(atomic.LoadInt64(activeThreads)),
+		}:
+		}
+	} else {
+		atomic.AddInt64(errors, 1)
+		errMsg := "Erro desconhecido"
+		if err != nil { errMsg = err.Error() }
+		
+		select {
+		case <-ctx.Done():
+		case logChan <- RequestLogEntry{
+			URL: currentURL, Method: currentRd.Method, StatusCode: 0, 
+			RequestBody: currentBody, RequestHeaders: sentHeaders,
+			Success: false, ErrorMessage: errMsg,
+			RunningThreads: int(atomic.LoadInt64(activeThreads)),
+		}:
+		}
+	}
 }
 
 func main() {
