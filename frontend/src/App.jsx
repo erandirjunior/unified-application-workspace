@@ -107,6 +107,12 @@ function App() {
     ));
   };
 
+  const updateCollectionWorkflows = (colId, workflows) => {
+    setCollections(prev => prev.map(col => 
+      col.id === colId ? { ...col, workflows } : col
+    ));
+  };
+
   const handleEnterCollection = (col) => {
     setActiveCollectionId(col.id);
     setSelectedRequestIds([]); // Limpa a seleção ao entrar em uma nova coleção para evitar lixo de estado
@@ -132,6 +138,39 @@ function App() {
         return { ...col, scenarios: newScenarios };
       }));
       if (!silent) showCustomToast('Passo do cenário atualizado!', 'success');
+      return;
+    }
+
+    if (form.activeWorkflowId !== null && form.activeStepIndex !== null) {
+      setCollections(prev => prev.map(col => {
+        if (col.id !== activeCollectionId) return col;
+        const newWorkflows = (col.workflows || []).map(workflow => {
+          if (workflow.id !== form.activeWorkflowId) return workflow;
+          const newSteps = [...workflow.steps];
+          
+          if (form.activeSubIndex !== null) {
+            // Edição dentro de um Grupo Paralelo
+            const group = { ...newSteps[form.activeStepIndex] };
+            const newGroupRequests = [...group.requests];
+            newGroupRequests[form.activeSubIndex] = {
+              ...newGroupRequests[form.activeSubIndex],
+              ...form,
+              name: form.requestName
+            };
+            newSteps[form.activeStepIndex] = { ...group, requests: newGroupRequests };
+          } else {
+            // Edição de requisição no nível raiz do Workflow
+            newSteps[form.activeStepIndex] = {
+              ...newSteps[form.activeStepIndex],
+              ...form,
+              name: form.requestName
+            };
+          }
+          return { ...workflow, steps: newSteps };
+        });
+        return { ...col, workflows: newWorkflows };
+      }));
+      if (!silent) showCustomToast('Passo do workflow atualizado!', 'success');
       return;
     }
 
@@ -219,7 +258,8 @@ function App() {
         requests: [], 
         environments: [{ id: 'default', name: 'Global', variables: [] }],
         activeEnvironmentId: 'default',
-        scenarios: []
+        scenarios: [],
+        workflows: []
       }]);
     }
   }; // Não mostra toast aqui, pois é uma ação de criação visível
@@ -251,6 +291,16 @@ function App() {
         return { ...collection, requests: recursiveFilter(collection.requests) };
       }));
       showCustomToast('Pasta excluída com sucesso!', 'success');
+    });
+  };
+
+  const deleteWorkflow = (colId, workflowId) => {
+    showCustomConfirm('Tem certeza que deseja excluir este workflow?', () => {
+      setCollections(prev => prev.map(collection => {
+        if (collection.id !== colId) return collection;
+        return { ...collection, workflows: (collection.workflows || []).filter(w => w.id !== workflowId) };
+      }));
+      showCustomToast('Workflow excluído com sucesso!', 'success');
     });
   };
 
@@ -362,16 +412,54 @@ function App() {
     sendRequests(payload);
   };
 
-  const handleRunSavedRequest = (req, scenId = null) => {
+  const handleRunSavedRequest = (req, scenId = null, isWorkflow = false) => {
     // Caso o parâmetro seja um array, trata como execução de cenário
     if (Array.isArray(req) && req.length > 0) {
-      if (scenId) updateField('activeScenarioId', scenId);
+      // Helper para formatar os passos (Cenários ou Workflows) para o formato do Backend
+      const formatStep = (s, isWorkflowMode) => {
+        const formatReq = (r) => {
+          // Se headers já for um objeto (mapa) e não um array, assume que já está formatado
+          if (r.headers && !Array.isArray(r.headers)) return r;
+          
+          const headerMap = {};
+          (r.headers || []).forEach(h => { if (h.key) headerMap[h.key] = h.value; });
+          
+          return { 
+            ...r, 
+            headers: headerMap, 
+            body: r.bodyRaw || '',
+            totalRequests: isWorkflowMode ? 1 : (parseInt(r.totalRequests) || 1),
+            duration: isWorkflowMode ? 0 : (parseInt(r.duration) || 0),
+            rampUp: isWorkflowMode ? 0 : (parseInt(r.rampUp) || 0),
+            single: isWorkflowMode ? true : !!r.single
+          };
+        };
+
+        if (s.type === 'parallel') {
+          return { ...s, requests: (s.requests || []).map(formatReq) };
+        }
+        return { ...formatReq(s), type: s.type || 'request' };
+      };
+
+      const formattedSteps = req.map(s => formatStep(s, isWorkflow));
+
+      if (scenId) {
+        if (isWorkflow) {
+          updateField('activeWorkflowId', scenId);
+          updateField('activeScenarioId', null);
+        } else {
+          updateField('activeScenarioId', scenId);
+          updateField('activeWorkflowId', null);
+        }
+      }
       updateField('method', ''); // Limpa para sinalizar "Múltiplas" no ReportView
       updateField('url', '');    // Limpa para sinalizar "Cenário" no ReportView
       updateField('totalRequests', 0); // Sinaliza carga variável por passo
       updateField('duration', 0);
       updateField('rampUp', 0);
-      sendRequests(req);
+      
+      // Envia o payload encapsulado no objeto "requests" esperado pelo motor em Go
+      sendRequests({ requests: formattedSteps });
       return;
     }
 
@@ -443,7 +531,8 @@ function App() {
                 results={results}
                 config={{ ...form, body: form.bodyRaw }}
                 activeCollectionId={activeCollectionId}
-                activeScenarioId={form.activeScenarioId} 
+                activeScenarioId={form.activeScenarioId}
+                activeWorkflowId={form.activeWorkflowId}
                 activeCollection={activeCollection}
                 theme={theme}
                 sendRequests={sendRequests}
@@ -462,7 +551,15 @@ function App() {
             ) : view === 'collection-detail' ? (
               <CollectionView 
                 collection={activeCollection}
-                onSelectRequest={(req, targetView, scenId, stepIdx) => { loadRequest(req, scenId, stepIdx); setView(targetView || 'config'); }}
+                onSelectRequest={(req, targetView, scenId, stepIdx, workflowId, subIdx) => { 
+                  loadRequest(req, scenId, stepIdx, workflowId, subIdx);
+                  // Sincroniza manualmente os IDs de contexto no estado do formulário
+                  updateField('activeScenarioId', scenId || null);
+                  updateField('activeWorkflowId', workflowId || null);
+                  updateField('activeStepIndex', stepIdx ?? null);
+                  updateField('activeSubIndex', subIdx ?? null);
+                  setView(targetView || 'config'); 
+                }}
                 onViewDocumentation={viewDocumentation}
                 onRunRequest={handleRunSavedRequest}
                 onRunSingleRequest={handleRunSingleSavedRequest}
@@ -472,12 +569,17 @@ function App() {
               onMoveRequest={colMethods.moveRequestInCollection}
               onDeleteRequest={deleteRequest}
               onDeleteFolder={deleteFolder}
+              onDeleteWorkflow={deleteWorkflow}
               onReorderItem={reorderItemInCollection}
               onUpdateEnvironments={updateCollectionEnvironments}
               onUpdateScenarios={updateCollectionScenarios}
+              onUpdateWorkflows={updateCollectionWorkflows}
               activeScenarioId={form.activeScenarioId}
+              activeWorkflowId={form.activeWorkflowId}
               setActiveScenarioId={(id) => updateField('activeScenarioId', id)}
+              setActiveWorkflowId={(id) => updateField('activeWorkflowId', id)}
               setActiveStepIndex={(idx) => updateField('activeStepIndex', idx)}
+              setActiveSubIndex={(idx) => updateField('activeSubIndex', idx)}
               onSetActiveEnvironment={colMethods.setActiveEnvironment}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
@@ -532,11 +634,12 @@ function App() {
                       onClick={() => {
                         setView('collection-detail');
                         updateField('activeStepIndex', null);
+                        updateField('activeSubIndex', null);
                       }}
                       className="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                      {form.activeScenarioId ? 'Voltar para o Cenário' : 'Voltar para Coleção'}
+                      {form.activeScenarioId ? 'Voltar para o Cenário' : form.activeWorkflowId ? 'Voltar para o Workflow' : 'Voltar para Coleção'}
                     </button>
                   </div>
                 )}
@@ -571,6 +674,7 @@ function App() {
                   setAssertions={(v) => updateField('assertions', v)} 
                   setExtractions={(v) => updateField('extractions', v)}
                   isScenarioMode={form.activeScenarioId !== null}
+                  activeWorkflowId={form.activeWorkflowId}
                   showCustomToast={showCustomToast} // Passa a função de toast
                 />
               </div>

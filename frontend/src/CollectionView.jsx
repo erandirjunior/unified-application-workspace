@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import ScenarioView from './ScenarioView';
 import ScenarioEditorView from './ScenarioEditorView';
+import WorkflowView from './WorkflowView';
+import WorkflowEditorView from './WorkflowEditorView';
 
 export default function CollectionView({ 
   collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, 
-  onMoveRequest, onDeleteRequest, onDeleteFolder, onReorderItem, 
-  onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, selectedRequestIds = [], 
-  onToggleSelection, onViewUnifiedDoc,
-  activeScenarioId,
-  setActiveScenarioId, setActiveStepIndex
+  onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, 
+  onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows,
+  selectedRequestIds = [], onToggleSelection, onViewUnifiedDoc,
+  activeScenarioId, activeWorkflowId,
+  setActiveScenarioId, setActiveWorkflowId, setActiveStepIndex, setActiveSubIndex
 }) {
-  const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : 'requests'); // 'requests' | 'scenarios'
+  const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : activeWorkflowId ? 'workflows' : 'requests'); // 'requests' | 'scenarios' | 'workflows'
   const [newItemName, setNewItemName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isDraggingOverRoot, setIsDraggingOverRoot] = useState(false);
@@ -20,6 +22,7 @@ export default function CollectionView({
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
   // Inicializa com activeScenarioId para persistir o editor ao voltar da configuração
   const [editingScenarioId, setEditingScenarioId] = useState(activeScenarioId || null); 
+  const [editingWorkflowId, setEditingWorkflowId] = useState(activeWorkflowId || null);
   const [isRenamingCollection, setIsRenamingCollection] = useState(false);
   const [editingEnvId, setEditingEnvId] = useState(collection.activeEnvironmentId || (collection.environments?.[0]?.id));
   const [isRenamingEnv, setIsRenamingEnv] = useState(null);
@@ -33,6 +36,15 @@ export default function CollectionView({
       setEditingScenarioId(null);
     }
   }, [activeScenarioId]);
+
+  useEffect(() => {
+    if (activeWorkflowId) {
+      setActiveTab('workflows');
+      setEditingWorkflowId(activeWorkflowId);
+    } else {
+      setEditingWorkflowId(null);
+    }
+  }, [activeWorkflowId]);
 
   const toggleFolder = (id) => {
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
@@ -357,6 +369,9 @@ export default function CollectionView({
               if (editingScenarioId) {
                 setEditingScenarioId(null);
                 setActiveScenarioId(null);
+          } else if (editingWorkflowId) {
+            setEditingWorkflowId(null);
+            setActiveWorkflowId(null);
               } else {
                 onBack(); // Volta para o Dashboard
               }
@@ -418,7 +433,7 @@ export default function CollectionView({
         </div>
 
         {/* Menu de Abas Interno */}
-        {!editingScenarioId && (
+        {!editingScenarioId && !editingWorkflowId && (
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
             <button 
               onClick={() => {
@@ -437,6 +452,14 @@ export default function CollectionView({
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'scenarios' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Cenários
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('workflows');
+              }}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'workflows' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Workflow
             </button>
           </div>
         )}
@@ -528,7 +551,7 @@ export default function CollectionView({
             )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'scenarios' ? (
           editingScenarioId ? (
             <ScenarioEditorView 
               scenario={collection.scenarios.find(s => s.id === editingScenarioId)}
@@ -561,6 +584,34 @@ export default function CollectionView({
                 onEditScenario={setEditingScenarioId}
               />
             )
+        ) : (
+          editingWorkflowId ? (
+            <WorkflowEditorView 
+              workflow={collection.workflows?.find(f => f.id === editingWorkflowId)}
+              collection={collection}
+              onBack={() => {
+                setEditingWorkflowId(null);
+                setActiveWorkflowId(null);
+              }}
+              onUpdateWorkflow={(updatedWorkflow) => {
+                const newWorkflows = (collection.workflows || []).map(f => f.id === updatedWorkflow.id ? updatedWorkflow : f);
+                onUpdateWorkflows(collection.id, newWorkflows);
+              }}
+              onRun={(steps) => onRunRequest(steps, editingWorkflowId, true)}
+              onEditStep={(step, index, subIndex) => {
+                if (!step) return;
+                onSelectRequest(step, 'config', null, index, editingWorkflowId, subIndex);
+              }}
+            />
+          ) : (
+            <WorkflowView 
+              collection={collection}
+              onUpdateWorkflows={onUpdateWorkflows}
+              onEditWorkflow={setEditingWorkflowId}
+              onRunWorkflow={(steps, id) => onRunRequest(steps, id, true)}
+              onDeleteWorkflow={onDeleteWorkflow}
+            />
+          )
         )}
       </div>
     </div>

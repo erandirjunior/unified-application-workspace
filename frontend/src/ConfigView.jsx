@@ -27,6 +27,7 @@ export default function ConfigView({
   updateRequestInCollection,
   activeRequestId,
   isScenarioMode,
+  activeWorkflowId,
   isVarsModalOpen,
   setIsVarsModalOpen
 }) {
@@ -75,37 +76,40 @@ export default function ConfigView({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div>
-          <label className="label-base">Requests por Segundo (RPS)</label>
-          <input
-            type="number"
-            className="input-base"
-            value={totalRequests}
-            onChange={(e) => setTotalRequests(e.target.value)}
-          />
-        </div>
+      {/* Oculta parâmetros de carga se estivermos em modo Cenário ou Workflow */}
+      {!isScenarioMode && !activeWorkflowId && (
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div>
+            <label className="label-base">Requests por Segundo (RPS)</label>
+            <input
+              type="number"
+              className="input-base"
+              value={totalRequests}
+              onChange={(e) => setTotalRequests(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <label className="label-base">Duration</label>
-          <input
-            type="number"
-            className="input-base"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-          />
-        </div>
+          <div>
+            <label className="label-base">Duration</label>
+            <input
+              type="number"
+              className="input-base"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <label className="label-base">Ramp-up</label>
-          <input
-            type="number"
-            className="input-base"
-            value={rampUp}
-            onChange={(e) => setRampUp(e.target.value)}
-          />
+          <div>
+            <label className="label-base">Ramp-up</label>
+            <input
+              type="number"
+              className="input-base"
+              value={rampUp}
+              onChange={(e) => setRampUp(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex justify-end">
         <button
