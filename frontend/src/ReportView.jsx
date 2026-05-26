@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, lastExecutedPayload }) {
+export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload }) {
   const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -183,8 +183,8 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
-              // Se estamos em um cenário, volta para a coleção. Senão, para a configuração padrão.
-              if (activeCollectionId && activeScenarioId) {
+              // Se estamos em um cenário ou workflow, volta para a coleção. Senão, para a configuração padrão.
+              if (activeCollectionId && (activeScenarioId || activeWorkflowId)) {
                 setView('collection-detail');
               } else {
                 setView('config');
