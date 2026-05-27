@@ -34,6 +34,18 @@ function App() {
   const { form, updateField, updateIndexedField, addListItem, removeListItem, resetForm, loadRequest, getPayload } = useRequestForm();
   // Encontra a coleção ativa de forma reativa aos dados
   const activeCollection = collections.find(c => c.id === activeCollectionId);
+
+  // Garante que o estado do formulário sempre tenha o campo 'responses' para evitar erros de iteração
+  useEffect(() => {
+    if (!form) return;
+    const fields = ['responses', 'headers', 'pathParams', 'bodyParams', 'assertions', 'extractions'];
+    fields.forEach(field => {
+      if (!Array.isArray(form[field])) { // Verifica se não é um array (inclui undefined e null)
+        updateField(field, []);
+      }
+    });
+  }, [form?.activeRequestId, view, updateField]);
+
   const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast);
 
   const sendRequests = async (payload = null) => {
@@ -73,7 +85,13 @@ function App() {
   const viewDocumentation = (req) => {
     if (req) {
       setSelectedRequestIds([req.id]);
-      loadRequest(req);
+      const sanitizedReq = { 
+        ...req, 
+        responses: Array.isArray(req.responses) 
+          ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+          : [] 
+      };
+      loadRequest(sanitizedReq);
       setView('documentation');
     } else {
       setView('documentation');
@@ -93,8 +111,15 @@ function App() {
     const allReqs = [];
     const findInItems = (items) => {
       items.forEach(i => {
-        if (i.type === 'folder') findInItems(i.requests || []);
-        else if (selectedRequestIds.includes(i.id)) allReqs.push(i);
+        if (i.type === 'folder') findInItems(i.requests || []); // Recursively search folders
+        else if (selectedRequestIds.includes(i.id)) {
+          allReqs.push({ 
+            ...i, 
+            responses: Array.isArray(i.responses) 
+              ? i.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+              : [] 
+          }); // Ensure responses and their bodyFields are arrays
+        }
       });
     };
     findInItems(activeCollection.requests);
@@ -377,6 +402,47 @@ function App() {
     });
   };
 
+  // Funções para manipular os campos do corpo da resposta (nested array)
+  const addResponseField = (responseIndex, field = null) => {
+    if (!Array.isArray(form.responses)) return;
+    const newResponses = [...form.responses];
+    if (newResponses[responseIndex]) {
+      const resp = { ...newResponses[responseIndex] };
+      const currentFields = Array.isArray(resp.bodyFields) ? [...resp.bodyFields] : [];
+      currentFields.push(field || { key: '', type: 'text', docRequired: false, docExample: '', docDescription: '' });
+      resp.bodyFields = currentFields;
+      newResponses[responseIndex] = resp;
+      updateField('responses', newResponses);
+    }
+  };
+
+  const removeResponseField = (responseIndex, fieldIndex) => {
+    if (!Array.isArray(form.responses)) return;
+    const newResponses = [...form.responses];
+    if (newResponses[responseIndex] && Array.isArray(newResponses[responseIndex].bodyFields)) {
+      const resp = { ...newResponses[responseIndex] };
+      resp.bodyFields = resp.bodyFields.filter((_, i) => i !== fieldIndex);
+      newResponses[responseIndex] = resp;
+      updateField('responses', newResponses);
+    }
+  };
+
+  const updateResponseField = (responseIndex, fieldIndex, fieldName, value) => {
+    if (!Array.isArray(form.responses)) return;
+    const newResponses = [...form.responses];
+    if (newResponses[responseIndex] && Array.isArray(newResponses[responseIndex].bodyFields) && newResponses[responseIndex].bodyFields[fieldIndex]) {
+      const resp = { ...newResponses[responseIndex] };
+      const newFields = [...resp.bodyFields];
+      newFields[fieldIndex] = {
+        ...newFields[fieldIndex],
+        [fieldName]: value
+      };
+      resp.bodyFields = newFields;
+      newResponses[responseIndex] = resp;
+      updateField('responses', newResponses);
+    }
+  };
+
   const methodStyles = {
     GET: 'method-get',
     POST: 'method-post',
@@ -388,7 +454,13 @@ function App() {
   };
 
   const handleRunSingleSavedRequest = (req) => {
-    loadRequest(req);
+    const sanitizedReq = { 
+      ...req, 
+      responses: Array.isArray(req.responses) 
+        ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+        : [] 
+    };
+    loadRequest(sanitizedReq);
     updateField('totalRequests', 1);
     updateField('duration', 1);
 
@@ -463,7 +535,13 @@ function App() {
       return;
     }
 
-    loadRequest(req);
+    const sanitizedReq = { 
+      ...req, 
+      responses: Array.isArray(req.responses) 
+        ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+        : [] 
+    };
+    loadRequest(sanitizedReq);
 
     // Prepara o payload diretamente do objeto 'req' para execução imediata
     const headerMap = {};
@@ -495,7 +573,13 @@ function App() {
           <span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tighter uppercase">AST DevTools</span>
           <nav className="flex gap-4">
             <button 
-              onClick={() => { setView('collections'); setActiveCollectionId(null); resetForm(); setReportData(null); }}
+              onClick={() => { 
+                setView('collections'); 
+                setActiveCollectionId(null); 
+                resetForm(); 
+                updateField('responses', []); // Garante inicialização após reset
+                setReportData(null); 
+              }}
               className={`text-sm font-bold transition-colors ${view === 'collections' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
               Minhas Coleções
@@ -505,6 +589,7 @@ function App() {
                 setView('config');
                 setReportData(null);
                 resetForm();
+                updateField('responses', []); // Garante inicialização após reset
                 setActiveCollectionId(null);
               }}
               className={`text-sm font-bold transition-colors ${view === 'config' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
@@ -552,7 +637,13 @@ function App() {
               <CollectionView 
                 collection={activeCollection}
                 onSelectRequest={(req, targetView, scenId, stepIdx, workflowId, subIdx) => { 
-                  loadRequest(req, scenId, stepIdx, workflowId, subIdx);
+                  const sanitizedReq = { 
+                    ...req, 
+                    responses: Array.isArray(req.responses) 
+                      ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+                      : [] 
+                  };
+                  loadRequest(sanitizedReq, scenId, stepIdx, workflowId, subIdx);
                   // Sincroniza manualmente os IDs de contexto no estado do formulário
                   updateField('activeScenarioId', scenId || null);
                   updateField('activeWorkflowId', workflowId || null);
@@ -583,7 +674,22 @@ function App() {
               onSetActiveEnvironment={colMethods.setActiveEnvironment}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
-              onViewUnifiedDoc={() => setView('documentation')}
+              onViewUnifiedDoc={() => {
+                const selected = getSelectedRequests();
+                if (selected.length > 0) {
+                  const sanitizedReq = { 
+                    ...selected[0], 
+                    responses: Array.isArray(selected[0].responses) 
+                      ? selected[0].responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+                      : [] 
+                  };
+                  loadRequest(sanitizedReq);
+                } else {
+                  resetForm();
+                  updateField('responses', []);
+                }
+                setView('documentation');
+              }}
               />
             ) : view === 'documentation' ? (
               <DocumentationView 
@@ -592,7 +698,13 @@ function App() {
                 activeRequestId={form.activeRequestId}
                 onSelectForEdit={(req) => {
                   updateRequestInCollection(true); // Salva a atual silenciosamente
-                  loadRequest(req); // Carrega a próxima
+                  const sanitizedReq = { 
+                    ...req, 
+                    responses: Array.isArray(req.responses) 
+                      ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
+                      : [] 
+                  };
+                  loadRequest(sanitizedReq); // Carrega a próxima garantindo responses
                 }}
                 collection={activeCollection}
                 bodyRawDoc={form.bodyRawDoc}
@@ -601,6 +713,21 @@ function App() {
                 updateHeader={(i, f, v) => updateIndexedField('headers', i, f, v)}
                 updatePathParam={(i, f, v) => updateIndexedField('pathParams', i, f, v)}
                 updateBodyParam={(i, f, v) => updateIndexedField('bodyParams', i, f, v)}
+                updateResponse={(i, f, v) => updateIndexedField('responses', i, f, v)} // updateResponse is already passed
+                onUpdateGeneralDoc={(doc) => {
+                  setCollections(prev => prev.map(col => 
+                    col.id === activeCollectionId ? { ...col, generalDoc: doc } : col
+                  ));
+                }}
+                addResponse={() => {
+                  const current = Array.isArray(form.responses) ? [...form.responses] : [];
+                  const newItem = { statusCode: '200', description: '', body: '', bodyFields: [] };
+                  updateField('responses', [...current, newItem]);
+                }}
+                addResponseField={addResponseField}
+                removeResponseField={removeResponseField}
+                updateResponseField={updateResponseField}
+                removeResponse={(i) => removeListItem('responses', i)}
                 updateRequestInCollection={updateRequestInCollection}
                 bodyParams={form.bodyParams}
                 addHeader={() => addListItem('headers', { key: '', value: '' })}

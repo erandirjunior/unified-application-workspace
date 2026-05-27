@@ -3,6 +3,7 @@ import ScenarioView from './ScenarioView';
 import ScenarioEditorView from './ScenarioEditorView';
 import WorkflowView from './WorkflowView';
 import WorkflowEditorView from './WorkflowEditorView';
+import ServersView from './ServersView';
 
 export default function CollectionView({ 
   collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
@@ -13,11 +14,13 @@ export default function CollectionView({
   activeScenarioId, activeWorkflowId,
   setActiveScenarioId, setActiveWorkflowId, setActiveStepIndex, setActiveSubIndex
 }) {
-  const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : activeWorkflowId ? 'workflows' : 'requests'); // 'requests' | 'scenarios' | 'workflows'
+  const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : activeWorkflowId ? 'workflows' : 'requests'); // 'requests' | 'scenarios' | 'workflows' | 'mocks'
   const [newItemName, setNewItemName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isDraggingOverRoot, setIsDraggingOverRoot] = useState(false);
   const [search, setSearch] = useState('');
+  const [isMockSubView, setIsMockSubView] = useState(false);
+  const [mockCloseHandler, setMockCloseHandler] = useState(null);
   const [dragOverFolderId, setDragOverFolderId] = useState(null);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
   // Inicializa com activeScenarioId para persistir o editor ao voltar da configuração
@@ -372,6 +375,8 @@ export default function CollectionView({
           } else if (editingWorkflowId) {
             setEditingWorkflowId(null);
             setActiveWorkflowId(null);
+            } else if (mockCloseHandler) {
+              mockCloseHandler();
               } else {
                 onBack(); // Volta para o Dashboard
               }
@@ -433,7 +438,7 @@ export default function CollectionView({
         </div>
 
         {/* Menu de Abas Interno */}
-        {!editingScenarioId && !editingWorkflowId && (
+        {!editingScenarioId && !editingWorkflowId && !isMockSubView && (
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
             <button 
               onClick={() => {
@@ -460,6 +465,14 @@ export default function CollectionView({
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'workflows' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Workflow
+            </button>
+            <button 
+              onClick={() => {
+                setActiveTab('mocks');
+              }}
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'mocks' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Mocks
             </button>
           </div>
         )}
@@ -584,7 +597,7 @@ export default function CollectionView({
                 onEditScenario={setEditingScenarioId}
               />
             )
-        ) : (
+        ) : activeTab === 'workflows' ? (
           editingWorkflowId ? (
             <WorkflowEditorView 
               workflow={collection.workflows?.find(f => f.id === editingWorkflowId)}
@@ -612,6 +625,11 @@ export default function CollectionView({
               onDeleteWorkflow={onDeleteWorkflow}
             />
           )
+        ) : (
+          <ServersView onBack={() => setActiveTab('requests')} onSubViewChange={(active, closeFn) => {
+            setIsMockSubView(active);
+            setMockCloseHandler(() => closeFn);
+          }} />
         )}
       </div>
     </div>
