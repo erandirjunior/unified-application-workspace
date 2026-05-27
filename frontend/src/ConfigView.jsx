@@ -7,9 +7,6 @@ export default function ConfigView({
   duration, setDuration,
   rampUp, setRampUp,
   methodStyles,
-  isHeadersOpen, setIsHeadersOpen,
-  isBodyOpen, setIsBodyOpen,
-  isAuthOpen, setIsAuthOpen,
   headers, addHeader, removeHeader, updateHeader,
   bodyType, setBodyType,
   bodyRaw, setBodyRaw,
@@ -22,8 +19,6 @@ export default function ConfigView({
   authDoc, setAuthDoc,
   description,
   setDescription,
-  isDescriptionOpen,
-  setIsDescriptionOpen,
   updateRequestInCollection,
   activeRequestId,
   isScenarioMode,
@@ -31,6 +26,9 @@ export default function ConfigView({
   isVarsModalOpen,
   setIsVarsModalOpen
 }) {
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isHeadersOpen, setIsHeadersOpen] = useState(false);
+  const [isBodyOpen, setIsBodyOpen] = useState(false);
   const [isAssertionsOpen, setIsAssertionsOpen] = useState(false);
   const [isExtractionsOpen, setIsExtractionsOpen] = useState(false);
 
@@ -75,6 +73,7 @@ export default function ConfigView({
           />
         </div>
       </div>
+
 
       {/* Oculta parâmetros de carga se estivermos em modo Cenário ou Workflow */}
       {!isScenarioMode && !activeWorkflowId && (
