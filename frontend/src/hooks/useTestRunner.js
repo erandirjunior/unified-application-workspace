@@ -1,5 +1,51 @@
 import { useState, useRef } from 'react';
 
+// Prepara a requisição: injeta headers de auth e garante tipos numéricos para o Go
+const prepareRequest = (req) => {
+  if (!req) return req;
+
+  const headers = {};
+  if (Array.isArray(req.headers)) {
+    req.headers.forEach(h => { if (h.key) headers[h.key] = h.value; });
+  } else if (typeof req.headers === 'object') {
+    Object.assign(headers, req.headers);
+  }
+
+  if (req.authType && req.authType !== 'none') {
+    if (req.authType === 'bearer' && req.authToken) {
+      headers['Authorization'] = `Bearer ${req.authToken}`;
+    } else if (req.authType === 'basic' && (req.authUsername || req.authPassword)) {
+      const auth = btoa(`${req.authUsername || ''}:${req.authPassword || ''}`);
+      headers['Authorization'] = `Basic ${auth}`;
+    } else if (req.authType === 'apikey' && req.apiKeyName && req.apiKeyValue) {
+      headers[req.apiKeyName] = req.apiKeyValue;
+    }
+  }
+
+  return { 
+    ...req, 
+    headers,
+    totalRequests: parseInt(req.totalRequests || req.threads || 0, 10),
+    duration: parseInt(req.duration || 0, 10),
+    rampUp: parseInt(req.rampUp || 0, 10)
+  };
+};
+
+const processPayloadAuth = (payload) => {
+  if (payload.requests) {
+    return {
+      ...payload,
+      totalRequests: parseInt(payload.totalRequests || 0, 10),
+      duration: parseInt(payload.duration || 0, 10),
+      rampUp: parseInt(payload.rampUp || 0, 10),
+      requests: payload.requests.map(step => step.type === 'parallel' 
+        ? { ...step, requests: step.requests.map(prepareRequest) } 
+        : (step.type === 'request' || !step.type ? prepareRequest(step) : step))
+    };
+  }
+  return prepareRequest(payload);
+};
+
 export function useTestRunner(activeCollection, getRequestFormPayload, showCustomToast) {
   const [isRunning, setIsRunning] = useState(false);
   const abortControllerRef = useRef(null);
@@ -55,7 +101,8 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ ...payload, variables: envVars }), // Adiciona variáveis de ambiente ao payload
+        // Injeta os headers de autenticação antes de enviar
+        body: JSON.stringify({ ...processPayloadAuth(payload), variables: envVars }), 
         signal: controller.signal
       });
 
