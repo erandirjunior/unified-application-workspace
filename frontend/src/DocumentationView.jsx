@@ -13,6 +13,45 @@ const SectionHeader = ({ title, icon, isExpanded, onToggle }) => (
   </div>
 );
 
+const HTTP_STATUS_CODES = [
+  { code: '', description: 'Selecione um Status Code' },
+  { code: '100', description: 'Continue' },
+  { code: '101', description: 'Switching Protocols' },
+  { code: '200', description: 'OK' },
+  { code: '201', description: 'Created' },
+  { code: '202', description: 'Accepted' },
+  { code: '203', description: 'Non-Authoritative Information' },
+  { code: '204', description: 'No Content' },
+  { code: '205', description: 'Reset Content' },
+  { code: '206', description: 'Partial Content' },
+  { code: '300', description: 'Multiple Choices' },
+  { code: '301', description: 'Moved Permanently' },
+  { code: '302', description: 'Found' },
+  { code: '303', description: 'See Other' },
+  { code: '304', description: 'Not Modified' },
+  { code: '307', description: 'Temporary Redirect' },
+  { code: '308', description: 'Permanent Redirect' },
+  { code: '400', description: 'Bad Request' },
+  { code: '401', description: 'Unauthorized' },
+  { code: '402', description: 'Payment Required' },
+  { code: '403', description: 'Forbidden' },
+  { code: '404', description: 'Not Found' },
+  { code: '405', description: 'Method Not Allowed' },
+  { code: '406', description: 'Not Acceptable' },
+  { code: '408', description: 'Request Timeout' },
+  { code: '409', description: 'Conflict' },
+  { code: '410', description: 'Gone' },
+  { code: '413', description: 'Payload Too Large' },
+  { code: '414', description: 'URI Too Long' },
+  { code: '415', description: 'Unsupported Media Type' },
+  { code: '429', description: 'Too Many Requests' },
+  { code: '500', description: 'Internal Server Error' },
+  { code: '501', description: 'Not Implemented' },
+  { code: '502', description: 'Bad Gateway' },
+  { code: '503', description: 'Service Unavailable' },
+  { code: '504', description: 'Gateway Timeout' },
+];
+
 export default function DocumentationView({ 
   request: requestProp, requests = [], activeRequestId, onSelectForEdit,
   collection, onBack, onEdit, onRun, methodStyles, onClearBodyParams,
@@ -20,27 +59,30 @@ export default function DocumentationView({
   updateResponse, addResponse, removeResponse,
   addResponseField, removeResponseField, updateResponseField, onUpdateGeneralDoc,
   addBodyParam, removeBodyParam, setBodyRawDoc, setAuthDoc,
-  setUrl, setMethod, setDescription, setBodyRaw, setAuthType, setRequestName,
+  setUrl, setMethod, setDescription, setBodyRaw, setAuthType, setRequestName, setBodyType,
   isRunning, theme
 }) {
   // Gerencia se recebemos uma lista ou uma única request para manter compatibilidade
   const baseList = requests.length > 0 ? requests : (requestProp ? [requestProp] : []);
 
-  const requestList = baseList.map(r => {
-    const item = (r.id === activeRequestId && requests.length > 0) ? { ...r, ...requestProp } : r;
-    return {
-      ...item,
-      responses: Array.isArray(item.responses) 
-        ? item.responses.map(resp => ({ ...resp, bodyFields: Array.isArray(resp.bodyFields) ? resp.bodyFields : [] })) 
-        : []
+  const requestList = baseList.map(originalReq => {
+    // Prioriza o requestProp (formulário) se o ID bater, garantindo reatividade imediata
+    if (originalReq.id !== activeRequestId) return { ...originalReq, responses: Array.isArray(originalReq.responses) ? originalReq.responses : [] };
+
+    // Mesclamos o original (coleção) com o form (draft)
+    // Garantimos que as responses não sejam perdidas se o form ainda não as carregou
+    const formResps = Array.isArray(requestProp.responses) ? requestProp.responses : [];
+    const savedResps = Array.isArray(originalReq.responses) ? originalReq.responses : [];
+    const finalResps = formResps.length > 0 ? formResps : savedResps;
+
+    return { 
+      ...originalReq, 
+      ...requestProp, 
+      id: originalReq.id, // Preserva o ID original
+      responses: finalResps 
     };
   });
-
-  // Ensure the 'request' object always has 'responses' and 'bodyFields' as arrays
-  const rawRequest = requestList.find(r => r.id === activeRequestId) || requestList[0] || {};
-  const request = { ...rawRequest, 
-    responses: Array.isArray(rawRequest.responses) ? rawRequest.responses.map(resp => ({ ...resp, bodyFields: Array.isArray(resp.bodyFields) ? resp.bodyFields : [] })) : [] 
-  };
+  const request = requestList.find(r => r.id === activeRequestId) || requestList[0] || {};
   
   const activeEnv = collection?.environments?.find(e => e.id === collection.activeEnvironmentId);
   const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'editor'
@@ -64,8 +106,12 @@ export default function DocumentationView({
       .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-black mt-8 mb-4 text-slate-900 dark:text-white">$1</h1>')
       .replace(/\*\*(.*)\*\*/gim, '<strong class="font-bold text-slate-900 dark:text-white">$1</strong>')
       .replace(/\*(.*)\*/gim, '<em class="italic">$1</em>')
-      .replace(/!\[(.*?)\]\((.*?)\)/gim, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-xl my-4 shadow-md border border-slate-200 dark:border-slate-800" />')
-      .replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" class="text-blue-500 hover:underline">$1</a>')
+      .replace(/!\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
+        return `<img src="${url}" alt="${alt}" ${title ? `title="${title}"` : ''} class="max-w-full h-auto rounded-xl my-4 shadow-md border border-slate-200 dark:border-slate-800" />`;
+      })
+      .replace(/\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
+        return `<a href="${url}" ${title ? `title="${title}"` : ''} target="_blank" class="text-blue-500 hover:underline">${text}</a>`;
+      })
       .replace(/`(.*?)`/gim, '<code class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-xs text-blue-600 dark:text-blue-400">$1</code>')
       .replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc text-slate-700 dark:text-slate-300">$1</li>')
       .replace(/\n/gim, '<br />');
@@ -143,7 +189,7 @@ export default function DocumentationView({
       let discoveredFields = [];
       
       if (request.bodyType === 'json') {
-        const parsed = JSON.parse(request.bodyRaw);
+        const parsed = JSON.parse(request.bodyRaw || '{}');
         const flatten = (obj, prefix = '') => {
           Object.keys(obj).forEach(key => {
             const path = prefix ? `${prefix}.${key}` : key;
@@ -185,8 +231,8 @@ export default function DocumentationView({
         };
         flatten(parsed);
         console.log("Discovered fields after flattening (JSON):", discoveredFields); // Debug log
-      } else if (bodyType === 'xml') {
-        const doc = new DOMParser().parseFromString(bodyRaw, "text/xml");
+      } else if (request.bodyType === 'xml') {
+        const doc = new DOMParser().parseFromString(request.bodyRaw, "text/xml");
         const nodes = Array.from(doc.querySelectorAll('*')).filter(n => n.tagName !== 'parsererror');
         nodes.forEach(n => {
           if (n.children.length === 0 && n.textContent.trim() !== '') {
@@ -333,8 +379,12 @@ export default function DocumentationView({
         .replace(/^# (.*$)/gim, `<h1 style="font-size: 22px; font-weight: 900; margin-top: 25px; color: ${colors.title}">$1</h1>`)
         .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
         .replace(/\*(.*)\*/gim, '<em>$1</em>')
-        .replace(/!\[(.*?)\]\((.*?)\)/gim, `<img src="$2" alt="$1" style="max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid ${colors.border};" />`)
-        .replace(/\[(.*?)\]\((.*?)\)/gim, `<a href="$2" target="_blank" style="color: ${colors.mono}; text-decoration: underline;">$1</a>`)
+        .replace(/!\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
+          return `<img src="${url}" alt="${alt}" ${title ? `title="${title}"` : ''} style="max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid ${colors.border};" />`;
+        })
+        .replace(/\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
+          return `<a href="${url}" ${title ? `title="${title}"` : ''} target="_blank" style="color: ${colors.mono}; text-decoration: underline;">${text}</a>`;
+        })
         .replace(/`(.*?)`/gim, `<code style="background: ${isDark ? '#1e293b' : '#f1f5f9'}; padding: 2px 4px; border-radius: 4px; font-family: monospace;">$1</code>`)
         .replace(/^\- (.*$)/gim, '<li style="margin-left: 20px;">$1</li>')
         .replace(/\n/gim, '<br />');
@@ -552,6 +602,16 @@ export default function DocumentationView({
         
         if (isEditing && !isTargetOfEdit) return null;
 
+        const moveResponse = (index, direction) => {
+          const currentResponses = Array.isArray(req.responses) ? req.responses : [];
+          const newIndex = direction === 'up' ? index - 1 : index + 1;
+          if (newIndex < 0 || newIndex >= currentResponses.length) return;
+          const newResponses = [...currentResponses];
+          const [removed] = newResponses.splice(index, 1);
+          newResponses.splice(newIndex, 0, removed);
+          updateField('responses', newResponses);
+        };
+
         // Prioriza o estado "vivo" (prop bodyParams) para a requisição ativa. Isso garante que o Preview
         // mostre as alterações feitas no Editor (sincronização ou manual) mesmo antes de salvar na coleção.
         const activeBodyParams = (req.id === activeRequestId) ? bodyParams : (req.bodyParams || []);
@@ -603,8 +663,9 @@ export default function DocumentationView({
           )}
         </section>
 
-        {/* Segurança (Migrada para o fluxo principal para maximizar espaço horizontal) */}
-        <section>
+        {/* Segurança */}
+        {(isEditing || req.authType !== 'none' || req.authDoc) && (
+          <section>
           <SectionHeader 
             title="Segurança & Autenticação" 
             icon={<svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>} 
@@ -633,10 +694,12 @@ export default function DocumentationView({
               )}
             </div>
           )}
-        </section>
+          </section>
+        )}
 
         {/* Path Parameters */}
-        <section>
+        {(isEditing || (req.pathParams && req.pathParams.length > 0)) && (
+          <section>
           <SectionHeader 
             title="Path Parameters" 
             icon={<svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>} 
@@ -690,10 +753,12 @@ export default function DocumentationView({
               )}
             </div>
           )}
-        </section>
+          </section>
+        )}
 
         {/* Headers */}
-        <section>
+        {(isEditing || (req.headers && req.headers.length > 0)) && (
+          <section>
           <SectionHeader 
             title="Request Headers" 
             icon={<svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>} 
@@ -747,39 +812,57 @@ export default function DocumentationView({
               )}
             </div>
           )}
-        </section>
+          </section>
+        )}
 
-        {/* Body */}
-        {req.bodyType !== 'none' && (
+        {/* Request Body (Sempre visível no editor ou se houver conteúdo) */}
+        {(req.bodyType !== 'none' || isEditing) && (
           <section>
             <SectionHeader 
-              title={`Request Body (${req.bodyType})`} 
+              title={`Request Body ${req.bodyType !== 'none' ? `(${req.bodyType.toUpperCase()})` : ''}`} 
               icon={<svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>} 
               isExpanded={bodyExpanded}
               onToggle={() => setBodyExpanded(!bodyExpanded)}
             />
             {bodyExpanded && (
             <>
+            {isEditing && (
+              <div className="mb-6">
+                <label className="label-base">Configurar Tipo de Corpo</label>
+                <select 
+                  className="input-base" 
+                  value={req.bodyType || 'none'} 
+                  onChange={(e) => setBodyType(e.target.value)}
+                >
+                  <option value="none">Nenhum (Sem corpo)</option>
+                  <option value="json">JSON</option>
+                  <option value="form-data">Form Data</option>
+                  <option value="xml">XML</option>
+                  <option value="text">Plain Text (Texto)</option>
+                </select>
+              </div>
+            )}
+
             {/* Documentação do Body Raw */}
-            {['json', 'xml', 'text'].includes(req.bodyType) && (
+            {req.bodyType !== 'none' && (
               <div className="mb-4">
                 {isEditing ? (
                   <textarea 
                     className="input-base text-xs min-h-[100px]" 
                     placeholder="Explique o schema ou campos importantes do corpo da requisição..."
-                    value={bodyRawDoc}
+                    value={req.bodyRawDoc || ''}
                     onChange={(e) => setBodyRawDoc(e.target.value)}
                   />
-                ) : bodyRawDoc && (
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap mb-4">
-                    {bodyRawDoc}
+                ) : req.bodyRawDoc && (
+                  <div className="mb-4">
+                    {renderMarkdown(req.bodyRawDoc)}
                   </div>
                 )}
               </div>
             )}
 
             {/* Editor Técnico de Body Raw (Opcional no Editor) */}
-            {isEditing && ['json', 'xml', 'text'].includes(req.bodyType) && (
+            {isEditing && (
                <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] font-bold text-slate-500 uppercase block">Editor Técnico (Body)</span>
@@ -814,10 +897,10 @@ export default function DocumentationView({
             )}
 
             {/* Exemplo de Body Raw no Preview */}
-            {!isEditing && ['json', 'xml', 'text'].includes(req.bodyType) && (
-              <div className="mb-6">
+            {!isEditing && req.bodyRaw && (
+              <div className="mb-6 relative group">
               <pre className="bg-slate-950 p-6 rounded-2xl text-slate-300 font-mono text-xs overflow-x-auto border border-slate-800">
-                {req.bodyRaw || "// Sem corpo definido"}
+                {req.bodyRaw}
               </pre>
               <button 
                 onClick={() => copyToClipboard(req.bodyRaw)}
@@ -829,6 +912,7 @@ export default function DocumentationView({
             )}
 
             {/* Tabela de Parâmetros / Campos (Agora disponível para todos os tipos de body) */}
+            {req.bodyType !== 'none' && (
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold uppercase text-[10px] whitespace-nowrap">
@@ -893,6 +977,7 @@ export default function DocumentationView({
                   </div>
                 )}
               </div>
+            )}
             </>
             )}
           </section>
@@ -912,9 +997,32 @@ export default function DocumentationView({
                 <div className="space-y-4">
                   {(Array.isArray(req.responses) ? req.responses : []).map((resp, i) => (
                     <div key={i} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-                      <div className="flex gap-3">
-                        <input className="input-base !w-24 font-bold text-center" placeholder="200" value={resp.statusCode} onChange={(e) => updateResponse(i, 'statusCode', e.target.value)} title="Código de Status HTTP"/>
+                      <div className="flex gap-3 items-center">
+                        <select 
+                          className="input-base !w-32 font-bold text-center" 
+                          value={resp.statusCode} 
+                          onChange={(e) => updateResponse(i, 'statusCode', e.target.value)} 
+                          title="Código de Status HTTP"
+                        >
+                          {HTTP_STATUS_CODES.map(status => <option key={status.code} value={status.code}>{status.code} - {status.description}</option>)}
+                        </select>
                         <input className="input-base flex-1" placeholder="Descrição (ex: Usuário Criado)" value={resp.description} onChange={(e) => updateResponse(i, 'description', e.target.value)} />
+                        <div className="flex gap-1">
+                          <button 
+                            disabled={i === 0}
+                            onClick={(e) => { e.stopPropagation(); moveResponse(i, 'up'); }}
+                            className={`p-1.5 text-slate-400 hover:text-blue-500 transition-all rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 ${i === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" strokeWidth="2.5"/></svg>
+                          </button>
+                          <button 
+                            disabled={i === (req.responses?.length - 1)}
+                            onClick={(e) => { e.stopPropagation(); moveResponse(i, 'down'); }}
+                            className={`p-1.5 text-slate-400 hover:text-blue-500 transition-all rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 ${i === (req.responses?.length - 1) ? 'opacity-20 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5"/></svg>
+                          </button>
+                        </div>
                         <button onClick={(e) => { e.stopPropagation(); removeResponse(i); }} className="text-rose-500 p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg">×</button>
                       </div>
                       <div className="relative">
@@ -989,7 +1097,7 @@ export default function DocumentationView({
                       </div>
                     </div>
                   ))}
-                  <button onClick={(e) => { e.stopPropagation(); addResponse(); }} className="text-xs font-bold text-purple-500">+ ADICIONAR RESPOSTA</button>
+                  <button onClick={(e) => { e.stopPropagation(); addResponse(request.responses); }} className="text-xs font-bold text-purple-500">+ ADICIONAR RESPOSTA</button>
                 </div>
               ) : (
                 <div className="space-y-4">

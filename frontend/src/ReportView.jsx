@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload }) {
+export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
   const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -163,6 +163,91 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
     return { avg: (avg || 0).toFixed(2), p50: (p50 || 0).toFixed(2), p90: (p90 || 0).toFixed(2), p95: (p95 || 0).toFixed(2), p99: (p99 || 0).toFixed(2), rps };
   })();
 
+  const sensitiveHeaders = ['authorization', 'x-api-key', 'cookie', 'set-cookie', 'proxy-authorization', 'token', 'access-token'];
+
+  const redactHeaders = (headers, includeAuth) => {
+    if (!headers || includeAuth) return headers;
+    const redacted = {};
+    Object.keys(headers).forEach(key => {
+      redacted[key] = sensitiveHeaders.includes(key.toLowerCase()) ? "[OMITIDO]" : headers[key];
+    });
+    return redacted;
+  };
+
+  const generateInspectedLogHTML = (log, includeAuth) => {
+    const isDark = theme === 'dark';
+    const colors = {
+      bg: isDark ? '#0f172a' : '#ffffff',
+      text: isDark ? '#e2e8f0' : '#1e293b',
+      border: isDark ? '#334155' : '#e2e8f0',
+      title: isDark ? '#f8fafc' : '#0f172a',
+      meta: isDark ? '#94a3b8' : '#64748b',
+      accent: '#3b82f6',
+      req: '#3b82f6',
+      res: '#10b981'
+    };
+
+    const reqHeaders = redactHeaders(log.requestHeaders, includeAuth);
+    const resHeaders = redactHeaders(log.responseHeaders, includeAuth);
+
+    return `
+      <!DOCTYPE html>
+      <html lang="pt-br">
+      <head>
+        <meta charset="UTF-8">
+        <title>Inspeção - ${log.method} ${log.url}</title>
+        <style>
+          body { font-family: system-ui, sans-serif; background: ${colors.bg}; color: ${colors.text}; padding: 40px; line-height: 1.6; max-width: 1100px; margin: 0 auto; }
+          .header { border-bottom: 3px solid ${colors.border}; padding-bottom: 20px; margin-bottom: 30px; }
+          .status-row { display: flex; align-items: center; gap: 20px; font-size: 24px; font-weight: 900; }
+          .ok { color: #10b981; }
+          .error { color: #f43f5e; }
+          .url-box { font-family: monospace; background: ${isDark ? '#1e293b' : '#f8fafc'}; padding: 12px; border-radius: 8px; border: 1px solid ${colors.border}; margin-top: 15px; font-size: 14px; word-break: break-all; }
+          h2 { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: ${colors.meta}; margin-top: 40px; margin-bottom: 10px; border-bottom: 1px solid ${colors.border}; padding-bottom: 5px; }
+          pre { background: #010409; color: #e6edf3; padding: 20px; border-radius: 12px; font-size: 12px; overflow-x: auto; white-space: pre-wrap; border: 1px solid ${colors.border}; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+          @media print { .no-print { display: none; } body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="status-row">
+            <span class="${log.statusCode >= 200 && log.statusCode < 300 ? 'ok' : 'error'}">Status: ${log.statusCode || 'ERR'}</span>
+            <span>${log.responseTime}ms</span>
+          </div>
+          <div class="url-box"><span style="color: ${colors.accent}; margin-right: 10px;">${log.method}</span>${log.url}</div>
+          <div style="color: ${colors.meta}; font-size: 11px; margin-top: 10px; font-weight: bold; text-transform: uppercase;">TIMESTAMP: ${log.timestamp}</div>
+        </div>
+        ${!log.success ? `<div style="background: #f43f5e11; border: 1px solid #f43f5e33; padding: 15px; border-radius: 12px; color: #f43f5e; margin-bottom: 20px;"><strong>FALHA NA VALIDAÇÃO:</strong> ${log.errorMessage}</div>` : ''}
+        <div class="grid">
+          <div><h2 style="color: ${colors.req}">Request Headers</h2><pre>${JSON.stringify(reqHeaders, null, 2)}</pre><h2>Request Body</h2><pre>${log.requestBody || "(Vazio)"}</pre></div>
+          <div><h2 style="color: ${colors.res}">Response Headers</h2><pre>${JSON.stringify(resHeaders, null, 2)}</pre><h2>Response Body</h2><pre>${log.responseBody || "(Vazio)"}</pre></div>
+        </div>
+      </body>
+      </html>`;
+  };
+
+  const handleExportInspectedHTML = () => {
+    if (!selectedLog) return;
+    const includeAuth = window.confirm("Deseja incluir os dados de autenticação no relatório HTML?");
+    const blob = new Blob([generateInspectedLogHTML(selectedLog, includeAuth)], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inspect-${selectedLog.method}-${Date.now()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportInspectedPDF = () => {
+    if (!selectedLog) return;
+    const includeAuth = window.confirm("Deseja incluir os dados de autenticação no arquivo PDF?");
+    const win = window.open('', '_blank');
+    win.document.write(generateInspectedLogHTML(selectedLog, includeAuth));
+    win.document.close();
+    setTimeout(() => { win.print(); }, 500);
+  };
+
   // Lógica de filtragem dos logs
   const filteredLogs = requestLogs.filter(log => {
     const isLogSuccess = log.success;
@@ -242,15 +327,14 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
                 });
 
                 const payload = {
+                  ...config,
                   url: config.url,
                   method: config.method,
                   totalRequests: parseInt(config.totalRequests),
                   duration: parseInt(config.duration),
                   rampUp: parseInt(config.rampUp || 0),
                   headers: headerMap,
-                  body: config.body,
-                  assertions: config.assertions || [],
-                  extractions: config.extractions || []
+                  body: config.body || config.bodyRaw || '',
                 };
                 sendRequests(payload);
               }
@@ -416,8 +500,28 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800">
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-              <h3 className="text-xl font-bold dark:text-white">Inspeção da Requisição</h3>
-              <button onClick={() => setSelectedLog(null)} className="text-slate-500 hover:text-rose-500 transition-colors text-3xl">&times;</button>
+              <div className="flex items-center gap-4">
+                <h3 className="text-xl font-bold dark:text-white">Inspeção da Requisição</h3>
+                <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 gap-1">
+                  {activeCollectionId && config.activeRequestId && (
+                    <>
+                      <button 
+                        onClick={() => onSaveResponseToDoc(activeCollectionId, config.activeRequestId, selectedLog)} 
+                        className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-[9px] font-black text-amber-600 dark:text-amber-400 transition-all uppercase flex items-center gap-1" 
+                        title="Adicionar esta resposta à documentação da requisição"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        DOC
+                      </button>
+                      <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                    </>
+                  )}
+                  <button onClick={handleExportInspectedHTML} className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-[9px] font-black text-indigo-600 dark:text-indigo-400 transition-all uppercase" title="HTML">HTML</button>
+                  <div className="w-px h-3 bg-slate-200 dark:bg-slate-700 self-center"></div>
+                  <button onClick={handleExportInspectedPDF} className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-[9px] font-black text-rose-600 dark:text-rose-400 transition-all uppercase" title="PDF">PDF</button>
+                </div>
+              </div>
+              <button onClick={() => setSelectedLog(null)} className="text-slate-500 hover:text-rose-500 transition-colors text-3xl p-2">&times;</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
