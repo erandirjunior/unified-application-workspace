@@ -12,6 +12,7 @@ export default function ConfigView({
   bodyRaw, setBodyRaw,
   bodyParams, addBodyParam, removeBodyParam, updateBodyParam,
   authType, setAuthType,
+  authToken, setAuthToken, authUsername, setAuthUsername, authPassword, setAuthPassword, apiKeyName, setApiKeyName, apiKeyValue, setApiKeyValue,
   sendRequests,
   assertions = [], setAssertions,
   extractions = [], setExtractions,
@@ -133,7 +134,10 @@ export default function ConfigView({
         { id: 'body', title: 'Request Body', open: isBodyOpen, setOpen: setIsBodyOpen },
         { id: 'assertions', title: 'Assertions (Validations)', open: isAssertionsOpen, setOpen: setIsAssertionsOpen, color: 'indigo' },
         { id: 'extractions', title: 'Extract to Variable', open: isExtractionsOpen, setOpen: setIsExtractionsOpen, color: 'emerald' }
-      ].map((sec) =>
+      ].filter(sec => {
+        if (sec.id === 'extractions') return isScenarioMode || activeWorkflowId;
+        return true;
+      }).map((sec) =>
         <div 
           key={sec.id} 
           className={`collapse-card ${sec.color === 'indigo' ? 'border-indigo-500/30' : sec.color === 'emerald' ? 'border-emerald-500/30' : ''}`}
@@ -296,6 +300,8 @@ export default function ConfigView({
                               <option value="==">Equals</option>
                               <option value="!=">Not Equals</option>
                               <option value="contains">Contains</option>
+                              <option value="exists">Exists</option>
+                              <option value="not_exists">Not Exists</option>
                               <option value=">">&gt; (Greater)</option>
                               <option value=">=">&gt;= (Greater/Equal)</option>
                               <option value="<">&lt; (Less)</option>
@@ -318,8 +324,9 @@ export default function ConfigView({
                             )}
                             <input
                               className="input-base !py-1 flex-1"
-                              placeholder="Valor Esperado"
+                              placeholder={a.operator === 'exists' || a.operator === 'not_exists' ? "N/A" : "Valor Esperado"}
                               value={a.target}
+                              disabled={a.operator === 'exists' || a.operator === 'not_exists'}
                               onChange={(e) => {
                                 const newA = [...assertions];
                                 newA[i].target = e.target.value;
@@ -378,16 +385,28 @@ export default function ConfigView({
                       />
 
                       {authType === 'bearer' && (
-                        <input className="input-base" placeholder="Token" />
+                        <input 
+                          className="input-base" 
+                          placeholder="Token (suporta {{vars}})" 
+                          value={authToken || ''} 
+                          onChange={(e) => setAuthToken(e.target.value)} 
+                        />
                       )}
 
                       {authType === 'basic' && (
                         <div className="grid grid-cols-2 gap-2">
-                          <input className="input-base" placeholder="Username" />
+                          <input 
+                            className="input-base" 
+                            placeholder="Username" 
+                            value={authUsername || ''} 
+                            onChange={(e) => setAuthUsername(e.target.value)} 
+                          />
                           <input
                             className="input-base"
                             type="password"
                             placeholder="Password"
+                            value={authPassword || ''} 
+                            onChange={(e) => setAuthPassword(e.target.value)} 
                           />
                         </div>
                       )}
@@ -397,11 +416,15 @@ export default function ConfigView({
                           <input
                             className="input-base"
                             placeholder="Key (ex: X-API-Key)"
+                            value={apiKeyName || ''} 
+                            onChange={(e) => setApiKeyName(e.target.value)} 
                           />
 
                           <input
                             className="input-base"
                             placeholder="Value"
+                            value={apiKeyValue || ''} 
+                            onChange={(e) => setApiKeyValue(e.target.value)} 
                           />
                         </div>
                       )}
