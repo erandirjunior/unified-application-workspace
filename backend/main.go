@@ -9,6 +9,7 @@ import (
     "context"
     "io"
     "math"
+    "encoding/xml"
     mrand "math/rand"
     "net/http"
     "regexp"
@@ -326,7 +327,7 @@ func getJsonValue(jsonString string, path string) (string, error) {
 
 	current := data
 	segments := strings.Split(path, ".")
-	reArrayIndex := regexp.MustCompile(`^([a-zA-Z0-9_]*)\[(\d+)\]$`)
+	reArrayIndex := regexp.MustCompile(`^([^\[\]]*)\[(\d+)\]$`)
 
 	for _, segment := range segments {
 		arrayMatch := reArrayIndex.FindStringSubmatch(segment)
@@ -354,6 +355,75 @@ func getJsonValue(jsonString string, path string) (string, error) {
 	return string(res), nil
 }
 
+func getXmlValue(xmlString string, path string) (string, error) {
+	path = strings.TrimPrefix(path, "$.")
+	path = strings.TrimPrefix(path, "$")
+	path = strings.TrimPrefix(path, ".")
+	parts := strings.Split(path, ".")
+	reIndex := regexp.MustCompile(`^(.+)\[(\d+)\]$`)
+
+	decoder := xml.NewDecoder(strings.NewReader(xmlString))
+	
+	type nodeInfo struct {
+		name  string
+		count int // Quantas vezes esse nome apareceu neste nível
+	}
+	var stack []nodeInfo
+
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF { break }
+		if err != nil { return "", err }
+
+		switch el := token.(type) {
+		case xml.StartElement:
+			stack = append(stack, nodeInfo{name: el.Name.Local})
+
+			// Verifica se o caminho atual bate com o procurado
+			if len(stack) == len(parts) {
+				fullMatch := true
+				for i, segment := range parts {
+					targetName := segment
+					if m := reIndex.FindStringSubmatch(segment); m != nil {
+						targetName = m[1]
+					}
+
+					// O decoder.Token não nos dá o índice do irmão facilmente.
+					// Para simplificar e manter performance, se não houver índice [n],
+					// pegamos a primeira ocorrência.
+					if stack[i].name != targetName {
+						fullMatch = false
+						break
+					}
+				}
+
+				if fullMatch {
+					var val string
+					if err := decoder.DecodeElement(&val, &el); err != nil {
+						return "", err
+					}
+					// Removemos do stack pois DecodeElement consome o EndElement
+					stack = stack[:len(stack)-1]
+					return val, nil
+				}
+			}
+		case xml.EndElement:
+			if len(stack) > 0 {
+				stack = stack[:len(stack)-1]
+			}
+		}
+	}
+	return "", fmt.Errorf("campo não encontrado no XML")
+}
+
+func getBodyValue(body, path string) (string, error) {
+	trimmed := strings.TrimSpace(body)
+	if strings.HasPrefix(trimmed, "<") {
+		return getXmlValue(body, path)
+	}
+	return getJsonValue(body, path)
+}
+
 func validateResponse(resp *http.Response, body string, assertions []Assertion) (bool, string) {
 	if len(assertions) == 0 {
 		return resp.StatusCode >= 200 && resp.StatusCode < 300, ""
@@ -361,21 +431,48 @@ func validateResponse(resp *http.Response, body string, assertions []Assertion) 
 
 	for _, a := range assertions {
 		var actual string
+		var err error
+		fieldFound := true
+
 		switch a.Source {
 		case "status":
 			actual = strconv.Itoa(resp.StatusCode)
 		case "body":
 			if a.Property != "" { // If a JSONPath is provided
-				val, err := getJsonValue(body, a.Property)
+				actual, err = getBodyValue(body, a.Property)
 				if err != nil {
-					return false, fmt.Sprintf("Erro ao extrair valor do body com JSONPath '%s': %v", a.Property, err)
+					fieldFound = false
 				}
-				actual = val
 			} else { // Compare entire body
-			actual = body
+				actual = body
 			}
 		case "header":
 			actual = resp.Header.Get(a.Property)
+			if _, exists := resp.Header[http.CanonicalHeaderKey(a.Property)]; !exists {
+				fieldFound = false
+			}
+		}
+
+		// Tratamento de existência
+		if a.Operator == "exists" {
+			if !fieldFound {
+				return false, fmt.Sprintf("%s '%s' não encontrado", a.Source, a.Property)
+			}
+			continue
+		}
+		if a.Operator == "not_exists" {
+			if fieldFound {
+				return false, fmt.Sprintf("%s '%s' encontrado, mas esperava que não existisse", a.Source, a.Property)
+			}
+			continue
+		}
+
+		// Para outros operadores, se o campo não foi encontrado, a validação falha
+		if !fieldFound {
+			if err != nil {
+				return false, fmt.Sprintf("Erro ao acessar %s '%s': %v", a.Source, a.Property, err)
+			}
+			return false, fmt.Sprintf("%s '%s' não encontrado para comparação", a.Source, a.Property)
 		}
 
 		switch a.Operator {
@@ -383,9 +480,24 @@ func validateResponse(resp *http.Response, body string, assertions []Assertion) 
 			if actual != a.Target {
 				return false, fmt.Sprintf("Esperado %s %s ser %s, mas recebeu %s", a.Source, a.Property, a.Target, actual)
 			}
+		case "!=":
+			if actual == a.Target {
+				return false, fmt.Sprintf("Esperado %s %s ser diferente de %s", a.Source, a.Property, a.Target)
+			}
 		case "contains":
 			if !strings.Contains(actual, a.Target) {
 				return false, fmt.Sprintf("%s %s não contém %s", a.Source, a.Property, a.Target)
+			}
+		case ">", ">=", "<", "<=":
+			vActual, err1 := strconv.ParseFloat(actual, 64)
+			vTarget, err2 := strconv.ParseFloat(a.Target, 64)
+			if err1 == nil && err2 == nil {
+				if a.Operator == ">" && !(vActual > vTarget) { return false, fmt.Sprintf("%s %s (%v) não é > %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == ">=" && !(vActual >= vTarget) { return false, fmt.Sprintf("%s %s (%v) não é >= %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == "<" && !(vActual < vTarget) { return false, fmt.Sprintf("%s %s (%v) não é < %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == "<=" && !(vActual <= vTarget) { return false, fmt.Sprintf("%s %s (%v) não é <= %v", a.Source, a.Property, vActual, vTarget) }
+			} else {
+				return false, fmt.Sprintf("Impossível realizar comparação numérica em %s %s (valores: %s, %s)", a.Source, a.Property, actual, a.Target)
 			}
 		}
 	}
@@ -759,7 +871,7 @@ func mockServerHandler(w http.ResponseWriter, r *http.Request) {
 				actual = r.Header.Get(a.Property)
 			} else if a.Source == "body" {
 				if a.Property != "" {
-					val, err := getJsonValue(bodyStr, a.Property)
+					val, err := getBodyValue(bodyStr, a.Property)
 					if err != nil {
 						w.WriteHeader(http.StatusBadRequest)
 						errMsg := fmt.Sprintf(`{"error": "Validation failed", "detail": "Field %s not found in request body"}`, a.Property)
