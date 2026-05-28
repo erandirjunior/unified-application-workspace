@@ -144,8 +144,21 @@ function App() {
     setView('collection-detail');
   };
 
+  const updateCollectionName = (id, newName) => {
+    setCollections(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
+  };
+
   const updateRequestInCollection = (silent = false) => {
     if (!activeCollectionId) return;
+
+    // Validação: Impede salvar se houver respostas sem Status Code
+    if (Array.isArray(form.responses)) {
+      const hasEmptyStatus = form.responses.some(r => !r.statusCode || String(r.statusCode).trim() === '');
+      if (hasEmptyStatus) {
+        showCustomToast('Erro: Todas as respostas na documentação devem possuir um Status Code.', 'error');
+        return;
+      }
+    }
 
     if (form.activeScenarioId !== null && form.activeStepIndex !== null) {
       setCollections(prev => prev.map(col => {
@@ -265,6 +278,165 @@ function App() {
       col.id === colId ? { ...col, activeEnvironmentId: envId } : col
     ));
   };
+
+  const updateFolderName = (colId, newName, folderId) => {
+    setCollections(prev => prev.map(collection => {
+      if (collection.id !== colId) return collection;
+      const recursiveUpdate = (items) => {
+        return items.map(item => {
+          if (item.id === folderId) {
+            return { ...item, name: newName };
+          }
+          if (item.type === 'folder') {
+            return { ...item, requests: recursiveUpdate(item.requests || []) };
+          }
+          return item;
+        });
+      };
+      return { ...collection, requests: recursiveUpdate(collection.requests) };
+    }));
+    showCustomToast('Nome da pasta atualizado!', 'success');
+  };
+
+  const saveResponseToDoc = (colId, reqId, log) => {
+    if (!colId || !reqId) return;
+
+  const statusCodeStr = String(log.statusCode || 'ERR');
+  const newResponse = {
+    statusCode: statusCodeStr,
+    description: log.statusCode >= 200 && log.statusCode < 300 ? `Sucesso (${statusCodeStr})` : `Erro (${statusCodeStr})`,
+    body: log.responseBody || '',
+    bodyFields: []
+  };
+
+  // Tenta preencher dicionário de dados se for JSON
+  const trimmedBody = newResponse.body.trim();
+  if (trimmedBody.startsWith('{') || trimmedBody.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmedBody);
+      const flatten = (obj, prefix = '', fields) => {
+        if (typeof obj !== 'object' || obj === null) return;
+        Object.keys(obj).forEach(key => {
+          const path = prefix ? `${prefix}.${key}` : key;
+          const val = obj[key];
+          const type = Array.isArray(val) ? 'array' : (val === null ? 'null' : typeof val);
+          fields.push({ key: path, type, docRequired: false, docExample: typeof val === 'object' ? JSON.stringify(val) : String(val), docDescription: '' });
+          if (typeof val === 'object' && val !== null && !Array.isArray(val)) flatten(val, path, fields);
+        });
+      };
+      flatten(parsed, '', newResponse.bodyFields);
+    } catch (e) { newResponse.bodyFields = []; }
+  }
+
+  // Busca as respostas que já existem na coleção para esta request específica antes de sincronizar o form
+  // Isso evita que o estado do formulário (se estiver incompleto) sobrescreva o histórico da coleção
+  let baseResps = [];
+  const targetCol = collections.find(c => c.id === colId);
+  if (targetCol) {
+     const findInItems = (items) => {
+       for (const item of items) {
+         if (item.id === reqId) return item.responses;
+         if (item.type === 'folder') {
+           const r = findInItems(item.requests || []);
+           if (r) return r;
+         }
+       }
+       return null;
+     };
+     
+     baseResps = findInItems(targetCol.requests || []) || [];
+     // Se não achou na raiz, busca em cenários e workflows
+     if (baseResps.length === 0) {
+       targetCol.scenarios?.forEach(s => s.steps?.forEach(step => { if (step.id === reqId) baseResps = step.responses || []; }));
+       targetCol.workflows?.forEach(w => w.steps?.forEach(step => {
+         if (step.id === reqId) baseResps = step.responses || [];
+         else if (step.type === 'parallel') step.requests?.forEach(r => { if (r.id === reqId) baseResps = r.responses || []; });
+       }));
+     }
+  }
+
+  // 1. Sincroniza imediatamente com o formulário se for a request ativa
+  if (form.activeRequestId === reqId || (form.activeStepIndex !== null && reqId)) {
+    // Mescla o que está na coleção com o que está no form (para não perder edições manuais não salvas)
+    const mergedMap = new Map();
+    baseResps.forEach(r => mergedMap.set(String(r.statusCode), r));
+    (Array.isArray(form.responses) ? form.responses : []).forEach(r => mergedMap.set(String(r.statusCode), r));
+    
+    const currentResps = Array.from(mergedMap.values());
+    const idx = currentResps.findIndex(r => String(r.statusCode) === statusCodeStr);
+    const updatedResps = idx >= 0 ? currentResps.map((r, i) => i === idx ? newResponse : r) : [newResponse, ...currentResps];
+    updateField('responses', updatedResps);
+  }
+
+  // 2. Atualiza a Coleção (Persistência)
+  setCollections(prev => prev.map(col => {
+    if (col.id !== colId) return col;
+
+    // Se for passo de workflow
+    if (form.activeWorkflowId && form.activeStepIndex !== null) {
+      return { ...col, workflows: (col.workflows || []).map(w => {
+        if (w.id !== form.activeWorkflowId) return w;
+        const steps = [...w.steps];
+        
+        if (form.activeSubIndex !== null) {
+          // Edição dentro de um Grupo Paralelo
+          const group = { ...steps[form.activeStepIndex] };
+          const reqs = [...(group.requests || [])];
+          const req = { ...reqs[form.activeSubIndex] };
+          // Verifica se o ID bate para evitar salvar no lugar errado se o contexto estiver sujo
+          if (req.id !== reqId) return w;
+
+          const resps = Array.isArray(req.responses) ? [...req.responses] : [];
+          const idx = resps.findIndex(r => String(r.statusCode) === statusCodeStr);
+          if (idx >= 0) resps[idx] = newResponse; else resps.unshift(newResponse);
+          reqs[form.activeSubIndex] = { ...req, responses: resps };
+          steps[form.activeStepIndex] = { ...group, requests: reqs };
+        } else {
+          // Edição de requisição no nível raiz do Workflow
+          const step = { ...steps[form.activeStepIndex] };
+          if (step.id !== reqId) return w;
+
+          const resps = Array.isArray(step.responses) ? [...step.responses] : [];
+          const idx = resps.findIndex(r => String(r.statusCode) === statusCodeStr);
+          if (idx >= 0) resps[idx] = newResponse; else resps.unshift(newResponse);
+          steps[form.activeStepIndex] = { ...step, responses: resps };
+        }
+        return { ...w, steps };
+      })};
+    }
+
+    // Se for passo de cenário
+    if (form.activeScenarioId && form.activeStepIndex !== null) {
+      return { ...col, scenarios: (col.scenarios || []).map(s => {
+        if (s.id !== form.activeScenarioId) return s;
+        const steps = [...s.steps];
+        const step = { ...steps[form.activeStepIndex] };
+        if (step.id !== reqId) return s;
+
+        const resps = Array.isArray(step.responses) ? [...step.responses] : [];
+        const idx = resps.findIndex(r => String(r.statusCode) === statusCodeStr);
+        if (idx >= 0) resps[idx] = newResponse; else resps.unshift(newResponse);
+        steps[form.activeStepIndex] = { ...step, responses: resps };
+        return { ...s, steps };
+      })};
+    }
+
+    // Caso padrão: Request raiz ou pasta
+    const recursiveUpdate = (items) => items.map(item => {
+      if (item.id === reqId) {
+        const resps = Array.isArray(item.responses) ? [...item.responses] : [];
+        const idx = resps.findIndex(r => String(r.statusCode) === statusCodeStr);
+        if (idx >= 0) resps[idx] = newResponse; else resps.unshift(newResponse);
+        return { ...item, responses: resps };
+      }
+      if (item.type === 'folder') return { ...item, requests: recursiveUpdate(item.requests || []) };
+      return item;
+    });
+    return { ...col, requests: recursiveUpdate(col.requests) };
+  }));
+
+  showCustomToast(`Resposta ${log.statusCode} salva na documentação!`, 'success');
+};
 
   const deleteCollection = (id) => {
     showCustomConfirm('Tem certeza que deseja excluir esta coleção? Todas as requisições dentro dela serão perdidas.', () => {
@@ -478,6 +650,12 @@ function App() {
       body: req.bodyRaw || '',
       assertions: req.assertions || [],
       extractions: req.extractions || [],
+      authType: req.authType,
+      authToken: req.authToken,
+      authUsername: req.authUsername,
+      authPassword: req.authPassword,
+      apiKeyName: req.apiKeyName,
+      apiKeyValue: req.apiKeyValue,
       single: true
     };
 
@@ -558,7 +736,13 @@ function App() {
       headers: headerMap,
       body: req.bodyRaw || '',
       assertions: req.assertions || [],
-      extractions: req.extractions || []
+      extractions: req.extractions || [],
+      authType: req.authType,
+      authToken: req.authToken,
+      authUsername: req.authUsername,
+      authPassword: req.authPassword,
+      apiKeyName: req.apiKeyName,
+      apiKeyValue: req.apiKeyValue
     };
 
     sendRequests(payload);
@@ -624,6 +808,7 @@ function App() {
                 isRunning={isRunning}
                 onStop={stopTest}
                 lastExecutedPayload={lastExecutedPayload}
+                onSaveResponseToDoc={saveResponseToDoc}
               />
             ) : view === 'collections' ? (
               <CollectionsView 
@@ -632,6 +817,7 @@ function App() {
                 onCreateCollection={createCollection}
                 onDeleteCollection={deleteCollection}
                 onReorderCollection={reorderCollection}
+                onUpdateName={updateCollectionName}
               />
             ) : view === 'collection-detail' ? (
               <CollectionView 
@@ -656,7 +842,9 @@ function App() {
                 onRunSingleRequest={handleRunSingleSavedRequest}
                 onBack={() => setView('collections')}
               onAddRequest={colMethods.addRequestToCollection}
+              onUpdateName={updateCollectionName}
               onAddFolder={colMethods.addFolderToCollection}
+              onUpdateFolderName={updateFolderName}
               onMoveRequest={colMethods.moveRequestInCollection}
               onDeleteRequest={deleteRequest}
               onDeleteFolder={deleteFolder}
@@ -719,15 +907,19 @@ function App() {
                     col.id === activeCollectionId ? { ...col, generalDoc: doc } : col
                   ));
                 }}
-                addResponse={() => {
-                  const current = Array.isArray(form.responses) ? [...form.responses] : [];
-                  const newItem = { statusCode: '200', description: '', body: '', bodyFields: [] };
+                addResponse={(currentResponsesFromView = []) => { // Aceita as respostas atuais da view como base
+                  const current = Array.isArray(currentResponsesFromView) ? [...currentResponsesFromView] : [];
+                  const newItem = { statusCode: '', description: '', body: '', bodyFields: [] };
                   updateField('responses', [...current, newItem]);
                 }}
                 addResponseField={addResponseField}
                 removeResponseField={removeResponseField}
                 updateResponseField={updateResponseField}
-                removeResponse={(i) => removeListItem('responses', i)}
+                removeResponse={(i) => {
+                  removeListItem('responses', i);
+                  // Sincroniza a exclusão com a coleção imediatamente para evitar restauração pelo merge da View
+                  setTimeout(() => updateRequestInCollection(true), 0);
+                }}
                 updateRequestInCollection={updateRequestInCollection}
                 bodyParams={form.bodyParams}
                 addHeader={() => addListItem('headers', { key: '', value: '' })}
@@ -737,6 +929,7 @@ function App() {
                 addBodyParam={(p) => addListItem('bodyParams', p && !p.nativeEvent ? p : { key: '', value: '', type: 'text' })}
                 removeBodyParam={(i) => removeListItem('bodyParams', i)}
                 onClearBodyParams={() => updateField('bodyParams', [])}
+                updateField={updateField}
                 setBodyRawDoc={(v) => updateField('bodyRawDoc', v)}
                 setAuthDoc={(v) => updateField('authDoc', v)}
                 setUrl={(v) => updateField('url', v)}
@@ -745,6 +938,7 @@ function App() {
                 setBodyRaw={(v) => updateField('bodyRaw', v)}
                 setAuthType={(v) => updateField('authType', v)}
                 setRequestName={(v) => updateField('requestName', v)}
+                setBodyType={(v) => updateField('bodyType', v)}
                 showCustomToast={showCustomToast} // Passa a função de toast
                 onBack={() => setView('collection-detail')}
                 onEdit={() => setView('config')}
@@ -790,9 +984,14 @@ function App() {
                   removeBodyParam={(i) => removeListItem('bodyParams', i)} 
                   updateBodyParam={(i, f, v) => updateIndexedField('bodyParams', i, f, v)}
                   setAuthType={(v) => updateField('authType', v)} 
+                  setAuthToken={(v) => updateField('authToken', v)}
+                  setAuthUsername={(v) => updateField('authUsername', v)}
+                  setAuthPassword={(v) => updateField('authPassword', v)}
+                  setApiKeyName={(v) => updateField('apiKeyName', v)}
+                  setApiKeyValue={(v) => updateField('apiKeyValue', v)}
                   setBodyRawDoc={(v) => updateField('bodyRawDoc', v)} 
                   setAuthDoc={(v) => updateField('authDoc', v)}
-                  sendRequests={sendRequests}
+                  sendRequests={() => sendRequests(form)}
                   setDescription={(v) => updateField('description', v)}
                   updateRequestInCollection={updateRequestInCollection}
                   isVarsModalOpen={isVarsModalOpen} 
