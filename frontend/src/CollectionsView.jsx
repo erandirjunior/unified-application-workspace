@@ -8,29 +8,55 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportingCol, setExportingCol] = useState(null);
   const [selectedVars, setSelectedVars] = useState({}); // { envId: { varKey: bool } }
+  // NOVOS Estados para o Modal de Opções de Exportação
+  const [exportOptionsModalOpen, setExportOptionsModalOpen] = useState(false);
+  const [selectedExportOptions, setSelectedExportOptions] = useState({
+    requests: {}, // { id: boolean }
+    scenarios: {},
+    workflows: {},
+  });
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [renamingColId, setRenamingColId] = useState(null);
 
   const handleOpenExport = (e, col) => {
     e.stopPropagation();
-    const hasVars = col.environments?.some(env => env.variables?.length > 0);
+    setExportingCol(col);
     
-    if (!hasVars) {
-      // Se não houver variáveis, exporta direto
-      executeExport(col, {});
-    } else {
-      // Inicializa todas como selecionadas por padrão
+    // Inicializa tudo como selecionado
+    const requests = {};
+    const scenarios = {};
+    const workflows = {};
+
+    const fillReqs = (items) => items.forEach(i => {
+      requests[i.id] = true;
+      if (i.type === 'folder') fillReqs(i.requests || []);
+    });
+    fillReqs(col.requests || []);
+    (col.scenarios || []).forEach(s => scenarios[s.id] = true);
+    (col.workflows || []).forEach(w => workflows[w.id] = true);
+
+    setSelectedExportOptions({ requests, scenarios, workflows });
+    setExportOptionsModalOpen(true);
+  };
+
+  const handleExportOptionsNext = () => {
+    setExportOptionsModalOpen(false);
+    if (!exportingCol) return;
+
+    const hasVars = exportingCol.environments?.some(env => env.variables?.length > 0);
+    if (hasVars) {
       const initialSelection = {};
-      col.environments.forEach(env => {
+      exportingCol.environments.forEach(env => {
         initialSelection[env.id] = {};
         env.variables.forEach(v => {
           if (v.key) initialSelection[env.id][v.key] = true;
         });
       });
       setSelectedVars(initialSelection);
-      setExportingCol(col);
       setExportModalOpen(true);
+    } else {
+      executeExport(exportingCol, selectedExportOptions, {});
     }
   };
 
@@ -55,7 +81,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
     setSelectedVars(newSelection);
   };
 
-  const executeExport = (col, selection) => {
+  const executeExport = (col, itemOptions, varSelection) => {
     // Deep clone para não mexer no estado original
     const exportData = JSON.parse(JSON.stringify(col));
 
@@ -63,9 +89,30 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
     if (exportData.environments) {
       exportData.environments = exportData.environments.map(env => ({
         ...env,
-        variables: (env.variables || []).filter(v => selection[env.id]?.[v.key])
+        variables: (env.variables || []).filter(v => varSelection[env.id]?.[v.key])
       }));
     }
+
+    // Filtra requests, cenários e workflows baseados nas opções de item
+    const filterRequests = (items) => {
+      return items
+        .map(item => {
+          if (item.type === 'folder') {
+            const filteredChildren = filterRequests(item.requests || []);
+            // Mantém a pasta se ela estiver selecionada ou se tiver filhos selecionados
+            if (itemOptions.requests[item.id] || filteredChildren.length > 0) {
+              return { ...item, requests: filteredChildren };
+            }
+            return null;
+          }
+          return itemOptions.requests[item.id] ? item : null;
+        })
+        .filter(Boolean);
+    };
+
+    exportData.requests = filterRequests(col.requests || []);
+    exportData.scenarios = (col.scenarios || []).filter(s => itemOptions.scenarios[s.id]);
+    exportData.workflows = (col.workflows || []).filter(w => itemOptions.workflows[w.id]);
 
     // Metadados adicionais de exportação
     const finalPayload = {
@@ -85,6 +132,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
     URL.revokeObjectURL(url);
     
     setExportModalOpen(false);
+    setExportOptionsModalOpen(false);
     setExportingCol(null);
   };
 
@@ -241,6 +289,105 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
         ))}
       </div>
 
+      {/* Helper para renderizar item granular no modal de exportação */}
+      {exportOptionsModalOpen && exportingCol && (() => {
+          const renderExportItem = (item, type, level = 0) => {
+            const isSelected = !!selectedExportOptions[type][item.id];
+            return (
+              <div key={item.id}>
+                <label 
+                  className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors"
+                  style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={isSelected} 
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSelectedExportOptions(prev => {
+                        const newSection = { ...prev[type], [item.id]: checked };
+                        if (item.type === 'folder') {
+                          const fill = (children) => children.forEach(c => {
+                            newSection[c.id] = checked;
+                            if (c.type === 'folder') fill(c.requests || []);
+                          });
+                          fill(item.requests || []);
+                        }
+                        return { ...prev, [type]: newSection };
+                      });
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div className="flex items-center gap-2 min-w-0">
+                    {item.type === 'folder' ? (
+                      <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                    ) : type === 'scenarios' ? (
+                      <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    ) : type === 'workflows' ? (
+                      <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    ) : (
+                      <span className={`text-[8px] font-black px-1 rounded border flex-shrink-0 ${item.method === 'GET' ? 'text-emerald-500 border-emerald-500/20' : 'text-blue-500 border-blue-500/20'}`}>{item.method}</span>
+                    )}
+                    <span className={`text-xs truncate ${item.type === 'folder' ? 'font-bold text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}`}>
+                      {item.name}
+                    </span>
+                  </div>
+                </label>
+                {item.type === 'folder' && item.requests?.map(child => renderExportItem(child, type, level + 1))}
+              </div>
+            );
+          };
+
+      {/* Modal de Opções de Exportação (NOVO) */}
+      return (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <h3 className="text-xl font-bold dark:text-white">Exportar: {exportingCol.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">Selecione quais itens da coleção deseja incluir.</p>
+              </div>
+              <button onClick={() => setExportOptionsModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto">
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Requisições & Pastas</h4>
+                {exportingCol.requests?.length > 0 ? exportingCol.requests.map(item => renderExportItem(item, 'requests')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Cenários</h4>
+                {exportingCol.scenarios?.length > 0 ? exportingCol.scenarios.map(item => renderExportItem(item, 'scenarios')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Workflows</h4>
+                {exportingCol.workflows?.length > 0 ? exportingCol.workflows.map(item => renderExportItem(item, 'workflows')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+              <button 
+                onClick={() => setExportOptionsModalOpen(false)} 
+                className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all"
+              >
+                CANCELAR
+              </button>
+              <button 
+                onClick={handleExportOptionsNext} 
+                className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2"
+              >
+                PRÓXIMO
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+      })()}
+      {/* Fim do Bloco de Exportação Granular */}
+
       {/* Modal de Exportação com Seleção de Variáveis */}
       {exportModalOpen && exportingCol && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
@@ -300,8 +447,8 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             </div>
 
             <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">CANCELAR</button>
-              <button onClick={() => executeExport(exportingCol, selectedVars)} className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">VOLTAR</button>
+              <button onClick={() => executeExport(exportingCol, selectedExportOptions, selectedVars)} className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 EXPORTAR AGORA
               </button>
