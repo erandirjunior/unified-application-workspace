@@ -8,14 +8,13 @@ import ServersView from './ServersView';
 export default function CollectionView({ 
   collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, 
-  onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, 
+  onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName,
   onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows,
   selectedRequestIds = [], onToggleSelection, onViewUnifiedDoc,
   activeScenarioId, activeWorkflowId,
   setActiveScenarioId, setActiveWorkflowId, setActiveStepIndex, setActiveSubIndex
 }) {
   const [activeTab, setActiveTab] = useState(activeScenarioId ? 'scenarios' : activeWorkflowId ? 'workflows' : 'requests'); // 'requests' | 'scenarios' | 'workflows' | 'mocks'
-  const [newItemName, setNewItemName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isDraggingOverRoot, setIsDraggingOverRoot] = useState(false);
   const [search, setSearch] = useState('');
@@ -26,7 +25,8 @@ export default function CollectionView({
   // Inicializa com activeScenarioId para persistir o editor ao voltar da configuração
   const [editingScenarioId, setEditingScenarioId] = useState(activeScenarioId || null); 
   const [editingWorkflowId, setEditingWorkflowId] = useState(activeWorkflowId || null);
-  const [isRenamingCollection, setIsRenamingCollection] = useState(false);
+  const [renamingCollection, setRenamingCollection] = useState(false);
+  const [renamingFolderId, setRenamingFolderId] = useState(null);
   const [editingEnvId, setEditingEnvId] = useState(collection.activeEnvironmentId || (collection.environments?.[0]?.id));
   const [isRenamingEnv, setIsRenamingEnv] = useState(null);
 
@@ -232,8 +232,29 @@ export default function CollectionView({
       >
         <svg className={`w-6 h-6 transition-transform text-blue-500 ${expandedFolders[folder.id] ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
         <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
-        <span className="font-bold text-sm text-slate-600 dark:text-slate-400">{folder.name}</span>
-        <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex-1 min-w-0"> {/* Flex-1 para o input usar todo o espaço disponível */}
+          {renamingFolderId === folder.id ? (
+            <input 
+              autoFocus
+              className="font-bold text-sm text-slate-600 dark:text-slate-400 bg-transparent border-none outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 -ml-1 w-full"
+              defaultValue={folder.name}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => {
+                if (e.target.value.trim() && e.target.value !== folder.name) {
+                  onUpdateFolderName(collection.id, e.target.value.trim(), folder.id);
+                }
+                setRenamingFolderId(null);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+            />
+          ) : (
+            <span className="font-bold text-sm text-slate-600 dark:text-slate-400 truncate">{folder.name}</span>
+          )}
+        </div>
+        <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+          <button onClick={(e) => { e.stopPropagation(); setRenamingFolderId(folder.id); }} className="p-1 text-slate-400 hover:text-emerald-500 transition-colors" title="Renomear Pasta">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+          </button>
           <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, folder.id, 'up'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Subir">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/></svg>
           </button>
@@ -251,7 +272,7 @@ export default function CollectionView({
         </div>
       </div>
       {(expandedFolders[folder.id] || search.trim() !== '') && (
-        <div className="space-y-2 border-l-2 border-slate-100 dark:border-slate-800 ml-4 pl-2">
+        <div className="space-y-2 border-l-2 border-slate-200 dark:border-slate-800 ml-6 pl-2"> {/* Aumentado ml para alinhamento */}
           {folder.requests?.map(req => renderRequestItem(req, true))}
           {folder.requests?.length === 0 && <p className="text-[10px] text-slate-500 italic ml-6">Pasta vazia</p>}
         </div>
@@ -387,7 +408,7 @@ export default function CollectionView({
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           </button>
           <div>
-            {isRenamingCollection ? (
+            {renamingCollection ? (
               <input 
                 autoFocus
                 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight bg-transparent border-none outline-none focus:ring-2 focus:ring-blue-500 rounded-lg px-2 -ml-2"
@@ -397,13 +418,13 @@ export default function CollectionView({
                   if (val && val !== collection.name) {
                     onUpdateName(collection.id, val);
                   }
-                  setIsRenamingCollection(false);
+                  setRenamingCollection(false);
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
               />
             ) : (
               <h1 
-                onClick={() => setIsRenamingCollection(true)}
+                onClick={() => setRenamingCollection(true)}
                 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight cursor-pointer hover:text-blue-600 transition-colors"
               >
                 {collection.name}
@@ -478,59 +499,50 @@ export default function CollectionView({
         )}
       </div>
 
-      {/* Barra de Ações em Massa (Aparece apenas quando houver seleção) */}
-      {selectedRequestIds.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-300 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-500/30">
-              {selectedRequestIds.length}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-tight">Requisições Selecionadas</p>
-              <p className="text-[10px] text-indigo-500/70 font-medium italic">Pronto para gerar a documentação técnica unificada</p>
-            </div>
-          </div>
-          <button 
-            onClick={onViewUnifiedDoc}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-indigo-500/30 active:scale-95"
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            GERAR DOCUMENTAÇÃO UNIFICADA
-          </button>
-        </div>
-      )}
-
       {/* Conteúdo da Aba */}
       <div className="min-h-[400px]">
         {activeTab === 'requests' ? (
           <div className="space-y-6">
-            {/* Ações Rápidas */}
-            <div className="flex flex-col sm:flex-row gap-3 border-b border-slate-200 dark:border-slate-800 pb-6">
-              <input 
-                type="text" 
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                placeholder="Nome do item..."
-                className="input-base !bg-white dark:!bg-slate-900 flex-1"
-              />
+            {/* Cabeçalho da Aba de Requests (Estilo unificado) */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Explorar Itens</h2>
+              </div>
               <div className="flex gap-3">
                 <button 
-                  onClick={() => { if (newItemName.trim()) { onAddRequest(collection.id, newItemName.trim()); setNewItemName(''); } }}
-                  className="whitespace-nowrap bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-blue-700 transition-all flex items-center gap-2"
+                  onClick={() => onAddRequest(collection.id, 'Nova Requisição')}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2"
                 >
-                  + Request
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                  NOVA REQUEST
                 </button>
                 <button 
-                  onClick={() => { if (newItemName.trim()) { onAddFolder(collection.id, newItemName.trim()); setNewItemName(''); } }}
-                  className="whitespace-nowrap bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-xs hover:bg-slate-300 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
+                  onClick={() => onAddFolder(collection.id, 'Nova Pasta')}
+                  className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-xl font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700 shadow-sm"
                 >
-                  + Pasta
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  NOVA PASTA
                 </button>
               </div>
             </div>
 
-            {/* Barra de Busca Interna */}
-            <div className="flex justify-end">
+            {/* Barra de Ações Contextuais e Busca */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex-1 w-full sm:w-auto">
+                {selectedRequestIds.length > 0 && (
+                  <button 
+                    onClick={onViewUnifiedDoc}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 rounded-xl font-bold text-[10px] transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40 animate-in fade-in slide-in-from-left-2 duration-300"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    GERAR DOC. UNIFICADA ({selectedRequestIds.length})
+                  </button>
+                )}
+              </div>
+              
               <div className="relative group w-full md:w-72">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
                 <input 
