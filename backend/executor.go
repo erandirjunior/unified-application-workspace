@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -107,4 +109,131 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 		}:
 		}
 	}
+}
+
+// orchestrateLoadTest gerencia as fases de execução (ramp-up, paralelo, sequencial) e fecha o canal de logs ao finalizar.
+func orchestrateLoadTest(ctx context.Context, payloadLoadTestRequest LoadTestRequest, payloadRequests []WorkflowStep, initialVariables map[string]string, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
+	var allWorkersWg sync.WaitGroup
+
+	requests := payloadRequests
+	if len(requests) == 0 {
+		requests = []WorkflowStep{{Type: "request", LoadTestRequest: payloadLoadTestRequest}}
+	}
+
+	sharedVars := make(map[string]string)
+	for k, v := range initialVariables {
+		sharedVars[k] = v
+	}
+	var varsMu sync.RWMutex
+
+	defer func() {
+		allWorkersWg.Wait()
+		close(logChan)
+	}()
+
+	mainLoop:
+	for _, step := range requests {
+		select {
+		case <-ctx.Done():
+			break mainLoop
+		default:
+		}
+
+		if step.Type == "parallel" {
+			var stepWg sync.WaitGroup
+			for _, rd := range step.Requests {
+				stepWg.Add(1)
+				allWorkersWg.Add(1)
+				atomic.AddInt64(activeThreads, 1)
+				go func(currentRd LoadTestRequest) {
+					defer stepWg.Done()
+					defer allWorkersWg.Done()
+					defer atomic.AddInt64(activeThreads, -1)
+					executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, success, errors, activeThreads)
+				}(rd)
+			}
+			stepWg.Wait()
+			continue
+		}
+
+		rd := step.LoadTestRequest
+		isWorkflowStep := step.Type == "request" && rd.Duration <= 0
+		if step.Type == "" && rd.URL != "" {
+			step.Type = "request"
+		}
+
+		if strings.ToLower(rd.Method) == "wait" || step.Type == "wait" {
+			waitSec, _ := strconv.Atoi(rd.URL)
+			time.Sleep(time.Duration(waitSec) * time.Second)
+			continue
+		}
+
+		if rd.URL != "" {
+			targetRPS := rd.TotalRequests
+			if rd.Single || isWorkflowStep {
+				targetRPS = 1
+			}
+
+			totalToFire := calculateTotalRequests(rd, targetRPS)
+			var phaseWg sync.WaitGroup
+			firingInterval := time.Duration(0)
+			if targetRPS > 0 {
+				firingInterval = time.Second / time.Duration(targetRPS)
+			}
+
+			startTimePhase := time.Now()
+			rampUpDuration := time.Duration(rd.RampUp) * time.Second
+			numRampRequests := (targetRPS * rd.RampUp) / 2
+
+			for i := 0; i < totalToFire; i++ {
+				select {
+				case <-ctx.Done():
+					break mainLoop
+				default:
+				}
+
+				targetTime := calculateTargetTime(i, rd, targetRPS, numRampRequests, startTimePhase, rampUpDuration, firingInterval)
+				if !targetTime.IsZero() {
+					time.Sleep(time.Until(targetTime))
+				}
+
+				phaseWg.Add(1)
+				allWorkersWg.Add(1)
+				atomic.AddInt64(activeThreads, 1)
+
+				go func(currentRd LoadTestRequest) {
+					defer phaseWg.Done()
+					defer allWorkersWg.Done()
+					defer atomic.AddInt64(activeThreads, -1)
+					executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, success, errors, activeThreads)
+				}(rd)
+			}
+			phaseWg.Wait()
+		}
+	}
+}
+
+func calculateTotalRequests(rd LoadTestRequest, targetRPS int) int {
+	if rd.Duration > 0 && !rd.Single {
+		if rd.RampUp > 0 && rd.RampUp < rd.Duration {
+			rampReqs := (targetRPS * rd.RampUp) / 2
+			stableReqs := targetRPS * (rd.Duration - rd.RampUp)
+			return rampReqs + stableReqs
+		}
+		return targetRPS * rd.Duration
+	}
+	return targetRPS
+}
+
+func calculateTargetTime(i int, rd LoadTestRequest, targetRPS int, numRampRequests int, startTimePhase time.Time, rampUpDuration time.Duration, firingInterval time.Duration) time.Time {
+	if rd.RampUp > 0 && i < numRampRequests {
+		t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
+		return startTimePhase.Add(time.Duration(t * float64(time.Second)))
+	} else if rd.RampUp > 0 && !rd.Single {
+		offsetStable := float64(i-numRampRequests) / float64(targetRPS)
+		return startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
+	} else if firingInterval > 0 {
+		return startTimePhase.Add(time.Duration(i) * firingInterval)
+	}
+	return time.Time{}
 }

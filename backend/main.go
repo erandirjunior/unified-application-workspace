@@ -3,12 +3,7 @@ package main
 import (
     "encoding/json"
     "fmt"
-    "math"
     "net/http"
-    "strconv"
-    "strings"
-    "sync"
-    "sync/atomic"
     "time"
 )
 
@@ -41,140 +36,22 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Se vier uma lista, usamos ela, caso contrário tratamos como teste único
-	requests := payload.Requests
-	if len(requests) == 0 {
-		requests = []WorkflowStep{{Type: "request", LoadTestRequest: payload.LoadTestRequest}}
-	}
-
 	startTime := time.Now()
 	var success, errors int64
 	var activeThreads int64
 	logChan := make(chan RequestLogEntry, 100)
-	var allWorkersWg sync.WaitGroup
 
-	// Variáveis compartilhadas entre todas as fases do cenário
-	sharedVars := make(map[string]string)
-	for k, v := range payload.Variables {
-		sharedVars[k] = v
-	}
-	var varsMu sync.RWMutex
-
-	// Goroutine principal para orquestrar as fases
-	go func() {
-		ctx := r.Context()
-		defer func() {
-			allWorkersWg.Wait() // Espera ABSOLUTAMENTE todos os workers antes de fechar
-			close(logChan)
-		}()
-
-		mainLoop:
-		for _, step := range requests {
-			select {
-			case <-ctx.Done():
-				break mainLoop
-			default:
-			}
-
-			// Lógica para execução paralela dentro de um Workflow
-			if step.Type == "parallel" {
-				var stepWg sync.WaitGroup
-				for _, rd := range step.Requests {
-					stepWg.Add(1)
-					allWorkersWg.Add(1)
-					atomic.AddInt64(&activeThreads, 1)
-					go func(currentRd LoadTestRequest) {
-						defer stepWg.Done()
-						defer allWorkersWg.Done()
-						defer atomic.AddInt64(&activeThreads, -1)
-						executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads)
-					}(rd)
-				}
-				stepWg.Wait()
-				continue
-			}
-
-			// Lógica original (Sequencial)
-			rd := step.LoadTestRequest
-			
-			// Se for um passo de Workflow (sem duração ou marcado como single), forçamos 1 execução
-			isWorkflowStep := step.Type == "request" && rd.Duration <= 0
-
-			// Fallback de tipo
-			if step.Type == "" && rd.URL != "" {
-				step.Type = "request"
-			}
-
-			// Suporte a passo de "Espera" (Think Time)
-			if strings.ToLower(rd.Method) == "wait" || step.Type == "wait" {
-				waitSec, _ := strconv.Atoi(rd.URL)
-				time.Sleep(time.Duration(waitSec) * time.Second)
-				continue
-			}
-
-			if rd.URL != "" {
-				targetRPS := rd.TotalRequests
-				if rd.Single || isWorkflowStep { targetRPS = 1 }
-
-				totalToFire := 0
-				if rd.Duration > 0 && !rd.Single {
-					if rd.RampUp > 0 && rd.RampUp < rd.Duration {
-						rampReqs := (targetRPS * rd.RampUp) / 2
-						stableReqs := targetRPS * (rd.Duration - rd.RampUp)
-						totalToFire = rampReqs + stableReqs
-					} else {
-						totalToFire = targetRPS * rd.Duration
-					}
-				} else {
-					totalToFire = targetRPS
-				}
-				
-				var phaseWg sync.WaitGroup
-				firingInterval := time.Duration(0)
-				if targetRPS > 0 {
-					firingInterval = time.Second / time.Duration(targetRPS)
-				}
-
-				startTimePhase := time.Now()
-				rampUpDuration := time.Duration(rd.RampUp) * time.Second
-				numRampRequests := (targetRPS * rd.RampUp) / 2
-
-				for i := 0; i < totalToFire; i++ {
-					select {
-					case <-ctx.Done(): break mainLoop
-					default:
-					}
-
-					var targetTime time.Time
-					if rd.RampUp > 0 && i < numRampRequests {
-						t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
-						targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
-					} else if rd.RampUp > 0 && !rd.Single {
-						offsetStable := float64(i-numRampRequests) / float64(targetRPS)
-						targetTime = startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
-					} else if firingInterval > 0 {
-						targetTime = startTimePhase.Add(time.Duration(i) * firingInterval)
-					}
-
-					if !targetTime.IsZero() {
-						time.Sleep(time.Until(targetTime))
-					}
-
-					phaseWg.Add(1)
-					allWorkersWg.Add(1)
-					atomic.AddInt64(&activeThreads, 1)
-
-					go func(currentRd LoadTestRequest) {
-						defer phaseWg.Done()
-						defer allWorkersWg.Done()
-						defer atomic.AddInt64(&activeThreads, -1)
-						executeSingleRequest(ctx, currentRd, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads)
-					}(rd)
-				}
-				phaseWg.Wait() 
-			}
-		}
-	}()
+	// Orquestra a execução do teste em uma goroutine separada
+	go orchestrateLoadTest(
+		r.Context(),
+		payload.LoadTestRequest,
+		payload.Requests,
+		payload.Variables,
+		logChan,
+		&success,
+		&errors,
+		&activeThreads,
+	)
 
     // Loop principal de escrita da resposta (Streaming)
     for entry := range logChan {
