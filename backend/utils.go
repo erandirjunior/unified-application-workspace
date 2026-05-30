@@ -155,7 +155,7 @@ func generateUUID() string {
 
 func getJsonValue(jsonString string, path string) (string, error) {
 	var data interface{}
-	if err := json.Unmarshal([]byte(jsonString), &data); err != nil { return "", err }
+	if err := json.Unmarshal([]byte(jsonString), &data); err != nil { return "", fmt.Errorf("failed to parse JSON: %w", err) }
 	path = strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(path, "$."), "$"), ".")
 	if path == "" {
 		res, _ := json.Marshal(data)
@@ -172,8 +172,12 @@ func getJsonValue(jsonString string, path string) (string, error) {
 			if arr, ok := current.([]interface{}); ok {
 				idx, _ := strconv.Atoi(indexStr)
 				if idx >= 0 && idx < len(arr) { current = arr[idx] } else { return "", fmt.Errorf("index out of bounds") }
-			}
-		} else if m, ok := current.(map[string]interface{}); ok { current = m[segment] } else { return "", fmt.Errorf("field not found") }
+			} else { return "", fmt.Errorf("not an array") }
+		} else if m, ok := current.(map[string]interface{}); ok {
+			val, exists := m[segment]
+			if !exists { return "", fmt.Errorf("field %s not found", segment) }
+			current = val
+		} else { return "", fmt.Errorf("field %s not found", segment) }
 	}
 	if current == nil { return "null", nil }
 	if s, ok := current.(string); ok { return s, nil }
@@ -248,34 +252,34 @@ func validateResponse(resp *http.Response, body string, assertions []Assertion) 
 			}
 		}
 		if a.Operator == "exists" {
-			if !fieldFound { return false, fmt.Sprintf("%s '%s' não encontrado", a.Source, a.Property) }
+			if !fieldFound { return false, fmt.Sprintf("%s '%s' not found", a.Source, a.Property) }
 			continue
 		}
 		if a.Operator == "not_exists" {
-			if fieldFound { return false, fmt.Sprintf("%s '%s' encontrado, mas esperava que não existisse", a.Source, a.Property) }
+			if fieldFound { return false, fmt.Sprintf("%s '%s' found, but expected not to exist", a.Source, a.Property) }
 			continue
 		}
 		if !fieldFound {
-			if err != nil { return false, fmt.Sprintf("Erro ao acessar %s '%s': %v", a.Source, a.Property, err) }
-			return false, fmt.Sprintf("%s '%s' não encontrado para comparação", a.Source, a.Property)
+			if err != nil { return false, fmt.Sprintf("Error accessing %s '%s': %v", a.Source, a.Property, err) }
+			return false, fmt.Sprintf("%s '%s' not found for comparison", a.Source, a.Property)
 		}
 		switch a.Operator {
 		case "==":
-			if actual != a.Target { return false, fmt.Sprintf("Esperado %s %s ser %s, mas recebeu %s", a.Source, a.Property, a.Target, actual) }
+			if actual != a.Target { return false, fmt.Sprintf("Expected %s %s to be %s, but got %s", a.Source, a.Property, a.Target, actual) }
 		case "!=":
-			if actual == a.Target { return false, fmt.Sprintf("Esperado %s %s ser diferente de %s", a.Source, a.Property, a.Target) }
+			if actual == a.Target { return false, fmt.Sprintf("Expected %s %s to be different from %s", a.Source, a.Property, a.Target) }
 		case "contains":
-			if !strings.Contains(actual, a.Target) { return false, fmt.Sprintf("%s %s não contém %s", a.Source, a.Property, a.Target) }
+			if !strings.Contains(actual, a.Target) { return false, fmt.Sprintf("%s %s does not contain %s", a.Source, a.Property, a.Target) }
 		case ">", ">=", "<", "<=":
 			vActual, err1 := strconv.ParseFloat(actual, 64)
 			vTarget, err2 := strconv.ParseFloat(a.Target, 64)
 			if err1 == nil && err2 == nil {
-				if a.Operator == ">" && !(vActual > vTarget) { return false, fmt.Sprintf("%s %s (%v) não é > %v", a.Source, a.Property, vActual, vTarget) }
-				if a.Operator == ">=" && !(vActual >= vTarget) { return false, fmt.Sprintf("%s %s (%v) não é >= %v", a.Source, a.Property, vActual, vTarget) }
-				if a.Operator == "<" && !(vActual < vTarget) { return false, fmt.Sprintf("%s %s (%v) não é < %v", a.Source, a.Property, vActual, vTarget) }
-				if a.Operator == "<=" && !(vActual <= vTarget) { return false, fmt.Sprintf("%s %s (%v) não é <= %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == ">" && !(vActual > vTarget) { return false, fmt.Sprintf("%s %s (%v) is not > %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == ">=" && !(vActual >= vTarget) { return false, fmt.Sprintf("%s %s (%v) is not >= %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == "<" && !(vActual < vTarget) { return false, fmt.Sprintf("%s %s (%v) is not < %v", a.Source, a.Property, vActual, vTarget) }
+				if a.Operator == "<=" && !(vActual <= vTarget) { return false, fmt.Sprintf("%s %s (%v) is not <= %v", a.Source, a.Property, vActual, vTarget) }
 			} else {
-				return false, fmt.Sprintf("Impossível realizar comparação numérica em %s %s (valores: %s, %s)", a.Source, a.Property, actual, a.Target)
+				return false, fmt.Sprintf("Impossible to perform numerical comparison on %s %s (values: %s, %s)", a.Source, a.Property, actual, a.Target)
 			}
 		}
 	}

@@ -39,7 +39,7 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 		case <-ctx.Done():
 		case logChan <- RequestLogEntry{
 			URL: currentURL, Method: currentRd.Method, StatusCode: 0,
-			Success: false, ErrorMessage: fmt.Sprintf("Erro ao criar request: %v", err),
+			Success: false, ErrorMessage: fmt.Sprintf("Error creating request: %v", err),
 		}:
 		}
 		varsMu.RUnlock()
@@ -94,7 +94,7 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 		}
 	} else {
 		atomic.AddInt64(errors, 1)
-		errMsg := "Erro desconhecido"
+		errMsg := "Unknown error"
 		if err != nil {
 			errMsg = err.Error()
 		}
@@ -111,7 +111,7 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 	}
 }
 
-// orchestrateLoadTest gerencia as fases de execução (ramp-up, paralelo, sequencial) e fecha o canal de logs ao finalizar.
+// orchestrateLoadTest manages execution phases (ramp-up, parallel, sequential) and closes the log channel when finished.
 func orchestrateLoadTest(ctx context.Context, payloadLoadTestRequest LoadTestRequest, payloadRequests []WorkflowStep, initialVariables map[string]string, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
 	var allWorkersWg sync.WaitGroup
 

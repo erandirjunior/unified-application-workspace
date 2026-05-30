@@ -63,7 +63,7 @@ type RequestLogEntry struct {
 	Timestamp       string            `json:"timestamp"`
 	ResponseTime    int64             `json:"responseTime"`
 	ResponseHeaders map[string]string `json:"responseHeaders"`
-	ResponseBody    string            `json:"body"`
+	ResponseBody    string            `json:"responseBody"`
 	RequestHeaders  map[string]string `json:"requestHeaders"`
 	RequestBody     string            `json:"requestBody"`
 	RunningThreads  int               `json:"runningThreads"`

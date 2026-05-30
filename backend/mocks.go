@@ -69,6 +69,7 @@ func manageMocksHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -140,6 +141,7 @@ func mockServerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 
 	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -175,6 +177,45 @@ func mockServerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprintf(w, `{"error": "Mock not found for path: %s"}`, path)
 		return
+	}
+
+	// Assertion validation for incoming request (Headers/Body)
+	if len(matchedMock.Assertions) > 0 {
+		bodyStr := string(bodyBytes)
+		for _, a := range matchedMock.Assertions {
+			var actual string
+			found := true
+			if a.Source == "header" {
+				actual = r.Header.Get(a.Property)
+				if _, ok := r.Header[http.CanonicalHeaderKey(a.Property)]; !ok {
+					found = false
+				}
+			} else if a.Source == "body" {
+				if a.Property != "" {
+					val, err := getBodyValue(bodyStr, a.Property)
+					if err != nil {
+						found = false
+					} else {
+						actual = val
+					}
+				} else {
+					actual = bodyStr
+				}
+			}
+			pass := true
+			if a.Operator == "exists" { pass = found } else if a.Operator == "not_exists" { pass = !found } else if !found { pass = false } else {
+				switch a.Operator {
+				case "==": pass = (actual == a.Target)
+				case "!=": pass = (actual != a.Target)
+				case "contains": pass = strings.Contains(actual, a.Target)
+				}
+			}
+			if !pass {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprintf(w, `{"error": "Assertion failed"}`)
+				return
+			}
+		}
 	}
 
 	status := matchedMock.Response.Status
