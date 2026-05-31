@@ -146,8 +146,10 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
     const latencies = [...requestLogs].map(l => l.responseTime || 0).sort((a, b) => a - b);
     const avg = latencies.length > 0 ? latencies.reduce((acc, val) => acc + val, 0) / latencies.length : 0;
-    
-    const getP = (p) => (latencies.length > 0 ? latencies[Math.min(Math.floor(latencies.length * p), latencies.length - 1)] : 0);
+
+    // Ajusta o cálculo do percentil para que o P50 de [10,20,30,40,50,60,70,80,90,100] seja 50, e P90 seja 90.
+    // Isso corresponde a pegar o elemento no índice (length * p) - 1.
+    const getP = (p) => (latencies.length > 0 ? latencies[Math.max(0, Math.floor(latencies.length * p) - 1)] : 0);
 
     const p50 = getP(0.5);
     const p90 = getP(0.9);
@@ -497,7 +499,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
       {/* Modal de Detalhes */}
       {selectedLog && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800">
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div className="flex items-center gap-4">
@@ -550,7 +552,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
                       <div>
                         <p className="text-[10px] font-bold text-slate-500 mb-1">HEADERS</p>
                         <pre className="text-xs bg-slate-950 p-4 rounded-xl text-blue-300 overflow-x-auto border border-blue-900/30">
-                          {JSON.stringify(selectedLog.requestHeaders || {}, null, 2)}
+                          {JSON.stringify(redactHeaders(selectedLog.requestHeaders, false), null, 2)}
                         </pre>
                       </div>
                       {selectedLog.requestBody && (
@@ -571,7 +573,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
                       <div>
                         <p className="text-[10px] font-bold text-slate-500 mb-1">HEADERS</p>
                         <pre className="text-xs bg-slate-950 p-4 rounded-xl text-emerald-300 overflow-x-auto border border-emerald-900/30">
-                          {JSON.stringify(selectedLog.responseHeaders || {}, null, 2)}
+                          {JSON.stringify(redactHeaders(selectedLog.responseHeaders, false), null, 2)}
                         </pre>
                       </div>
                       {selectedLog.responseBody && (
