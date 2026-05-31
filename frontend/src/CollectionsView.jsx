@@ -19,6 +19,54 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
   const [importFile, setImportFile] = useState(null);
   const [renamingColId, setRenamingColId] = useState(null);
 
+  // Helper para renderizar item granular no modal de exportação (Movido para fora do JSX)
+  const renderExportItem = (item, type, level = 0) => {
+    const isSelected = !!selectedExportOptions[type][item.id];
+    return (
+      <div key={item.id}>
+        <label 
+          className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors"
+          style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
+        >
+          <input 
+            type="checkbox" 
+            checked={isSelected} 
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setSelectedExportOptions(prev => {
+                const newSection = { ...prev[type], [item.id]: checked };
+                if (item.type === 'folder') {
+                  const fill = (children) => children.forEach(c => {
+                    newSection[c.id] = checked;
+                    if (c.type === 'folder') fill(c.requests || []);
+                  });
+                  fill(item.requests || []);
+                }
+                return { ...prev, [type]: newSection };
+              });
+            }}
+            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <div className="flex items-center gap-2 min-w-0">
+            {item.type === 'folder' ? (
+              <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            ) : type === 'scenarios' ? (
+              <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            ) : type === 'workflows' ? (
+              <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            ) : (
+              <span className={`text-[8px] font-black px-1 rounded border flex-shrink-0 ${item.method === 'GET' ? 'text-emerald-500 border-emerald-500/20' : 'text-blue-500 border-blue-500/20'}`}>{item.method}</span>
+            )}
+            <span className={`text-xs truncate ${item.type === 'folder' ? 'font-bold text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}`}>
+              {item.name}
+            </span>
+          </div>
+        </label>
+        {item.type === 'folder' && item.requests?.map(child => renderExportItem(child, type, level + 1))}
+      </div>
+    );
+  };
+
   const handleOpenExport = (e, col) => {
     e.stopPropagation();
     setExportingCol(col);
@@ -289,58 +337,9 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
         ))}
       </div>
 
-      {/* Helper para renderizar item granular no modal de exportação */}
-      {exportOptionsModalOpen && exportingCol && (() => {
-          const renderExportItem = (item, type, level = 0) => {
-            const isSelected = !!selectedExportOptions[type][item.id];
-            return (
-              <div key={item.id}>
-                <label 
-                  className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg cursor-pointer transition-colors"
-                  style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
-                >
-                  <input 
-                    type="checkbox" 
-                    checked={isSelected} 
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setSelectedExportOptions(prev => {
-                        const newSection = { ...prev[type], [item.id]: checked };
-                        if (item.type === 'folder') {
-                          const fill = (children) => children.forEach(c => {
-                            newSection[c.id] = checked;
-                            if (c.type === 'folder') fill(c.requests || []);
-                          });
-                          fill(item.requests || []);
-                        }
-                        return { ...prev, [type]: newSection };
-                      });
-                    }}
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="flex items-center gap-2 min-w-0">
-                    {item.type === 'folder' ? (
-                      <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                    ) : type === 'scenarios' ? (
-                      <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    ) : type === 'workflows' ? (
-                      <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    ) : (
-                      <span className={`text-[8px] font-black px-1 rounded border flex-shrink-0 ${item.method === 'GET' ? 'text-emerald-500 border-emerald-500/20' : 'text-blue-500 border-blue-500/20'}`}>{item.method}</span>
-                    )}
-                    <span className={`text-xs truncate ${item.type === 'folder' ? 'font-bold text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}`}>
-                      {item.name}
-                    </span>
-                  </div>
-                </label>
-                {item.type === 'folder' && item.requests?.map(child => renderExportItem(child, type, level + 1))}
-              </div>
-            );
-          };
-
-      {/* Modal de Opções de Exportação (NOVO) */}
-      return (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
+      {/* Modal de Opções de Exportação */}
+      {exportOptionsModalOpen && exportingCol && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
@@ -384,13 +383,12 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             </div>
           </div>
         </div>
-      );
-      })()}
+      )}
       {/* Fim do Bloco de Exportação Granular */}
 
       {/* Modal de Exportação com Seleção de Variáveis */}
       {exportModalOpen && exportingCol && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
@@ -459,7 +457,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
 
       {/* Modal de Importação */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
@@ -470,8 +468,9 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             </div>
 
             <div className="p-6 space-y-4">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Arquivo de Coleção (.json)</label>
+              <label htmlFor="import-file-input" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Arquivo de Coleção (.json)</label>
               <input 
+                id="import-file-input"
                 type="file" 
                 accept=".json" 
                 onChange={handleImportFileChange} 
