@@ -230,7 +230,6 @@ export default function DocumentationView({
           });
         };
         flatten(parsed);
-        console.log("Discovered fields after flattening (JSON):", discoveredFields); // Debug log
       } else if (request.bodyType === 'xml') {
         const doc = new DOMParser().parseFromString(request.bodyRaw, "text/xml");
         const nodes = Array.from(doc.querySelectorAll('*')).filter(n => n.tagName !== 'parsererror');
@@ -407,8 +406,8 @@ export default function DocumentationView({
               <span class="url">${resolvedUrl}</span>
             </div>
           </header>
-          <section><h2>Descrição Geral</h2><div class="box">${request.description || 'Nenhuma descrição fornecida.'}</div></section>
-          <section><h2>Autenticação</h2><div class="box"><strong>Tipo:</strong> ${request.authType === 'none' ? 'Sem Autenticação' : request.authType.toUpperCase()}<br/>${request.authDoc ? `<p style="margin-top: 10px;">${request.authDoc}</p>` : ''}</div></section>
+          <section><h2>Descrição Geral</h2><div class="box">${renderStaticMarkdown(request.description) || 'Nenhuma descrição fornecida.'}</div></section>
+          <section><h2>Autenticação</h2><div class="box"><strong>Tipo:</strong> ${!request.authType || request.authType === 'none' ? 'Sem Autenticação' : request.authType.toUpperCase()}<br/>${request.authDoc ? `<div style="margin-top: 10px;">${renderStaticMarkdown(request.authDoc)}</div>` : ''}</div></section>
           ${request.pathParams?.length ? `
           <section><h2>Path Parameters</h2><table style="${tableStyle}"><thead><tr><th style="${thStyle}">Parâmetro</th><th style="${thStyle}">Descrição</th><th style="${thStyle}">Obr.</th><th style="${thStyle}">Exemplo</th></tr></thead><tbody>
                 ${request.pathParams.map(p => `<tr><td style="${tdStyle}" class="mono">${p.key}</td><td style="${tdStyle}">${p.docDescription || '-'}</td><td style="${tdStyle}">${p.docRequired ? 'Sim' : 'Não'}</td><td style="${tdStyle}" class="mono">${p.docExample || '-'}</td></tr>`).join('')}
@@ -417,7 +416,7 @@ export default function DocumentationView({
           <section><h2>Headers</h2><table style="${tableStyle}"><thead><tr><th style="${thStyle}">Chave</th><th style="${thStyle}">Descrição</th><th style="${thStyle}">Obr.</th><th style="${thStyle}">Exemplo</th></tr></thead><tbody>
                 ${request.headers.map(h => `<tr><td style="${tdStyle}" class="mono">${h.key}</td><td style="${tdStyle}">${h.docDescription || '-'}</td><td style="${tdStyle}">${h.docRequired ? 'Sim' : 'Não'}</td><td style="${tdStyle}" class="mono">${h.docExample || '-'}</td></tr>`).join('')}
               </tbody></table></section>` : ''}
-          ${request.bodyType !== 'none' ? `
+          ${request.bodyType && request.bodyType !== 'none' ? `
           <section><h2>Request Body (${request.bodyType.toUpperCase()})</h2>${request.bodyRawDoc ? `<div class="box" style="margin-bottom: 15px;">${request.bodyRawDoc}</div>` : ''}
             ${request.bodyParams?.length ? `
             <table style="${tableStyle}"><thead><tr><th style="${thStyle}">Campo</th><th style="${thStyle}">Tipo</th><th style="${thStyle}">Descrição</th><th style="${thStyle}">Obr.</th><th style="${thStyle}">Exemplo</th></tr></thead><tbody>
@@ -622,7 +621,7 @@ export default function DocumentationView({
               <div className="flex items-center gap-3 mb-8">
                 <span className={`text-[10px] font-black px-2 py-1 rounded-lg border ${methodStyles[req.method]}`}>{req.method}</span>
                 <h2 className="text-xl font-black text-slate-800 dark:text-white">{req.name}</h2>
-                <p className="text-[10px] font-mono text-slate-400 truncate flex-1">{req.url}</p>
+                <p className="text-[10px] font-mono text-slate-400 truncate flex-1">{resolveVariables(req.url)}</p>
               </div>
             )}
             
@@ -657,8 +656,8 @@ export default function DocumentationView({
               onChange={(e) => setDescription(e.target.value)}
             />
           ) : (
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">
-                {req.description || "Nenhuma descrição fornecida."}
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                {req.description ? renderMarkdown(req.description) : <p className="text-slate-400 italic">Nenhuma descrição fornecida.</p>}
             </div>
           )}
         </section>
@@ -677,20 +676,22 @@ export default function DocumentationView({
               <div className="flex items-center gap-2 text-sm font-bold dark:text-slate-200">
                 <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 {isEditing ? (
-                  <select className="input-base !py-1 !text-xs bg-transparent max-w-xs" value={req.authType} onChange={(e) => setAuthType(e.target.value)}>
+                  <select className="input-base !py-1 !text-xs bg-transparent max-w-xs" value={req.authType || 'none'} onChange={(e) => setAuthType(e.target.value)}>
                     <option value="none">Nenhum</option>
                     <option value="bearer">Bearer</option>
                     <option value="basic">Basic</option>
                     <option value="apikey">API Key</option>
                   </select>
                 ) : (
-                  req.authType === 'none' ? "Sem Autenticação" : req.authType.toUpperCase()
+                  !req.authType || req.authType === 'none' ? "Sem Autenticação" : req.authType.toUpperCase()
                 )}
               </div>
               {isEditing ? (
                 <textarea className="input-base text-[11px] min-h-[60px] mt-4" placeholder="Explique como obter as credenciais..." value={authDoc || ''} onChange={(e) => setAuthDoc(e.target.value)} />
               ) : req.authDoc && (
-                <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap mt-2">{authDoc}</p>
+                <div className="mt-4">
+                  {renderMarkdown(authDoc)}
+                </div>
               )}
             </div>
           )}
@@ -819,7 +820,7 @@ export default function DocumentationView({
         {(req.bodyType !== 'none' || isEditing) && (
           <section>
             <SectionHeader 
-              title={`Request Body ${req.bodyType !== 'none' ? `(${req.bodyType.toUpperCase()})` : ''}`} 
+              title={`Request Body ${req.bodyType && req.bodyType !== 'none' ? `(${req.bodyType.toUpperCase()})` : ''}`} 
               icon={<svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>} 
               isExpanded={bodyExpanded}
               onToggle={() => setBodyExpanded(!bodyExpanded)}
