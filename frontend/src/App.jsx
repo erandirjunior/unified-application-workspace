@@ -126,18 +126,6 @@ function App() {
     return allReqs;
   };
 
-  const updateCollectionScenarios = (colId, scenarios) => {
-    setCollections(prev => prev.map(col => 
-      col.id === colId ? { ...col, scenarios } : col
-    ));
-  };
-
-  const updateCollectionWorkflows = (colId, workflows) => {
-    setCollections(prev => prev.map(col => 
-      col.id === colId ? { ...col, workflows } : col
-    ));
-  };
-
   const handleEnterCollection = (col) => {
     setActiveCollectionId(col.id);
     setSelectedRequestIds([]); // Limpa a seleção ao entrar em uma nova coleção para evitar lixo de estado
@@ -237,10 +225,11 @@ function App() {
   };
 
   const reorderCollection = (id, direction) => {
+    const index = collections.findIndex(c => c.id === id);
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || newIndex < 0 || newIndex >= collections.length) return;
+
     setCollections(prev => {
-      const index = prev.findIndex(c => c.id === id);
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
       const result = [...prev];
       const [removed] = result.splice(index, 1);
       result.splice(newIndex, 0, removed);
@@ -249,13 +238,29 @@ function App() {
   };
 
   const reorderItemInCollection = (colId, itemId, direction) => {
+    const col = collections.find(c => c.id === colId);
+    if (!col) return;
+
+    let canMove = false;
+    const findAndCheck = (items) => {
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx !== -1) {
+        const nextIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (nextIdx >= 0 && nextIdx < items.length) canMove = true;
+        return true;
+      }
+      return items.some(i => i.type === 'folder' && findAndCheck(i.requests || []));
+    };
+
+    findAndCheck(col.requests || []);
+    if (!canMove) return;
+
     setCollections(prev => prev.map(col => {
       if (col.id !== colId) return col;
       const recursiveReorder = (items) => {
         const index = items.findIndex(i => i.id === itemId);
         if (index !== -1) {
           const newIndex = direction === 'up' ? index - 1 : index + 1;
-          if (newIndex < 0 || newIndex >= items.length) return items;
           const result = [...items];
           const [removed] = result.splice(index, 1);
           result.splice(newIndex, 0, removed);
@@ -301,6 +306,20 @@ function App() {
   const saveResponseToDoc = (colId, reqId, log) => {
     if (!colId || !reqId) return;
 
+    const targetCol = collections.find(c => c.id === colId);
+    if (!targetCol) return;
+
+    // Guard: Impede atualizações se houver incompatibilidade de contexto (Cenário/Workflow)
+    if (form.activeWorkflowId && form.activeStepIndex !== null) {
+      const w = targetCol.workflows?.find(w => w.id === form.activeWorkflowId);
+      const step = w?.steps?.[form.activeStepIndex];
+      const actualId = form.activeSubIndex !== null ? step?.requests?.[form.activeSubIndex]?.id : step?.id;
+      if (actualId !== reqId) return;
+    } else if (form.activeScenarioId && form.activeStepIndex !== null) {
+      const s = targetCol.scenarios?.find(s => s.id === form.activeScenarioId);
+      if (s?.steps?.[form.activeStepIndex]?.id !== reqId) return;
+    }
+
   const statusCodeStr = String(log.statusCode || 'ERR');
   const newResponse = {
     statusCode: statusCodeStr,
@@ -331,7 +350,6 @@ function App() {
   // Busca as respostas que já existem na coleção para esta request específica antes de sincronizar o form
   // Isso evita que o estado do formulário (se estiver incompleto) sobrescreva o histórico da coleção
   let baseResps = [];
-  const targetCol = collections.find(c => c.id === colId);
   if (targetCol) {
      const findInItems = (items) => {
        for (const item of items) {
@@ -352,6 +370,13 @@ function App() {
          if (step.id === reqId) baseResps = step.responses || [];
          else if (step.type === 'parallel') step.requests?.forEach(r => { if (r.id === reqId) baseResps = r.responses || []; });
        }));
+     }
+
+     // Guard Final: Se não estiver em modo automação, verifica se a request existe na raiz/pastas
+     // Isso evita disparar setCollections se o reqId não pertencer a esta coleção
+     if (!form.activeWorkflowId && !form.activeScenarioId) {
+        const itemExists = (items) => items.some(i => i.id === reqId || (i.type === 'folder' && itemExists(i.requests || [])));
+        if (!itemExists(targetCol.requests || [])) return;
      }
   }
 
@@ -505,74 +530,9 @@ function App() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  const addHeader = () => {
-    setHeaders(prev => [...prev, { key: '', value: '', docDescription: '', docRequired: false, docExample: '' }]);
-  };
-
-  const removeHeader = index => {
-    setHeaders(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateHeader = (index, field, value) => { // Updated to handle doc fields
-    setHeaders(prev => {
-      const newHeaders = [...prev];
-      if (newHeaders[index]) {
-        newHeaders[index] = { ...newHeaders[index], [field]: value };
-      }
-      return newHeaders;
-    });
-  };
-  
-  const addPathParam = (param = null) => {
-    setPathParams(prev => [...prev, param || { key: '', value: '', docDescription: '', docRequired: true, docExample: '' }]);
-  };
-
-  const removePathParam = index => {
-    setPathParams(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updatePathParam = (index, field, value) => {
-    setPathParams(prev => {
-      const newParams = [...prev];
-      if (newParams[index]) {
-        newParams[index] = { ...newParams[index], [field]: value };
-      }
-      return newParams;
-    });
-  };
-
-  const handleClearBodyParams = () => setBodyParams([]);
-
-  const addBodyParam = (param = null) => {
-    // Se param for um evento do React (clique), ignoramos para usar o valor padrão
-    const initialData = (param && param.nativeEvent) ? null : param;
-
-    setBodyParams(prev => [
-    ...prev,
-    initialData || {
-      key: '',
-      value: '',
-      type: 'text',
-      docRequired: false,
-      docExample: '',
-      docDescription: ''
-    }
-  ]);
-  };
-
-  const removeBodyParam = index => {
-    setBodyParams(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateBodyParam = (index, field, value) => { // Updated to handle doc fields
-    setBodyParams(prev => {
-      const newParams = [...prev];
-      if (newParams[index]) {
-        newParams[index] = { ...newParams[index], [field]: value };
-      }
-      return newParams;
-    });
-  };
+  // Removidas as funções addHeader, removeHeader, etc. que chamavam setters inexistentes.
+  // Agora o App.jsx passa diretamente as funções do useRequestForm (addListItem, removeListItem, updateIndexedField)
+  // para os subcomponentes nas linhas 495-535.
 
   // Funções para manipular os campos do corpo da resposta (nested array)
   const addResponseField = (responseIndex, field = null) => {
@@ -841,27 +801,27 @@ function App() {
                 onRunRequest={handleRunSavedRequest}
                 onRunSingleRequest={handleRunSingleSavedRequest}
                 onBack={() => setView('collections')}
-              onAddRequest={colMethods.addRequestToCollection}
-              onUpdateName={updateCollectionName}
-              onAddFolder={colMethods.addFolderToCollection}
-              onUpdateFolderName={updateFolderName}
-              onMoveRequest={colMethods.moveRequestInCollection}
               onDeleteRequest={deleteRequest}
               onDeleteFolder={deleteFolder}
               onDeleteWorkflow={deleteWorkflow}
               onReorderItem={reorderItemInCollection}
+              onUpdateFolderName={updateFolderName}
               onUpdateEnvironments={updateCollectionEnvironments}
-              onUpdateScenarios={updateCollectionScenarios}
-              onUpdateWorkflows={updateCollectionWorkflows}
-              activeScenarioId={form.activeScenarioId}
-              activeWorkflowId={form.activeWorkflowId}
-              setActiveScenarioId={(id) => updateField('activeScenarioId', id)}
-              setActiveWorkflowId={(id) => updateField('activeWorkflowId', id)}
-              setActiveStepIndex={(idx) => updateField('activeStepIndex', idx)}
-              setActiveSubIndex={(idx) => updateField('activeSubIndex', idx)}
-              onSetActiveEnvironment={colMethods.setActiveEnvironment}
+              onSetActiveEnvironment={setActiveEnvironment}
+              onUpdateName={updateCollectionName}
+              onUpdateScenarios={colMethods.updateCollectionScenarios}
+              onUpdateWorkflows={colMethods.updateCollectionWorkflows}
+              onAddRequest={colMethods.addRequestToCollection}
+              onAddFolder={colMethods.addFolderToCollection}
+              onMoveRequest={colMethods.moveRequestInCollection}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
+              activeScenarioId={form.activeScenarioId}
+              activeWorkflowId={form.activeWorkflowId}
+              setActiveScenarioId={(v) => updateField('activeScenarioId', v)}
+              setActiveWorkflowId={(v) => updateField('activeWorkflowId', v)}
+              setActiveStepIndex={(v) => updateField('activeStepIndex', v)}
+              setActiveSubIndex={(v) => updateField('activeSubIndex', v)}
               onViewUnifiedDoc={() => {
                 const selected = getSelectedRequests();
                 if (selected.length > 0) {
@@ -900,8 +860,7 @@ function App() {
                 isRunning={isRunning}
                 updateHeader={(i, f, v) => updateIndexedField('headers', i, f, v)}
                 updatePathParam={(i, f, v) => updateIndexedField('pathParams', i, f, v)}
-                updateBodyParam={(i, f, v) => updateIndexedField('bodyParams', i, f, v)}
-                updateResponse={(i, f, v) => updateIndexedField('responses', i, f, v)} // updateResponse is already passed
+                updateResponse={(i, f, v) => updateIndexedField('responses', i, f, v)}
                 onUpdateGeneralDoc={(doc) => {
                   setCollections(prev => prev.map(col => 
                     col.id === activeCollectionId ? { ...col, generalDoc: doc } : col
@@ -987,7 +946,6 @@ function App() {
                   setAuthToken={(v) => updateField('authToken', v)}
                   setAuthUsername={(v) => updateField('authUsername', v)}
                   setAuthPassword={(v) => updateField('authPassword', v)}
-                  setApiKeyName={(v) => updateField('apiKeyName', v)}
                   setApiKeyValue={(v) => updateField('apiKeyValue', v)}
                   setBodyRawDoc={(v) => updateField('bodyRawDoc', v)} 
                   setAuthDoc={(v) => updateField('authDoc', v)}
