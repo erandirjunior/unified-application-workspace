@@ -148,11 +148,12 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             )}
           </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 group-hover:opacity-100 opacity-0 transition-opacity">
           <button 
             disabled={currentIndex === 0}
             onClick={() => isTopLevel ? moveStep(index, 'up') : moveSubStep(index, subIndex, 'up')} 
             className={`p-1 text-slate-400 hover:text-blue-500 transition-all ${currentIndex === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
+            title="Mover para cima"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" strokeWidth="2.5"/></svg>
           </button>
@@ -160,6 +161,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             disabled={currentIndex === parentList.length - 1}
             onClick={() => isTopLevel ? moveStep(index, 'down') : moveSubStep(index, subIndex, 'down')} 
             className={`p-1 text-slate-400 hover:text-blue-500 transition-all ${currentIndex === parentList.length - 1 ? 'opacity-20 cursor-not-allowed' : ''}`}
+            title="Mover para baixo"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5"/></svg>
           </button>
@@ -176,7 +178,11 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
         </button>
         )}
-        <button onClick={() => removeStep(step.id, subIndex !== null ? steps[index].id : null)} className="text-rose-500 hover:bg-rose-50 p-1 rounded-lg">
+        <button 
+          onClick={() => removeStep(step.id, subIndex !== null ? steps[index].id : null)} 
+          className="text-rose-500 hover:bg-rose-50 p-1 rounded-lg"
+          title="Remover"
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5"/></svg>
         </button>
       </div>
@@ -273,6 +279,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                         disabled={index === 0}
                         onClick={() => moveStep(index, 'up')}
                         className={`p-1 text-indigo-400 hover:text-indigo-600 transition-all ${index === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
+                        title="Mover para cima"
                       >
                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" strokeWidth="2.5"/></svg>
                       </button>
@@ -280,6 +287,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                         disabled={index === steps.length - 1}
                         onClick={() => moveStep(index, 'down')}
                         className={`p-1 text-indigo-400 hover:text-indigo-600 transition-all ${index === steps.length - 1 ? 'opacity-20 cursor-not-allowed' : ''}`}
+                        title="Mover para baixo"
                       >
                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5"/></svg>
                       </button>
