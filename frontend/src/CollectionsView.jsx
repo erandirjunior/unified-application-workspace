@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+// Certifique-se de que o caminho abaixo é o da imagem que você quer usar agora
+import logo from './img/logo.png'; 
 
 export default function CollectionsView({ collections, onSelectRequest, onCreateCollection, onDeleteCollection, onReorderCollection, onUpdateName }) {
   const [name, setName] = useState('');
@@ -205,7 +207,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
         const importedData = JSON.parse(event.target.result);
         // Validação básica da estrutura
         if (!importedData.collection || !importedData.collection.id || !importedData.collection.name) {
-          alert('Arquivo JSON inválido. Certifique-se de que é um arquivo de coleção AST DevTools.');
+          alert('Arquivo JSON inválido. Certifique-se de que é um arquivo de coleção API Test Suite.');
           return;
         }
         
@@ -232,9 +234,13 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full space-y-12">
       {/* Cabeçalho de Introdução */}
-      <div className="text-center space-y-2">
-        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Dashboard</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-lg">Organize seus testes de carga em coleções profissionais.</p>
+      <div className="flex justify-center">
+        <img 
+          src={logo} 
+          alt="API Test Suite Logo" 
+          className="h-24 w-auto object-contain" 
+          key={logo} // Adicionar a key força o React a remontar a imagem se o import mudar
+        />
       </div>
 
       {/* Seção de Criação Destacada (Hero Section) */}

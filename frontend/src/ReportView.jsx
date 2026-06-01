@@ -53,7 +53,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
       <html lang="pt-br">
       <head>
         <meta charset="UTF-8">
-        <title>Relatório AST DevTools - ${resolvedUrl}</title>
+        <title>Relatório API Test Suite - ${resolvedUrl}</title>
         <style>
           html, body { background-color: ${colors.bg} !important; color: ${colors.text} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0; }
           body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; padding: 40px; max-width: 1000px; margin: 0 auto; }

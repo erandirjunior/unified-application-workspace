@@ -9,6 +9,7 @@ import { useCollections } from './hooks/useCollections';
 import { useRequestForm } from './hooks/useRequestForm';
 import { useTestRunner } from './hooks/useTestRunner';
 import { parseCurl } from './utils/curlParser';
+import logo from './img/logo.png'; 
 
 function App() {
   // Hooks de Estado de UI e Navegação
@@ -769,7 +770,12 @@ function App() {
       {/* Barra Superior (Menu) */}
       <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-8">
-          <span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tighter uppercase">AST DevTools</span>
+          <img 
+                    src={logo} 
+                    alt="API Test Suite Logo" 
+                    className="h-8 w-auto object-contain" 
+                    key={logo} // Adicionar a key força o React a remontar a imagem se o import mudar
+                  />
           <nav className="flex gap-4">
             <button 
               onClick={() => { 
