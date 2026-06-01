@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react'; // waitFor vem do @testing-library/react
 import { describe, it, expect, vi, beforeEach } from 'vitest'; // Outros do vitest
-import { useTestRunner } from './useTestRunner';
+import { useTestRunner } from '../src/hooks/useTestRunner';
 
 describe('useTestRunner', () => {
   const mockCol = { id: '1', activeEnvironmentId: 'default', environments: [] };

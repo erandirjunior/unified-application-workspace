@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ServersView from './ServersView';
+import ServersView from '../src/ServersView';
 
 describe('ServersView', () => {
   const mockMocks = [

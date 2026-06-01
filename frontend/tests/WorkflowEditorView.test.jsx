@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import WorkflowEditorView from './WorkflowEditorView';
+import WorkflowEditorView from '../src/WorkflowEditorView';
 
 const mockWorkflow = {
   id: 'w1',

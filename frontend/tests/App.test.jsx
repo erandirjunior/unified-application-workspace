@@ -1,12 +1,12 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, beforeEach, test, expect } from 'vitest';
-import App from './App';
+import App from '../src/App';
 
 /* ===========================
    MOCK DOS COMPONENTES
 =========================== */
 
-vi.mock('./ReportView', () => ({
+vi.mock('../src/ReportView', () => ({
   default: ({ onSaveResponseToDoc, onStop }) => (
     <div data-testid="report-view">
       Report View
@@ -42,7 +42,7 @@ vi.mock('./ReportView', () => ({
   )
 }));
 
-vi.mock('./CollectionView', () => ({
+vi.mock('../src/CollectionView', () => ({
   default: ({ onSelectRequest, onViewDocumentation, onToggleSelection, onViewUnifiedDoc, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName, onRunRequest, onRunSingleRequest, onSetActiveEnvironment, onUpdateEnvironments, onImportCurl }) => (
     <div data-testid="collection-view">
       Collection View {/* Adicionado para o teste de importação de cURL */}
@@ -80,7 +80,7 @@ vi.mock('./CollectionView', () => ({
   )
 }));
 
-vi.mock('./DocumentationView', () => ({
+vi.mock('../src/DocumentationView', () => ({
   default: ({ updateRequestInCollection, onBack, onUpdateGeneralDoc, addResponseField, removeResponseField, updateResponseField, removeResponse, onSelectForEdit, addResponse }) => (
     <div data-testid="documentation-view">
       Documentation View
@@ -97,7 +97,7 @@ vi.mock('./DocumentationView', () => ({
   )
 }));
 
-vi.mock('./SaveRequestForm', () => ({
+vi.mock('../src/SaveRequestForm', () => ({
   default: ({ onSaveRequest }) => (
     <div data-testid="save-request-form">
       <button onClick={() => onSaveRequest('Request Salva')}>Salvar Nova</button>
@@ -106,7 +106,7 @@ vi.mock('./SaveRequestForm', () => ({
   )
 }));
 
-vi.mock('./ConfigView', () => ({
+vi.mock('../src/ConfigView', () => ({
   default: ({ sendRequests, updateRequestInCollection }) => (
     <div data-testid="config-view">
       <button onClick={() => sendRequests()}>Executar</button>
@@ -119,7 +119,7 @@ vi.mock('./ConfigView', () => ({
    MOCK COLLECTIONS VIEW
 =========================== */
 
-vi.mock('./CollectionsView', () => ({
+vi.mock('../src/CollectionsView', () => ({
   default: ({
     collections,
     onCreateCollection,
@@ -179,7 +179,7 @@ vi.mock('./CollectionsView', () => ({
 const mockSetCollections = vi.fn();
 const mockRunRequests = vi.fn();
 
-vi.mock('./hooks/useCollections', () => ({
+vi.mock('../src/hooks/useCollections', () => ({
   useCollections: () => ({
     collections: [
       {
@@ -226,7 +226,7 @@ let mockFormState = {
   activeSubIndex: null
 };
 
-vi.mock('./hooks/useRequestForm', () => ({
+vi.mock('../src/hooks/useRequestForm', () => ({
   useRequestForm: () => ({
     form: mockFormState,
     updateField: vi.fn((key, val) => { mockFormState[key] = val; }),
@@ -244,7 +244,7 @@ vi.mock('./hooks/useRequestForm', () => ({
   })
 }));
 
-vi.mock('./hooks/useTestRunner', () => ({
+vi.mock('../src/hooks/useTestRunner', () => ({
   useTestRunner: (activeCol, getPayload, showCustomToast) => ({
     isRunning: false,
     lastExecutedPayload: null,

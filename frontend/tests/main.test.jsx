@@ -18,7 +18,7 @@ describe('main.jsx', () => {
     document.body.appendChild(rootElement);
 
     // Importa o arquivo para disparar a execução do código de topo nível
-    await import('./main.jsx');
+    await import('../src/main.jsx');
 
     expect(ReactDOM.createRoot).toHaveBeenCalledWith(rootElement);
   });

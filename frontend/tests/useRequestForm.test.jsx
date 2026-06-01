@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { useRequestForm } from './useRequestForm';
+import { useRequestForm } from '../src/hooks/useRequestForm';
 
 describe('useRequestForm', () => {
   it('deve atualizar campos do formulário individualmente', () => {

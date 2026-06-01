@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import ScenarioEditorView from './ScenarioEditorView';
+import ScenarioEditorView from '../src/ScenarioEditorView';
 
 const mockScenario = {
   id: 's1',

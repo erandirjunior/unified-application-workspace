@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import CollectionsView from './CollectionsView';
+import CollectionsView from '../src/CollectionsView';
 
 const mockCollections = [
   { id: '1', name: 'API Produção', requests: [{ id: 'r1' }, { id: 'r2' }] },
