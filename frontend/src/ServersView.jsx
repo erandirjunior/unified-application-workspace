@@ -235,19 +235,19 @@ export default function ServersView({ onBack, onSubViewChange }) {
         <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label className="label-base">Nome Amigável</label>
-              <input className="input-base" value={currentMock.name} onChange={e => setCurrentMock({...currentMock, name: e.target.value})} />
+              <label htmlFor="mock-name" className="label-base">Nome Amigável</label>
+              <input id="mock-name" className="input-base" value={currentMock.name} onChange={e => setCurrentMock({...currentMock, name: e.target.value})} />
             </div>
             <div>
-              <label className="label-base">Método</label>
-              <select className="input-base" value={currentMock.method} onChange={e => setCurrentMock({...currentMock, method: e.target.value})}>
+              <label htmlFor="mock-method" className="label-base">Método</label>
+              <select id="mock-method" className="input-base" value={currentMock.method} onChange={e => setCurrentMock({...currentMock, method: e.target.value})}>
                 <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option><option value="ALL">ANY METHOD</option>
               </select>
             </div>
           </div>
           
           <div>
-            <label className="label-base">Path (use :param para dinâmico)</label>
+            <label htmlFor="mock-path" className="label-base">Path (use :param para dinâmico)</label>
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-slate-400">/mock</span>
               <input className="input-base font-mono" value={currentMock.path} onChange={e => setCurrentMock({...currentMock, path: e.target.value})} placeholder="/users/:id" />
@@ -271,15 +271,15 @@ export default function ServersView({ onBack, onSubViewChange }) {
               </div>
               
               <div>
-                <label className="label-base">HTTP Status</label>
-                <input type="number" className="input-base" value={currentMock.response.status} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, status: parseInt(e.target.value)}})} />
+                <label htmlFor="mock-status" className="label-base">HTTP Status</label>
+                <input id="mock-status" type="number" className="input-base" value={currentMock.response.status} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, status: parseInt(e.target.value)}})} />
               </div>
 
               <div>
-                <label className="label-base">{currentMock.response.isFile ? 'Upload do Arquivo' : 'Response Body (JSON/XML/Text)'}</label>
+                <label htmlFor="mock-payload" className="label-base">{currentMock.response.isFile ? 'Upload do Arquivo' : 'Response Body (JSON/XML/Text)'}</label>
                 {currentMock.response.isFile ? (
                   <div className="space-y-2">
-                    <input type="file" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+                    <input id="mock-payload" type="file" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
                     {currentMock.response.fileName && (
                       <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -289,7 +289,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   </div>
                 ) : (
                   <div className="relative">
-                    <textarea className="input-base font-mono text-xs min-h-[150px]" value={currentMock.response.body} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, body: e.target.value}})} />
+                    <textarea id="mock-payload" className="input-base font-mono text-xs min-h-[150px]" value={currentMock.response.body} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, body: e.target.value}})} />
                     <p className="absolute bottom-2 right-2 text-[9px] text-slate-400 font-mono">Suporta {'{{variáveis}}'}</p>
                   </div>
                 )}
@@ -313,7 +313,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   <input className="input-base !py-1 text-[10px]" placeholder="Valor Esperado" value={a.target} onChange={e => {
                     const newA = [...currentMock.assertions]; newA[i].target = e.target.value; setCurrentMock({...currentMock, assertions: newA});
                   }} />
-                  <button onClick={() => setCurrentMock({...currentMock, assertions: currentMock.assertions.filter((_, idx) => idx !== i)})} className="text-rose-500">×</button>
+                  <button onClick={() => setCurrentMock({...currentMock, assertions: currentMock.assertions.filter((_, idx) => idx !== i)})} className="text-rose-500" title="Remover Asserção">×</button>
                 </div>
               ))}
               <button 
@@ -391,12 +391,14 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   <button 
                     onClick={() => { setCurrentMock(m); setIsEditing(true); }}
                     className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"
+                    title="Editar"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                   <button 
                     onClick={() => deleteMock(m.id)}
                     className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                    title="Excluir"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                   </button>
