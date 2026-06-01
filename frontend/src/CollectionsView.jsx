@@ -207,7 +207,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
         const importedData = JSON.parse(event.target.result);
         // Validação básica da estrutura
         if (!importedData.collection || !importedData.collection.id || !importedData.collection.name) {
-          alert('Arquivo JSON inválido. Certifique-se de que é um arquivo de coleção API Test Suite.');
+          alert('Arquivo JSON inválido. Certifique-se de que é um arquivo de coleção UAW.');
           return;
         }
         

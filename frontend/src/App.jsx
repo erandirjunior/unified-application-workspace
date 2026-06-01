@@ -772,7 +772,7 @@ function App() {
         <div className="flex items-center gap-8">
           <img 
                     src={logo} 
-                    alt="API Test Suite Logo" 
+                    alt="UAW Unified API Workspace Logo" 
                     className="h-8 w-auto object-contain" 
                     key={logo} // Adicionar a key força o React a remontar a imagem se o import mudar
                   />

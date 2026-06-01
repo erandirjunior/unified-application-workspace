@@ -90,7 +90,7 @@ func main() {
 	http.HandleFunc("/mock/", mockServerHandler)
 	http.HandleFunc("/mock-stream", mockStreamHandler)
 
-    fmt.Println("🚀 AST DevTools Backend rodando em http://localhost:8080")
+    fmt.Println("🚀 Unified API Workspace Backend rodando em http://localhost:8080")
     fmt.Println("👉 Rota de execução: POST http://localhost:8080/run")
     if err := http.ListenAndServe(":8080", nil); err != nil {
         fmt.Println(err)
