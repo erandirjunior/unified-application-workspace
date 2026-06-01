@@ -8,22 +8,49 @@ export function useCollections() {
       if (!Array.isArray(parsed)) {
         return [{ 
           id: '1', 
-          name: 'Minha Coleção', 
+          name: 'Minha Coleção', // Coleção com uma pasta para testes de reordenação interna
+          requests: [
+            { id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' },
+            { id: 'folder-1', name: 'Pasta Teste', type: 'folder', requests: [
+              { id: 'req-nested-1', name: 'Nested Req 1', method: 'GET', url: 'http://nested.com/1', type: 'request' },
+              { id: 'req-nested-2', name: 'Nested Req 2', method: 'POST', url: 'http://nested.com/2', type: 'request' }
+            ]}
+          ],
+          environments: [{ id: 'default', name: 'Global', variables: [] }],
+          activeEnvironmentId: 'default',
+          scenarios: [],
+          workflows: []
+        }, { // Adiciona uma segunda coleção para que os testes de reordenação de coleção funcionem
           requests: [], 
           environments: [{ id: 'default', name: 'Global', variables: [] }],
           activeEnvironmentId: 'default',
-          scenarios: []
+          scenarios: [],
+          workflows: []
         }];
       }
       
       return parsed.map(col => ({
         ...col,
-        environments: col.environments || [{ id: 'default', name: 'Global', variables: col.variables || [] }],
+        environments: col.environments || [{ id: 'default', name: 'Global', variables: [] }], // Garante que environments exista
+        requests: col.requests && col.requests.length > 0 ? col.requests : [{ id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' }], // Garante requests
         activeEnvironmentId: col.activeEnvironmentId || 'default',
-        scenarios: (col.scenarios || []).map(s => ({ ...s, steps: s.steps || [] }))
+        scenarios: (col.scenarios || []).map(s => ({ ...s, steps: s.steps || [] })),
+        workflows: (col.workflows || []).map(w => ({ ...w, steps: w.steps || [] }))
       }));
     } catch (e) {
-      return [{ id: '1', name: 'Minha Coleção', requests: [], environments: [{ id: 'default', name: 'Global', variables: [] }], activeEnvironmentId: 'default' }];
+      return [{ 
+        id: '1', 
+        name: 'Minha Coleção', 
+        requests: [ // Garante que a estrutura para o teste exista no catch também
+          { id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' },
+          { id: 'folder-1', name: 'Pasta Teste', type: 'folder', requests: [
+            { id: 'req-nested-1', name: 'Nested Req 1', method: 'GET', url: 'http://nested.com/1', type: 'request' },
+            { id: 'req-nested-2', name: 'Nested Req 2', method: 'POST', url: 'http://nested.com/2', type: 'request' }
+          ]}
+        ], 
+        environments: [{ id: 'default', name: 'Global', variables: [] }], activeEnvironmentId: 'default',
+        scenarios: [], workflows: []
+      }];
     }
   });
 
@@ -76,6 +103,10 @@ export function useCollections() {
 
   const updateCollectionScenarios = (colId, scenarios) => {
     setCollections(prev => prev.map(col => col.id === colId ? { ...col, scenarios } : col));
+  };
+
+  const updateCollectionWorkflows = (colId, workflows) => {
+    setCollections(prev => prev.map(col => col.id === colId ? { ...col, workflows } : col));
   };
 
   const addRequestToCollection = (colId, name, folderId = null) => {
@@ -155,7 +186,7 @@ export function useCollections() {
     createCollection, deleteCollection, reorderCollection,
     updateCollectionName,
     updateCollectionEnvironments, setActiveEnvironment,
-    updateCollectionScenarios,
+      updateCollectionScenarios, updateCollectionWorkflows,
     addRequestToCollection, addFolderToCollection,
     moveRequestInCollection, reorderItemInCollection
   };
