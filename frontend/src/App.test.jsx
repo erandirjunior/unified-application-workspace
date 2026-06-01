@@ -43,9 +43,9 @@ vi.mock('./ReportView', () => ({
 }));
 
 vi.mock('./CollectionView', () => ({
-  default: ({ onSelectRequest, onViewDocumentation, onToggleSelection, onViewUnifiedDoc, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName, onRunRequest, onRunSingleRequest, onSetActiveEnvironment, onUpdateEnvironments }) => (
+  default: ({ onSelectRequest, onViewDocumentation, onToggleSelection, onViewUnifiedDoc, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName, onRunRequest, onRunSingleRequest, onSetActiveEnvironment, onUpdateEnvironments, onImportCurl }) => (
     <div data-testid="collection-view">
-      Collection View
+      Collection View {/* Adicionado para o teste de importação de cURL */}
       <button onClick={() => onSelectRequest({ id: 'req-1', name: 'Req 1', responses: [] }, 'config')}>Abrir Request</button>
       <button onClick={() => onSelectRequest({ id: 'req-nested', name: 'Nested', responses: [] }, 'config')}>Abrir Nested</button>
       <button onClick={() => onSelectRequest({ id: 'step-1', name: 'Step 1' }, 'config', 'scen-1', 0)}>Editar Passo Cenário</button>
@@ -66,6 +66,7 @@ vi.mock('./CollectionView', () => ({
       <button onClick={() => onReorderItem('1', 'req-nested', 'up')}>Subir Nested</button>
       <button onClick={() => onUpdateFolderName('1', 'Novo Nome Pasta', 'folder-1')}>Renomear Pasta</button>
       <button onClick={() => onRunRequest([{ id: 's1', name: 'Step 1' }], 'scen-1', false)}>Executar Cenário</button>
+      <button onClick={() => onImportCurl('1')}>Importar Curl Raiz</button>
       <button onClick={() => onRunRequest([{ id: 'w1', name: 'Step 1' }], 'work-1', true)}>Executar Workflow</button>
       <button onClick={() => onRunRequest([{ type: 'parallel', id: 'pg-1', requests: [{ id: 'p1', method: 'GET', url: '/p1' }] }], 'work-1', true)}>Executar Workflow Paralelo</button>
       <button onClick={() => onRunRequest({ id: 'req-1', name: 'Req 1', method: 'GET', url: 'http://api.com', totalRequests: 10, duration: 5 })}>Executar Carga Single</button>
@@ -73,6 +74,7 @@ vi.mock('./CollectionView', () => ({
       <button onClick={() => onRunSingleRequest({ id: 'req-1', name: 'Req 1', method: 'GET', url: 'http://api.com' })}>Executar Single</button>
       <button onClick={() => onSetActiveEnvironment('1', 'env-2')}>Set Env</button>
       <button onClick={() => onUpdateEnvironments('1', [])}>Update Envs</button>
+      <button onClick={() => onImportCurl('1', 'folder-1')}>Importar Curl</button>
       <button onClick={() => onUpdateFolderName('1', 'Nova Subpasta', 'folder-deep')}>Renomear Subpasta</button>
     </div>
   )
@@ -98,8 +100,8 @@ vi.mock('./DocumentationView', () => ({
 vi.mock('./SaveRequestForm', () => ({
   default: ({ onSaveRequest }) => (
     <div data-testid="save-request-form">
-      <button onClick={() => onSaveRequest('Request Salva', '1')}>Salvar Nova</button>
-      <button onClick={() => onSaveRequest('', '1')}>Salvar Sem Nome</button>
+      <button onClick={() => onSaveRequest('Request Salva')}>Salvar Nova</button>
+      <button onClick={() => onSaveRequest('')}>Salvar Sem Nome</button>
     </div>
   )
 }));
@@ -124,7 +126,7 @@ vi.mock('./CollectionsView', () => ({
     onDeleteCollection,
     onSelectRequest,
     onReorderCollection,
-    onUpdateName
+    onUpdateName,
   }) => (
     <div data-testid="collections-view">
       <button
@@ -159,7 +161,7 @@ vi.mock('./CollectionsView', () => ({
         <div key={col.id}>
           <span>{col.name}</span>
 
-          <button
+          <button // Este é o botão que estava causando o erro
             onClick={() => onDeleteCollection(col.id)}
           >
             Excluir {col.name}
@@ -950,5 +952,55 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Ver Doc'));
     fireEvent.click(screen.getByText('Add Field')); // Tenta adicionar campo na resposta 0 (que não existe)
     expect(mockFormState.responses).toEqual([]);
+  });
+
+  test('imports a request from cURL via the modal and clears input on success', async () => {
+    render(<App />);
+    
+    // Entra na coleção para ter o contexto de importação
+    fireEvent.click(screen.getByText('Abrir Collection'));
+    
+    // Aciona a abertura do modal através da CollectionView mockada (importação na raiz)
+    fireEvent.click(screen.getByText('Importar Curl Raiz'));
+    
+    expect(screen.getByText(/Importar Requisição/i)).toBeInTheDocument();
+    
+    const textarea = screen.getByPlaceholderText(/curl -X POST/i);
+    fireEvent.change(textarea, { target: { value: 'curl https://api.exemplo.com/import-test' } });
+    
+    fireEvent.click(screen.getByText('Importar para a Coleção'));
+    
+    expect(screen.getByText(/Requisição importada do cURL com sucesso/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Importar Requisição/i)).not.toBeInTheDocument();
+    expect(mockSetCollections).toHaveBeenCalled();
+  });
+
+  test('imports a request from cURL into a specific folder', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('Abrir Collection'));
+    
+    // O mock da CollectionView tem um botão que passa o ID da pasta 'folder-1'
+    fireEvent.click(screen.getByText('Importar Curl')); 
+    
+    const textarea = screen.getByPlaceholderText(/curl -X POST/i);
+    fireEvent.change(textarea, { target: { value: 'curl -X POST https://api.com/folder-import' } });
+    fireEvent.click(screen.getByText('Importar para a Coleção'));
+    
+    expect(screen.getByText(/Requisição importada do cURL com sucesso/i)).toBeInTheDocument();
+    expect(mockSetCollections).toHaveBeenCalled();
+  });
+
+  test('does not trigger import if cURL input is empty and allows cancelation', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByText('Abrir Collection'));
+    fireEvent.click(screen.getByText('Importar Curl Raiz'));
+    
+    // Tenta importar vazio (não deve chamar setCollections)
+    fireEvent.click(screen.getByText('Importar para a Coleção'));
+    expect(mockSetCollections).not.toHaveBeenCalled();
+    
+    // Fecha o modal
+    fireEvent.click(screen.getByText('Cancelar'));
+    expect(screen.queryByText(/Importar Requisição/i)).not.toBeInTheDocument();
   });
 });

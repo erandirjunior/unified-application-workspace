@@ -7,7 +7,7 @@ import ServersView from './ServersView';
 
 export default function CollectionView({ 
   collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
-  onRunSingleRequest, onBack, onAddRequest, onAddFolder, 
+  onRunSingleRequest, onBack, onAddRequest, onAddFolder, onImportCurl,
   onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName,
   onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows,
   selectedRequestIds = [], onToggleSelection, onViewUnifiedDoc,
@@ -126,7 +126,7 @@ export default function CollectionView({
   const renderRequestItem = (req, isNested = false) => (
     <div key={req.id} className="flex items-center gap-2 group">
       <div className="flex items-center px-2">
-        <input 
+        <input
           type="checkbox" 
           checked={selectedRequestIds.includes(req.id)}
           onChange={() => onToggleSelection(req.id)}
@@ -265,6 +265,13 @@ export default function CollectionView({
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
           <button onClick={(e) => { e.stopPropagation(); onAddRequest(collection.id, 'Nova Requisição', folder.id); }} className="text-[10px] bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 transition-all">+ Req</button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onImportCurl(collection.id, folder.id); }} 
+            className="text-[10px] bg-indigo-500 text-white px-2 py-1 rounded-md hover:bg-indigo-600 transition-all"
+            title="Importar cURL nesta pasta"
+          >
+            + cURL
+          </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onDeleteFolder(collection.id, folder.id); }} 
             className="p-1 text-slate-400 hover:text-rose-500 transition-colors" 
@@ -515,6 +522,13 @@ export default function CollectionView({
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Explorar Itens</h2>
               </div>
               <div className="flex gap-3">
+                <button 
+                  onClick={() => onImportCurl(collection.id)}
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                  IMPORTAR CURL
+                </button>
                 <button 
                   onClick={() => onAddRequest(collection.id, 'Nova Requisição')}
                   className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2"

@@ -246,6 +246,38 @@ export default function DocumentationView({
           }
         });
         console.log("Discovered fields after parsing (XML):", discoveredFields); // Debug log
+      } else if (request.bodyType === 'form-urlencoded') {
+        // Usar o bodyRaw diretamente para parsear, pois ele já deve estar no formato correto
+        // E garantir que os bodyParams do form sejam atualizados
+        const pairs = (request.bodyRaw || '').split('&'); 
+        // Limpa os bodyParams existentes antes de adicionar os novos
+        // Isso evita duplicatas se o usuário clicar em sincronizar várias vezes
+        // ou se o bodyRaw for alterado
+        if (onClearBodyParams) {
+          onClearBodyParams();
+        } else {
+          // Fallback caso a prop onClearBodyParams não exista: remove um por um
+          for (let i = (bodyParams || []).length - 1; i >= 0; i--) {
+            removeBodyParam(i);
+          }
+        }
+
+        // Adiciona os novos parâmetros
+        pairs.forEach(pair => {
+          const eqIndex = pair.indexOf('=');
+          const key = eqIndex > -1 ? pair.substring(0, eqIndex) : pair;
+          const value = eqIndex > -1 ? pair.substring(eqIndex + 1) : '';
+          if (key) {
+            discoveredFields.push({
+              key: decodeURIComponent(key.replace(/\+/g, ' ')),
+              type: 'text',
+              value: decodeURIComponent(value.replace(/\+/g, ' ')),
+              docRequired: false,
+              docExample: value,
+              docDescription: ''
+            });
+          }
+        });
       }
 
       // Usa diretamente a prop bodyParams que vem do estado do App.jsx
@@ -840,6 +872,8 @@ export default function DocumentationView({
                   <option value="form-data">Form Data</option>
                   <option value="xml">XML</option>
                   <option value="text">Plain Text (Texto)</option>
+                  <option value="form-urlencoded">Form URL Encoded</option>
+                  <option value="file">Arquivo Binário</option>
                 </select>
               </div>
             )}

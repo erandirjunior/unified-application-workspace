@@ -229,6 +229,20 @@ describe('DocumentationView', () => {
     expect(defaultProps.setBodyRaw).toHaveBeenCalledWith('{\n  "id": 1,\n  "name": "test"\n}');
   });
 
+  it('should synchronize fields from a form-urlencoded body in EDITOR mode', () => {
+    const reqWithFormUrlEncoded = {
+      ...mockRequest,
+      bodyType: 'form-urlencoded',
+      bodyRaw: 'param1=value1&param2=value2'
+    };
+    render(<DocumentationView {...defaultProps} request={reqWithFormUrlEncoded} />);
+
+    fireEvent.click(screen.getByText('EDITOR'));
+    fireEvent.click(screen.getByText(/Request Body/));
+    fireEvent.click(screen.getByTitle('Sincroniza chaves do JSON/XML com a tabela de documentação'));
+    expect(defaultProps.addBodyParam).toHaveBeenCalledWith(expect.objectContaining({ key: 'param1', value: 'value1' }));
+  });
+
   it('should add and remove body parameter fields in EDITOR mode', () => {
     const reqWithBodyParams = { ...mockRequest, bodyType: 'form-data', bodyParams: [{ key: 'field1', value: 'value1' }] };
     render(<DocumentationView {...defaultProps} request={reqWithBodyParams} bodyParams={reqWithBodyParams.bodyParams} />);

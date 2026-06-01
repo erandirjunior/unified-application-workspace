@@ -8,6 +8,7 @@ import DocumentationView from './DocumentationView';
 import { useCollections } from './hooks/useCollections';
 import { useRequestForm } from './hooks/useRequestForm';
 import { useTestRunner } from './hooks/useTestRunner';
+import { parseCurl } from './utils/curlParser';
 
 function App() {
   // Hooks de Estado de UI e Navegação
@@ -24,6 +25,9 @@ function App() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [onConfirmCallback, setOnConfirmCallback] = useState(null);
+  const [showCurlModal, setShowCurlModal] = useState(false);
+  const [curlInput, setCurlInput] = useState('');
+  const [importTarget, setImportTarget] = useState({ colId: null, folderId: null });
 
   // UI Helpers (Devem ser declarados antes de serem usados por outros hooks)
   const showCustomToast = (message, type = 'success') => { setToastMessage(message); setToastType(type); setShowToast(true); };
@@ -222,6 +226,51 @@ function App() {
       return { ...col, requests: recursiveUpdate(col.requests) };
     }));
     if (!silent) showCustomToast('Requisição atualizada com sucesso!', 'success');
+  };
+
+  const handleImportFromCurl = (curlString, colId, folderId = null) => {
+    try {
+      const parsed = parseCurl(curlString);
+      const newRequest = {
+        id: Date.now().toString(),
+        type: 'request',
+        ...parsed,
+        responses: [],
+        pathParams: [],
+        bodyParams: parsed.bodyParams || [],
+        assertions: [],
+        extractions: []
+      };
+
+      setCollections(prev => prev.map(col => {
+        if (col.id !== colId) return col;
+
+        const updateItems = (items) => {
+          if (!folderId) return [...items, newRequest];
+          return items.map(item => {
+            if (item.type === 'folder' && item.id === folderId) {
+              return { ...item, requests: [...(item.requests || []), newRequest] };
+            }
+            if (item.type === 'folder') {
+              return { ...item, requests: updateItems(item.requests || []) };
+            }
+            return item;
+          });
+        };
+
+        return { ...col, requests: updateItems(col.requests) };
+      }));
+      showCustomToast('Requisição importada do cURL com sucesso!', 'success');
+    } catch (e) {
+      showCustomToast('Falha ao processar o comando cURL.', 'error');
+    }
+  };
+
+  const executeCurlImport = () => {
+    if (!curlInput.trim()) return;
+    handleImportFromCurl(curlInput, importTarget.colId, importTarget.folderId);
+    setCurlInput('');
+    setShowCurlModal(false);
   };
 
   const reorderCollection = (id, direction) => {
@@ -608,6 +657,8 @@ function App() {
       duration: 1,
       headers: headerMap,
       body: req.bodyRaw || '',
+      bodyType: req.bodyType,
+      bodyParams: req.bodyParams || [],
       assertions: req.assertions || [],
       extractions: req.extractions || [],
       authType: req.authType,
@@ -638,6 +689,8 @@ function App() {
             ...r, 
             headers: headerMap, 
             body: r.bodyRaw || '',
+            bodyType: r.bodyType,
+            bodyParams: r.bodyParams || [],
             totalRequests: isWorkflowMode ? 1 : (parseInt(r.totalRequests) || 1),
             duration: isWorkflowMode ? 0 : (parseInt(r.duration) || 0),
             rampUp: isWorkflowMode ? 0 : (parseInt(r.rampUp) || 0),
@@ -695,6 +748,8 @@ function App() {
       rampUp: parseInt(req.rampUp || 0),
       headers: headerMap,
       body: req.bodyRaw || '',
+      bodyType: req.bodyType,
+      bodyParams: req.bodyParams || [],
       assertions: req.assertions || [],
       extractions: req.extractions || [],
       authType: req.authType,
@@ -813,6 +868,10 @@ function App() {
               onUpdateWorkflows={colMethods.updateCollectionWorkflows}
               onAddRequest={colMethods.addRequestToCollection}
               onAddFolder={colMethods.addFolderToCollection}
+              onImportCurl={(colId, folderId = null) => {
+                setImportTarget({ colId, folderId });
+                setShowCurlModal(true);
+              }}
               onMoveRequest={colMethods.moveRequestInCollection}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
@@ -923,9 +982,8 @@ function App() {
                     </button>
                   </div>
                 )}
-                <SaveRequestForm 
-                  collections={collections} 
-                  onSaveRequest={saveCurrentRequest} 
+                <SaveRequestForm  
+                  onSaveRequest={(name) => saveCurrentRequest(name, activeCollectionId)} 
                   requestName={form.requestName}
                   setRequestName={(v) => updateField('requestName', v)}
                 />
@@ -975,6 +1033,39 @@ function App() {
         {toastType === 'error' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
         {toastType === 'info' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
         <span>{toastMessage}</span>
+      </div>
+    )}
+
+    {/* Modal de Importação cURL */}
+    {showCurlModal && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+              <span className="text-blue-500">curl</span> Importar Requisição
+            </h3>
+            <button onClick={() => setShowCurlModal(false)} className="text-slate-400 hover:text-rose-500 text-2xl">&times;</button>
+          </div>
+          <div className="p-6">
+            <label className="label-base">Cole o comando cURL abaixo</label>
+            <textarea
+              className="input-base h-64 font-mono text-xs resize-none"
+              placeholder="curl -X POST https://api.exemplo.com/users -d '...' "
+              value={curlInput}
+              onChange={(e) => setCurlInput(e.target.value)}
+            />
+            <p className="mt-2 text-xs text-slate-500">Suporta headers, autenticação Basic/Bearer e corpos JSON/Raw.</p>
+          </div>
+          <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+            <button onClick={() => setShowCurlModal(false)} className="px-6 py-2 text-slate-600 dark:text-slate-400 font-bold">Cancelar</button>
+            <button 
+              onClick={executeCurlImport}
+              className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+            >
+              Importar para a Coleção
+            </button>
+          </div>
+        </div>
       </div>
     )}
 

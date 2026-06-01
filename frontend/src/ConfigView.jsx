@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 export default function ConfigView({
   url, setUrl,
@@ -32,6 +32,17 @@ export default function ConfigView({
   const [isBodyOpen, setIsBodyOpen] = useState(false);
   const [isAssertionsOpen, setIsAssertionsOpen] = useState(false);
   const [isExtractionsOpen, setIsExtractionsOpen] = useState(false);
+
+  // Ref para o input de arquivo oculto
+  const fileInputRef = useRef(null);
+  const [activeParamIndex, setActiveParamIndex] = useState(null);
+
+  const handleFileButtonClick = (index) => {
+    setActiveParamIndex(index);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -229,9 +240,11 @@ export default function ConfigView({
                         <option value="form-data">Form Data</option>
                         <option value="xml">XML</option>
                         <option value="text">Plain Text</option>
+                        <option value="form-urlencoded">Form URL Encoded</option>
+                        <option value="file">Arquivo Binário</option>
                       </select>
 
-                      {bodyType !== 'none' && bodyType !== 'form-data' && (
+                      {bodyType !== 'none' && bodyType !== 'form-data' && bodyType !== 'form-urlencoded' && (
                         <textarea
                           className="input-base font-mono text-xs min-h-[150px]"
                           placeholder={`Insira o corpo da requisição (${bodyType.toUpperCase()})...`}
@@ -240,25 +253,66 @@ export default function ConfigView({
                         />
                       )}
 
-                      {bodyType === 'form-data' && (
+                      {(bodyType === 'form-data' || bodyType === 'form-urlencoded') && (
                         <div className="space-y-3">
                           {bodyParams.map((p, i) => (
-                            <div key={i} className="flex gap-2">
+                            <div key={i} className="flex gap-2 items-center">
+                              {bodyType === 'form-data' && (
+                                <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl h-10 w-32 shrink-0 shadow-inner">
+                                  <button
+                                    onClick={() => updateBodyParam(i, 'type', 'text')} // Define o tipo como 'text'
+                                    className={`flex-1 text-[10px] font-bold rounded-lg transition-all ${p.type !== 'file' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`} // Estilo para 'text'
+                                  >
+                                    TEXTO
+                                  </button>
+                                  <button
+                                    onClick={() => updateBodyParam(i, 'type', 'file')} // Define o tipo como 'file'
+                                    className={`flex-1 text-[10px] font-bold rounded-lg transition-all ${p.type === 'file' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`} // Estilo para 'file'
+                                  >
+                                    FILE
+                                  </button>
+                                </div>
+                              )}
                               <input
                                 className="input-base flex-1"
                                 placeholder="Key"
                                 value={p.key}
                                 onChange={(e) => updateBodyParam(i, 'key', e.target.value)}
                               />
-                              <input
-                                className="input-base flex-1"
-                                placeholder="Value"
-                                value={p.value}
-                                onChange={(e) => updateBodyParam(i, 'value', e.target.value)}
-                              />
+                              <div className="flex-1 flex gap-2">
+                                <input
+                                  className="input-base flex-1"
+                                  placeholder={p.type === 'file' ? "@caminho/do/arquivo" : "Value"}
+                                  value={p.value}
+                                  onChange={(e) => updateBodyParam(i, 'value', e.target.value)}
+                                />
+                                {p.type === 'file' && (
+                                  <button
+                                    onClick={() => handleFileButtonClick(i)}
+                                    className="px-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
+                                    title="Selecionar arquivo da máquina"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                  </button>
+                                )}
+                              </div>
                               <button onClick={() => removeBodyParam(i)} className="text-rose-500 p-2">×</button>
                             </div>
                           ))}
+
+                          {/* Input de arquivo oculto global para a View */}
+                          <input 
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file && activeParamIndex !== null) {
+                                updateBodyParam(activeParamIndex, 'value', `@${file.name}`);
+                              }
+                            }}
+                          />
+
                           <button
                             className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
                             onClick={addBodyParam}
