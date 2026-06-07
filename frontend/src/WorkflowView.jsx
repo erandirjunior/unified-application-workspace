@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function WorkflowView({ collection, onUpdateWorkflows, onEditWorkflow, onRunWorkflow, onDeleteWorkflow }) {
+export default function WorkflowView({ collection, onUpdateWorkflows, onEditWorkflow, onRunWorkflow, onDeleteWorkflow, t }) {
   const [newName, setNewName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const workflows = collection.workflows || [];
@@ -16,15 +16,15 @@ export default function WorkflowView({ collection, onUpdateWorkflows, onEditWork
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Fluxos Inteligentes (Workflows)</h2>
-        <button onClick={() => setIsCreating(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all">+ Novo Workflow</button>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t.workflows.title}</h2>
+        <button onClick={() => setIsCreating(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all">{t.workflows.newBtn}</button>
       </div>
 
       {isCreating && (
         <div className="flex gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <input autoFocus className="input-base flex-1" placeholder="Nome do workflow..." value={newName} onChange={(e) => setNewName(e.target.value)} />
-          <button onClick={handleAddWorkflow} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-xs">Criar</button>
-          <button onClick={() => setIsCreating(false)} className="text-slate-500 font-bold px-2">Cancelar</button>
+          <input autoFocus className="input-base flex-1" placeholder={t.workflows.placeholder} value={newName} onChange={(e) => setNewName(e.target.value)} />
+          <button onClick={handleAddWorkflow} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-xs">{t.common.create}</button>
+          <button onClick={() => setIsCreating(false)} className="text-slate-500 font-bold px-2">{t.common.cancel}</button>
         </div>
       )}
 
@@ -34,7 +34,7 @@ export default function WorkflowView({ collection, onUpdateWorkflows, onEditWork
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors">{workflow.name}</h3>
-                <p className="text-[10px] text-slate-500 uppercase font-black">{workflow.steps?.length || 0} Blocos de Execução</p>
+                <p className="text-[10px] text-slate-500 uppercase font-black">{workflow.steps?.length || 0} {t.workflows.stepsCount}</p>
               </div>
               <div className="flex gap-2">
                 <button 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack, onRun, onEditStep, collection }) {
+export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack, onRun, onEditStep, collection, t }) {
   const [name, setName] = useState(workflow?.name || '');
   const [description, setDescription] = useState(workflow?.description || '');
   const [steps, setSteps] = useState(workflow.steps || []);
@@ -17,7 +17,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
     const newReq = {
       id: Date.now().toString(),
       type: 'request',
-      name: 'Nova Requisição',
+      name: 'Nova Action',
       method: 'GET',
       url: 'https://api.example.com',
       totalRequests: 1, // Workflows sempre executam 1 vez
@@ -133,7 +133,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
           <div className="text-xs font-bold truncate dark:text-slate-200">
             {isWaitStep ? (
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <span>Esperar</span>
+                <span>{t.scenarios.editor.waitLabel}</span>
                 <input 
                   type="number" 
                   min="1"
@@ -141,7 +141,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   value={step.url} // url armazena a duração para WAIT
                   onChange={(e) => updateWaitStepDuration(index, e.target.value)}
                 />
-                <span>segundos</span>
+                <span>{t.scenarios.editor.waitSuffix}</span>
               </div>
             ) : (
               step.name
@@ -153,7 +153,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             disabled={currentIndex === 0}
             onClick={() => isTopLevel ? moveStep(index, 'up') : moveSubStep(index, subIndex, 'up')} 
             className={`p-1 text-slate-400 hover:text-blue-500 transition-all ${currentIndex === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
-            title="Mover para cima"
+            title={t.scenarios.editor.moveUp}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" strokeWidth="2.5"/></svg>
           </button>
@@ -161,7 +161,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             disabled={currentIndex === parentList.length - 1}
             onClick={() => isTopLevel ? moveStep(index, 'down') : moveSubStep(index, subIndex, 'down')} 
             className={`p-1 text-slate-400 hover:text-blue-500 transition-all ${currentIndex === parentList.length - 1 ? 'opacity-20 cursor-not-allowed' : ''}`}
-            title="Mover para baixo"
+            title={t.scenarios.editor.moveDown}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5"/></svg>
           </button>
@@ -173,7 +173,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             onEditStep(step, index, subIndex);
           }}
           className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-          title="Editar Requisição"
+          title={t.scenarios.editor.editStep}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
         </button>
@@ -181,7 +181,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
         <button 
           onClick={() => removeStep(step.id, subIndex !== null ? steps[index].id : null)} 
           className="text-rose-500 hover:bg-rose-50 p-1 rounded-lg"
-          title="Remover"
+          title={t.collection.tooltips.delete}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5"/></svg>
         </button>
@@ -193,10 +193,10 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Editor de Workflow: {name}</h2>
+        <h2 className="text-xl font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">{t.workflows.editor.title} {name}</h2>
         <div className="flex gap-2">
-          <button onClick={handleSave} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">SALVAR</button>
-          <button onClick={() => onRun(steps)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/20">EXECUTAR</button>
+          <button onClick={handleSave} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">{t.common.save}</button>
+          <button onClick={() => onRun(steps)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/20">{t.config.actions.runRequests}</button>
         </div>
       </div>
 
@@ -204,23 +204,23 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
         {/* Toolbox */}
         <div className="lg:col-span-1 space-y-4">
           <div>
-            <label className="label-base">Nome do Workflow</label>
-            <input className="input-base text-lg font-bold" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Fluxo de Autenticação" />
+            <label className="label-base">{t.workflows.placeholder}</label>
+            <input className="input-base text-lg font-bold" value={name} onChange={e => setName(e.target.value)} placeholder={t.workflows.placeholder} />
           </div>
           <div>
-            <label className="label-base">Descrição</label>
-            <textarea className="input-base min-h-[100px] text-sm" value={description} onChange={e => setDescription(e.target.value)} placeholder="Descreva o objetivo deste workflow..." />
+            <label className="label-base">{t.config.descriptionPlaceholder}</label>
+            <textarea className="input-base min-h-[100px] text-sm" value={description} onChange={e => setDescription(e.target.value)} placeholder={t.config.descriptionPlaceholder} />
           </div>
           <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800">
-            <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Adicionar Componentes</h3>
+            <h3 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">{t.scenarios.editor.addComponents}</h3>
             <div className="grid gap-3">
               <button onClick={() => addRequestStep()} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-500 transition-all">
                 <div className="w-8 h-8 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" strokeWidth="2"/></svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold dark:text-white">Requisição Única</p>
-                  <p className="text-[10px] text-slate-500">Execução sequencial</p>
+                  <p className="text-sm font-bold dark:text-white">{t.workflows.editor.stepSingle}</p>
+                  <p className="text-[10px] text-slate-500">{t.workflows.editor.stepSingleSub}</p>
                 </div>
               </button>
               <button onClick={addParallelGroup} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-indigo-500 transition-all">
@@ -228,8 +228,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" strokeWidth="2"/></svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold dark:text-white">Grupo Paralelo</p>
-                  <p className="text-[10px] text-slate-500">Executa vários ao mesmo tempo</p>
+                  <p className="text-sm font-bold dark:text-white">{t.workflows.editor.stepParallel}</p>
+                  <p className="text-[10px] text-slate-500">{t.workflows.editor.stepParallelSub}</p>
                 </div>
               </button>
               <button onClick={() => { setTargetGroupId(null); setIsCopyModalOpen(true); }} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-emerald-500 transition-all">
@@ -237,8 +237,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" strokeWidth="2"/></svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold dark:text-white">Copiar da Coleção</p>
-                  <p className="text-[10px] text-slate-500">Usar request existente</p>
+                  <p className="text-sm font-bold dark:text-white">{t.workflows.editor.stepCopy}</p>
+                  <p className="text-[10px] text-slate-500">{t.workflows.editor.stepCopySub}</p>
                 </div>
               </button>
               <button onClick={addWaitStep} className="flex items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-amber-500 transition-all">
@@ -246,8 +246,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" strokeWidth="2"/></svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-bold dark:text-white">Pausa (Wait)</p>
-                  <p className="text-[10px] text-slate-500">Aguardar um tempo determinado</p>
+                  <p className="text-sm font-bold dark:text-white">{t.workflows.editor.stepWait}</p>
+                  <p className="text-[10px] text-slate-500">{t.workflows.editor.stepWaitSub}</p>
                 </div>
               </button>
             </div>
@@ -301,7 +301,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {(step.requests || []).map((req, subIdx) => renderStepCard(req, index, subIdx))}
                     {step.requests.length === 0 && (
-                      <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">Vazio - Adicione requisições paralelos</div>
+                      <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">Vazio - Adicione actions paralelas</div>
                     )}
                   </div>
                 </div>
@@ -318,8 +318,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
           {steps.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-slate-400">
               <svg className="w-16 h-16 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" strokeWidth="1.5"/></svg>
-              <p className="font-medium">Comece a montar seu workflow lógico</p>
-              <p className="text-xs opacity-60 mt-1 text-center">Combine execuções sequenciais e paralelas para automatizar processos complexos.</p>
+              <p className="font-medium">{t.workflows.editor.empty}</p>
+              <p className="text-xs opacity-60 mt-1 text-center">{t.workflows.editor.emptySub}</p>
             </div>
           )}
         </div>
@@ -331,8 +331,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-xl font-bold dark:text-white">Copiar da Coleção</h3>
-                <p className="text-xs text-slate-500 mt-1">Selecione uma requisição existente para adicionar ao Workflow.</p>
+                <h3 className="text-xl font-bold dark:text-white">{t.scenarios.editor.copyModal.title}</h3>
+                <p className="text-xs text-slate-500 mt-1">{t.scenarios.editor.copyModal.subtitle}</p>
               </div>
               <button onClick={() => setIsCopyModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
             </div>
@@ -340,7 +340,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
               <input 
                 autoFocus
                 type="text" 
-                placeholder="Pesquisar requisições..." 
+                placeholder={t.scenarios.editor.copyModal.search} 
                 className="input-base text-sm"
                 value={copySearch}
                 onChange={(e) => setCopySearch(e.target.value)}
@@ -359,7 +359,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                       <span className="text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-500/20 text-blue-500 uppercase">{req.method}</span>
                       <span className="text-sm font-bold dark:text-white truncate">{req.name}</span>
                     </div>
-                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 font-bold text-xs transition-opacity">Importar →</span>
+                    <span className="text-blue-500 opacity-0 group-hover:opacity-100 font-bold text-xs transition-opacity">{t.scenarios.editor.copyModal.add}</span>
                   </div>
                 ))}
             </div>
@@ -369,7 +369,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
 
       <div className="pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
         <p className="text-[10px] text-slate-400 italic">
-          Nota: No modo Workflow, os parâmetros de carga (Threads/Duração) são ignorados. Cada requisição é disparada uma única vez.
+          {t.workflows.editor.note}
         </p>
       </div>
     </div>

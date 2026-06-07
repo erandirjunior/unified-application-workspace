@@ -6,7 +6,7 @@ import WorkflowEditorView from './WorkflowEditorView';
 import ServersView from './ServersView';
 
 export default function CollectionView({ 
-  collection, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
+  collection, t, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, onImportCurl,
   onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName,
   onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows,
@@ -162,14 +162,14 @@ export default function CollectionView({
         <button 
           onClick={(e) => { e.stopPropagation(); onViewDocumentation(req); }}
           className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-          title="Ver Documentação"
+          title={t.collection.tooltips.docs}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onRunSingleRequest(req); }}
           className="p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-          title="Executar uma vez (Single Run)"
+          title={t.collection.tooltips.singleRun}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -178,21 +178,21 @@ export default function CollectionView({
         <button 
           onClick={(e) => { e.stopPropagation(); onRunRequest(req); }}
           className="p-1.5 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-          title="Executar Teste"
+          title={t.collection.tooltips.runTest}
         >
           <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onSelectRequest(req); }}
           className="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-          title="Editar"
+          title={t.collection.tooltips.edit}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onDeleteRequest(collection.id, req.id); }}
           className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-          title="Excluir"
+          title={t.collection.tooltips.delete}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
         </button>
@@ -255,27 +255,27 @@ export default function CollectionView({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-          <button onClick={(e) => { e.stopPropagation(); setRenamingFolderId(folder.id); }} className="p-1 text-slate-400 hover:text-emerald-500 transition-colors" title="Renomear Pasta">
+          <button onClick={(e) => { e.stopPropagation(); setRenamingFolderId(folder.id); }} className="p-1 text-slate-400 hover:text-emerald-500 transition-colors" title={t.collection.tooltips.renameFolder}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, folder.id, 'up'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Subir">
+          <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, folder.id, 'up'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title={t.collection.tooltips.moveUp}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/></svg>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, folder.id, 'down'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Descer">
+          <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, folder.id, 'down'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title={t.collection.tooltips.moveDown}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onAddRequest(collection.id, 'Nova Requisição', folder.id); }} className="text-[10px] bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 transition-all">+ Req</button>
+          <button onClick={(e) => { e.stopPropagation(); onAddRequest(collection.id, 'Nova Action', folder.id); }} className="text-[10px] bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 transition-all">+ Action</button>
           <button 
             onClick={(e) => { e.stopPropagation(); onImportCurl(collection.id, folder.id); }} 
             className="text-[10px] bg-indigo-500 text-white px-2 py-1 rounded-md hover:bg-indigo-600 transition-all"
-            title="Importar cURL nesta pasta"
+            title={t.collection.actions.importCurl}
           >
             + cURL
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onDeleteFolder(collection.id, folder.id); }} 
             className="p-1 text-slate-400 hover:text-rose-500 transition-colors" 
-            title="Excluir Pasta"
+            title={t.collection.tooltips.deleteFolder}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
           </button>
@@ -284,7 +284,7 @@ export default function CollectionView({
       {(expandedFolders[folder.id] || search.trim() !== '') && (
         <div className="space-y-2 border-l-2 border-slate-200 dark:border-slate-800 ml-6 pl-2"> {/* Aumentado ml para alinhamento */}
           {folder.requests?.map(req => renderRequestItem(req, true))}
-          {folder.requests?.length === 0 && <p className="text-[10px] text-slate-500 italic ml-6">Pasta vazia</p>}
+          {folder.requests?.length === 0 && <p className="text-[10px] text-slate-500 italic ml-6">{t.collection.folderEmpty}</p>}
         </div>
       )}
     </div>
@@ -329,7 +329,7 @@ export default function CollectionView({
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
               <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
                 <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" /></svg>
-                Gerenciar Ambientes
+                {t.collection.envModalTitle}
               </h3>
               <button onClick={() => setIsEnvModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-2xl">&times;</button>
             </div>
@@ -355,12 +355,12 @@ export default function CollectionView({
                       <span className="font-bold text-sm truncate">{env.name}</span>
                     )}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.stopPropagation(); setIsRenamingEnv(env.id); }} className="p-1 hover:text-emerald-400" title="Renomear Ambiente"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDeleteEnvironment(env.id); }} className="p-1 hover:text-rose-400" title="Excluir Ambiente"><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg></button>
+                      <button onClick={(e) => { e.stopPropagation(); setIsRenamingEnv(env.id); }} className="p-1 hover:text-emerald-400" title={t.collection.envModal.renameEnv}><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteEnvironment(env.id); }} className="p-1 hover:text-rose-400" title={t.collection.envModal.deleteEnv}><svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg></button>
                     </div>
                   </div>
                 ))}
-                <button onClick={handleAddEnvironment} className="w-full p-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all text-xs font-bold">+ NOVO AMBIENTE</button>
+                <button onClick={handleAddEnvironment} className="w-full p-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all text-xs font-bold">{t.collection.envModal.newEnv}</button>
               </div>
 
               {/* Conteúdo de Variáveis */}
@@ -368,27 +368,27 @@ export default function CollectionView({
                 {currentEnv ? (
                   <>
                     <div className="flex justify-between items-center">
-                      <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Variáveis em: {currentEnv.name}</h4>
-                      <button onClick={handleAddVariable} className="text-xs font-bold text-blue-500 hover:underline">+ Adicionar Chave</button>
+                      <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">{t.collection.envModal.varsTitle} {currentEnv.name}</h4>
+                      <button onClick={handleAddVariable} className="text-xs font-bold text-blue-500 hover:underline">{t.collection.envModal.addVar}</button>
                     </div>
                     <div className="space-y-3">
                       {(currentEnv.variables || []).map((v, i) => (
                         <div key={i} className="flex gap-3">
-                          <input className="input-base flex-1 font-mono text-xs" placeholder="CHAVE" value={v.key} onChange={(e) => handleUpdateVariable(i, 'key', e.target.value)} />
-                          <input className="input-base flex-1 font-mono text-xs" placeholder="VALOR" value={v.value} onChange={(e) => handleUpdateVariable(i, 'value', e.target.value)} />
+                          <input className="input-base flex-1 font-mono text-xs" placeholder={t.collection.envModal.placeholderKey} value={v.key} onChange={(e) => handleUpdateVariable(i, 'key', e.target.value)} />
+                          <input className="input-base flex-1 font-mono text-xs" placeholder={t.collection.envModal.placeholderValue} value={v.value} onChange={(e) => handleUpdateVariable(i, 'value', e.target.value)} />
                           <button onClick={() => handleRemoveVariable(i)} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors" title="Remover Variável"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
                         </div>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-slate-400 italic">Selecione ou crie um ambiente à esquerda</div>
+                  <div className="flex items-center justify-center h-full text-slate-400 italic">{t.collection.envModal.selectEnv}</div>
                 )}
               </div>
             </div>
 
             <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button onClick={() => setIsEnvModalOpen(false)} className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold">Pronto</button>
+              <button onClick={() => setIsEnvModalOpen(false)} className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold">{t.collection.envModal.done}</button>
             </div>
           </div>
         </div>
@@ -413,7 +413,7 @@ export default function CollectionView({
               }
             }}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            title="Voltar para o Dashboard"
+            title={t.collection.backToDashboard}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           </button>
@@ -440,7 +440,7 @@ export default function CollectionView({
                 {collection.name}
               </h1>
             )}
-            <p className="text-slate-500 text-sm italic">Ambiente de trabalho da coleção</p>
+            <p className="text-slate-500 text-sm italic">{t.collection.subtitle}</p>
           </div>
         </div>
 
@@ -462,7 +462,7 @@ export default function CollectionView({
           <button 
             onClick={() => setIsEnvModalOpen(true)}
             className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
-            title="Gerenciar Ambientes"
+            title={t.collection.envModalTitle}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </button>
@@ -479,7 +479,7 @@ export default function CollectionView({
               }}
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'requests' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
-              Requests
+              {t.collection.tabs.requests}
             </button>
             <button 
               onClick={() => {
@@ -487,7 +487,7 @@ export default function CollectionView({
               }}
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'scenarios' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
-              Cenários
+              {t.collection.tabs.scenarios}
             </button>
             <button 
               onClick={() => {
@@ -495,7 +495,7 @@ export default function CollectionView({
               }}
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'workflows' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
-              Workflow
+              {t.collection.tabs.workflows}
             </button>
             <button 
               onClick={() => {
@@ -503,7 +503,7 @@ export default function CollectionView({
               }}
               className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'mocks' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
-              Mocks
+              {t.collection.tabs.mocks}
             </button>
           </div>
         )}
@@ -519,7 +519,7 @@ export default function CollectionView({
                 <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
                   <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Explorar Itens</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t.collection.exploreTitle}</h2>
               </div>
               <div className="flex gap-3">
                 <button 
@@ -527,21 +527,21 @@ export default function CollectionView({
                   className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
-                  IMPORTAR CURL
+                  {t.collection.actions.importCurl}
                 </button>
                 <button 
                   onClick={() => onAddRequest(collection.id, 'Nova Requisição')}
                   className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-                  NOVA REQUEST
+                  {t.collection.actions.newRequest}
                 </button>
                 <button 
                   onClick={() => onAddFolder(collection.id, 'Nova Pasta')}
                   className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-xl font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700 shadow-sm"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-                  NOVA PASTA
+                  {t.collection.actions.newFolder}
                 </button>
               </div>
             </div>
@@ -555,7 +555,7 @@ export default function CollectionView({
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/50 rounded-xl font-bold text-[10px] transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/40 animate-in fade-in slide-in-from-left-2 duration-300"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    GERAR DOC. UNIFICADA ({selectedRequestIds.length})
+                    {t.collection.actions.unifiedDoc} ({selectedRequestIds.length})
                   </button>
                 )}
               </div>
@@ -566,7 +566,7 @@ export default function CollectionView({
                   type="text" 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Pesquisar requisições..."
+                  placeholder={t.collection.searchPlaceholder}
                   className="input-base !pl-10 !py-2 shadow-sm !bg-slate-50 dark:!bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all text-xs"
                 />
               </div>
@@ -582,7 +582,7 @@ export default function CollectionView({
             >
             {filteredItems.length === 0 ? (
               <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/30 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 pointer-events-none">
-                <p className="text-slate-500 italic">{search ? 'Nenhum item corresponde à busca' : 'Arraste itens aqui para mover para a raiz'}</p>
+                <p className="text-slate-500 italic">{search ? t.collection.emptySearch : t.collection.emptyRoot}</p>
               </div>
             ) : (
               filteredItems.map((item) => 
@@ -590,7 +590,7 @@ export default function CollectionView({
               )
             )}
             {filteredItems.length > 0 && isDraggingOverRoot && (
-               <div className="text-center py-4 border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-2xl text-blue-500 text-xs font-bold">SOLTE PARA MOVER PARA A RAIZ</div>
+               <div className="text-center py-4 border-2 border-dashed border-blue-300 dark:border-blue-800 rounded-2xl text-blue-500 text-xs font-bold uppercase">{t.collection.dropRoot}</div>
             )}
             </div>
           </div>
@@ -599,6 +599,7 @@ export default function CollectionView({
             <ScenarioEditorView 
               scenario={collection.scenarios.find(s => s.id === editingScenarioId)}
               collection={collection}
+              t={t}
               onBack={() => {
                 setEditingScenarioId(null);
                 setActiveScenarioId(null); // Agora limpamos para permitir a navegação correta
@@ -619,6 +620,7 @@ export default function CollectionView({
             ) : (
               <ScenarioView 
                 collection={collection} 
+                t={t}
             onRunScenario={(reqs, scenId) => {
               setActiveScenarioId(scenId);
               onRunRequest(reqs, scenId);
@@ -632,6 +634,7 @@ export default function CollectionView({
             <WorkflowEditorView 
               workflow={collection.workflows?.find(f => f.id === editingWorkflowId)}
               collection={collection}
+              t={t}
               onBack={() => {
                 setEditingWorkflowId(null);
                 setActiveWorkflowId(null);
@@ -649,6 +652,7 @@ export default function CollectionView({
           ) : (
             <WorkflowView 
               collection={collection}
+              t={t}
               onUpdateWorkflows={onUpdateWorkflows}
               onEditWorkflow={setEditingWorkflowId}
               onRunWorkflow={(steps, id) => onRunRequest(steps, id, true)}
@@ -656,7 +660,7 @@ export default function CollectionView({
             />
           )
         ) : (
-          <ServersView onBack={() => setActiveTab('requests')} onSubViewChange={(active, closeFn) => {
+          <ServersView t={t} onBack={() => setActiveTab('requests')} onSubViewChange={(active, closeFn) => {
             setIsMockSubView(active);
             setMockCloseHandler(() => closeFn);
           }} />

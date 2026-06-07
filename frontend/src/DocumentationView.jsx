@@ -53,7 +53,7 @@ const HTTP_STATUS_CODES = [
 ];
 
 export default function DocumentationView({ 
-  request: requestProp, requests = [], activeRequestId, onSelectForEdit,
+  request: requestProp, requests = [], activeRequestId, onSelectForEdit, t,
   collection, onBack, onEdit, onRun, methodStyles, onClearBodyParams,
   bodyRawDoc, authDoc, updateHeader, updatePathParam, updateBodyParam, updateRequestInCollection, bodyParams, addHeader, addPathParam, removeHeader, removePathParam, updateField,
   updateResponse, addResponse, removeResponse,
@@ -179,7 +179,7 @@ export default function DocumentationView({
       }
       // Adicione lógica para XML se desejar um beautifier de XML aqui
     } catch (e) {
-      alert("Erro ao formatar: " + e.message);
+      alert(t.toasts.formatError + e.message);
     }
   };
 
@@ -303,7 +303,7 @@ export default function DocumentationView({
         }
       });
     } catch (e) {
-      alert("Não foi possível processar o corpo: " + e.message);
+      alert(t.toasts.syncError + e.message);
     }
   };
 
@@ -314,7 +314,7 @@ export default function DocumentationView({
       const parsed = JSON.parse(resp.body);
       updateResponse(responseIndex, 'body', JSON.stringify(parsed, null, 2));
     } catch (e) {
-      alert("Erro ao formatar JSON do corpo da resposta: " + e.message);
+      alert(t.toasts.formatError + e.message);
     }
   };
 
@@ -377,7 +377,7 @@ export default function DocumentationView({
       });
       updateResponse(responseIndex, 'bodyFields', newBodyFields);
     } catch (e) {
-      alert("Erro ao sincronizar campos do corpo da resposta: " + e.message);
+      alert(t.toasts.syncError + e.message);
     }
   };
 
@@ -535,10 +535,10 @@ export default function DocumentationView({
                </div>
                <div>
                  <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate">
-                   {isEditing ? "Editor de Documentação" : "Documentação Unificada"}
+                   {isEditing ? t.documentation.editorTitle : t.documentation.title}
                  </h1>
                  <p className="text-slate-500 text-xs font-mono mt-1">
-                   {requestList.length === 1 ? requestList[0].name : `${requestList.length} requisições selecionadas`}
+                   {requestList.length === 1 ? requestList[0].name : `${requestList.length} ${t.common.selected}`}
                  </p>
                </div>
             </div>
@@ -551,7 +551,7 @@ export default function DocumentationView({
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            ATUALIZAR REQUEST
+            {t.documentation.updateBtn}
           </button>
         )}
 
@@ -572,13 +572,13 @@ export default function DocumentationView({
             onClick={() => setViewMode('preview')}
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            PREVIEW
+            {t.documentation.preview}
           </button>
           <button 
             onClick={() => setViewMode('editor')}
             className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${viewMode === 'editor' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            EDITOR
+            {t.documentation.editor}
           </button>
         </div>
       </div>
@@ -781,7 +781,7 @@ export default function DocumentationView({
               </table>
               {isEditing && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
-                  <button onClick={() => addPathParam()} className="text-xs font-bold text-indigo-500">+ ADICIONAR PATH PARAM</button>
+                  <button onClick={() => addPathParam()} className="text-xs font-bold text-indigo-500">+ {t.documentation.pathParams.toUpperCase()}</button>
                 </div>
               )}
             </div>
@@ -840,7 +840,7 @@ export default function DocumentationView({
               </table>
               {isEditing && (
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
-                  <button onClick={addHeader} className="text-xs font-bold text-blue-500">+ ADICIONAR HEADER</button>
+                  <button onClick={addHeader} className="text-xs font-bold text-blue-500">+ {t.config.sections.headers.toUpperCase()}</button>
                 </div>
               )}
             </div>
@@ -906,20 +906,20 @@ export default function DocumentationView({
                         onClick={formatBody}
                         className="text-[10px] font-bold text-slate-500 hover:text-slate-600 border border-slate-300 dark:border-slate-700 px-2 py-0.5 rounded uppercase transition-colors"
                       >
-                        Formatar
+                        {t.documentation.preview}
                       </button>
                       <button 
                         onClick={clearBodyParams}
                         className="text-[10px] font-bold text-rose-500 hover:text-rose-600 border border-rose-500/20 px-2 py-0.5 rounded uppercase transition-colors"
                       >
-                        Limpar Tabela
+                        {t.common.cancel}
                       </button>
                       <button 
                         onClick={syncFieldsFromRaw}
                         className="text-[10px] font-bold text-blue-500 hover:text-blue-600 border border-blue-500/20 px-2 py-0.5 rounded uppercase transition-colors"
                         title="Sincroniza chaves do JSON/XML com a tabela de documentação"
                       >
-                        Sincronizar ↓
+                        {t.common.next} ↓
                       </button>
                     </div>
                   </div>
@@ -1008,7 +1008,7 @@ export default function DocumentationView({
                 </table>
                 {isEditing && (
                   <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
-                    <button onClick={addBodyParam} className="text-xs font-bold text-amber-500">+ ADICIONAR PARÂMETRO / CAMPO</button>
+                    <button onClick={addBodyParam} className="text-xs font-bold text-amber-500">+ {t.config.sections.body.toUpperCase()}</button>
                   </div>
                 )}
               </div>
@@ -1068,14 +1068,14 @@ export default function DocumentationView({
                             className="text-[10px] font-bold text-slate-400 hover:text-blue-500 border border-slate-700 px-2 py-0.5 rounded uppercase transition-colors"
                             title="Formatar JSON"
                           >
-                            Formatar
+                            {t.documentation.preview}
                           </button>
                           <button 
                             onClick={(e) => { e.stopPropagation(); syncFieldsFromResponseBody(i); }}
                             className="text-[10px] font-bold text-blue-500 hover:text-blue-600 border border-blue-500/20 px-2 py-0.5 rounded uppercase transition-colors"
                             title="Sincroniza chaves do JSON com a tabela de documentação"
                           >
-                            Sincronizar ↓
+                            {t.common.next} ↓
                           </button>
                         </div>
                       </div>

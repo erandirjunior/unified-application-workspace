@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 
 export default function ConfigView({
   url, setUrl,
+  t,
   method, setMethod,
   totalRequests, setTotalRequests,
   duration, setDuration,
@@ -50,7 +51,7 @@ export default function ConfigView({
       <div className="grid gap-4 mb-6 bg-slate-50/50 dark:bg-slate-900/30">
         <textarea
           className="input-base min-h-[100px] font-sans text-sm"
-          placeholder="Adicione uma descrição detalhada para explicar o propósito desta requisição..."
+          placeholder={t.config.descriptionPlaceholder}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -58,7 +59,7 @@ export default function ConfigView({
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
         <div className="md:col-span-3">
-          <label className="label-base">Method</label>
+          <label className="label-base">{t.config.method}</label>
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
@@ -73,7 +74,7 @@ export default function ConfigView({
 
         <div className="md:col-span-9">
           <div className="flex justify-between items-end">
-            <label className="label-base">URL</label>
+            <label className="label-base">{t.config.url}</label>
           </div>
 
           <input
@@ -91,7 +92,7 @@ export default function ConfigView({
       {!isScenarioMode && !activeWorkflowId && (
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div>
-            <label className="label-base">Requests por Segundo (RPS)</label>
+            <label className="label-base">{t.config.rps}</label>
             <input
               type="number"
               className="input-base"
@@ -101,7 +102,7 @@ export default function ConfigView({
           </div>
 
           <div>
-            <label className="label-base">Duration</label>
+            <label className="label-base">{t.config.duration}</label>
             <input
               type="number"
               className="input-base"
@@ -111,7 +112,7 @@ export default function ConfigView({
           </div>
 
           <div>
-            <label className="label-base">Ramp-up</label>
+            <label className="label-base">{t.config.rampUp}</label>
             <input
               type="number"
               className="input-base"
@@ -135,16 +136,16 @@ export default function ConfigView({
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          Variáveis
+          {t.config.variables}
         </button>
       </div>
 
       {[
-        { id: 'auth', title: 'Authentication', open: isAuthOpen, setOpen: setIsAuthOpen },
-        { id: 'headers', title: 'Headers', open: isHeadersOpen, setOpen: setIsHeadersOpen },
-        { id: 'body', title: 'Request Body', open: isBodyOpen, setOpen: setIsBodyOpen },
-        { id: 'assertions', title: 'Assertions (Validations)', open: isAssertionsOpen, setOpen: setIsAssertionsOpen, color: 'indigo' },
-        { id: 'extractions', title: 'Extract to Variable', open: isExtractionsOpen, setOpen: setIsExtractionsOpen, color: 'emerald' }
+        { id: 'auth', title: t.config.sections.auth, open: isAuthOpen, setOpen: setIsAuthOpen },
+        { id: 'headers', title: t.config.sections.headers, open: isHeadersOpen, setOpen: setIsHeadersOpen },
+        { id: 'body', title: t.config.sections.body, open: isBodyOpen, setOpen: setIsBodyOpen },
+        { id: 'assertions', title: t.config.sections.assertions, open: isAssertionsOpen, setOpen: setIsAssertionsOpen, color: 'indigo' },
+        { id: 'extractions', title: t.config.sections.extractions, open: isExtractionsOpen, setOpen: setIsExtractionsOpen, color: 'emerald' }
       ].filter(sec => {
         if (sec.id === 'extractions') return isScenarioMode || activeWorkflowId;
         return true;
@@ -518,11 +519,11 @@ export default function ConfigView({
 
                 <div>
                   <h3 className="text-xl font-bold dark:text-white">
-                    Variáveis Dinâmicas
+                    {t.config.dynamicVars.title}
                   </h3>
 
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Gere dados aleatórios em tempo real
+                    {t.config.dynamicVars.subtitle}
                   </p>
                 </div>
               </div>
@@ -538,21 +539,21 @@ export default function ConfigView({
             <div className="p-8 overflow-y-auto max-h-[60vh]">
 
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
-                Utilize a sintaxe{' '}
+                {t.config.dynamicVars.usage.split('{{variable}}')[0]}
                 <code className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold">
-                  {`{{variavel}}`}
-                </code>{' '}
-                em qualquer campo.
+                  {`{{variable}}`}
+                </code>
+                {t.config.dynamicVars.usage.split('{{variable}}')[1]}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { v: 'uuid', d: 'UUID v4 único por requisição' },
-                  { v: 'timestamp', d: 'Unix Epoch (segundos)' },
-                  { v: 'int:min:max', d: 'Inteiro' },
-                  { v: 'float:min:max', d: 'Float' },
-                  { v: 'string:len', d: 'String aleatória' },
-                  { v: 'name', d: 'Nome aleatório real' },
+                  { v: 'uuid', d: t.config.dynamicVars.uuid },
+                  { v: 'timestamp', d: t.config.dynamicVars.timestamp },
+                  { v: 'int:min:max', d: t.config.dynamicVars.int },
+                  { v: 'float:min:max', d: t.config.dynamicVars.float },
+                  { v: 'string:len', d: t.config.dynamicVars.string },
+                  { v: 'name', d: t.config.dynamicVars.name },
                 ].map((item, i) => (
                   <div
                     key={i}
@@ -576,7 +577,7 @@ export default function ConfigView({
                 onClick={() => setIsVarsModalOpen(false)}
                 className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
               >
-                Entendi
+                {t.config.done}
               </button>
 
             </div>
@@ -591,7 +592,7 @@ export default function ConfigView({
             onClick={() => updateRequestInCollection()}
             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl"
           >
-            {isScenarioMode ? 'Atualizar Passo' : 'Atualizar Request'}
+            {isScenarioMode ? t.config.dynamicVars.updateStep : t.config.actions.updateRequest}
           </button>
         )}
 
@@ -600,7 +601,7 @@ export default function ConfigView({
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl"
             onClick={() => sendRequests()}
           >
-            RUN REQUESTS
+            RUN ACTIONS
           </button>
         )}
 

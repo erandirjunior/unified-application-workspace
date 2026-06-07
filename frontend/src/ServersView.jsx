@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ServersView({ onBack, onSubViewChange }) {
+export default function ServersView({ onBack, onSubViewChange, t }) {
   const [mocks, setMocks] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [monitoringMock, setMonitoringMock] = useState(null);
@@ -105,7 +105,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-md">Monitoring: {monitoringMock.name}</h1>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
               <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] http://localhost:8080/mock{monitoringMock.path}</p>
             </div>
           </div>
@@ -114,16 +114,16 @@ export default function ServersView({ onBack, onSubViewChange }) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
             </span>
-            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live Monitoring</span>
+            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-3 max-h-[600px] overflow-y-auto pr-2">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Requests Recebidas</h3>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t.mocks.requestsReceived}</h3>
             {logs.length === 0 ? (
               <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs italic">
-                Aguardando chamadas ao endpoint...
+                {t.mocks.emptyLogs}
               </div>
             ) : (
               logs.map((log, i) => (
@@ -148,12 +148,12 @@ export default function ServersView({ onBack, onSubViewChange }) {
             {selectedLog ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Detalhes da Transação</h3>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{t.mocks.transactionDetails}</h3>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-blue-500/20 pb-1">Request Recebida</h4>
+                    <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-blue-500/20 pb-1">{t.mocks.requestReceived}</h4>
                     <div>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Headers</p>
                       <pre className="text-[10px] bg-slate-950 p-3 rounded-xl text-blue-300 overflow-x-auto border border-blue-900/30 font-mono">
@@ -171,7 +171,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-b border-emerald-500/20 pb-1">Resposta Enviada</h4>
+                    <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest border-b border-emerald-500/20 pb-1">{t.mocks.responseSent}</h4>
                     <div>
                       <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Status Code</p>
                       <span className={`text-sm font-black ${selectedLog.statusCode >= 400 ? 'text-rose-500' : 'text-emerald-500'}`}>{selectedLog.statusCode}</span>
@@ -192,7 +192,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                     ) : (
                       <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                         <span className="text-[10px] font-bold text-blue-500">Arquivo Enviado</span>
+                         <span className="text-[10px] font-bold text-blue-500">{t.mocks.fileSent}</span>
                       </div>
                     )}
                   </div>
@@ -203,7 +203,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                 <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
                 </div>
-                <p className="text-sm">Selecione uma requisição ao lado para inspecionar os detalhes da carga.</p>
+                <p className="text-sm">{t.mocks.selectToInspect}</p>
               </div>
             )}
           </div>
@@ -216,7 +216,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
     <div className="animate-in fade-in duration-500 space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">{isEditing ? (currentMock.id ? 'Editar Mock' : 'Novo Mock') : 'Mock Servers'}</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">{isEditing ? (currentMock.id ? t.mocks.editTitle : t.mocks.createTitle) : t.mocks.title}</h2>
         </div>
         {!isEditing && (
           <button 
@@ -226,7 +226,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
             }}
             className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20"
           >
-            + Criar Endpoint
+            {t.mocks.newBtn}
           </button>
         )}
       </div>
@@ -235,11 +235,11 @@ export default function ServersView({ onBack, onSubViewChange }) {
         <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <label htmlFor="mock-name" className="label-base">Nome Amigável</label>
+              <label htmlFor="mock-name" className="label-base">{t.mocks.friendlyName}</label>
               <input id="mock-name" className="input-base" value={currentMock.name} onChange={e => setCurrentMock({...currentMock, name: e.target.value})} />
             </div>
             <div>
-              <label htmlFor="mock-method" className="label-base">Método</label>
+              <label htmlFor="mock-method" className="label-base">{t.config.method}</label>
               <select id="mock-method" className="input-base" value={currentMock.method} onChange={e => setCurrentMock({...currentMock, method: e.target.value})}>
                 <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option><option value="ALL">ANY METHOD</option>
               </select>
@@ -297,8 +297,8 @@ export default function ServersView({ onBack, onSubViewChange }) {
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-sm font-black text-rose-500 uppercase tracking-widest">Validar Entrada (Guard)</h3>
-              <p className="text-[10px] text-slate-500">Se a requisição não atender a estes critérios, o servidor retornará 400 Bad Request.</p>
+              <h3 className="text-sm font-black text-rose-500 uppercase tracking-widest">{t.mocks.validationTitle}</h3>
+              <p className="text-[10px] text-slate-500">{t.mocks.validationSub}</p>
               {currentMock.assertions.map((a, i) => (
                 <div key={i} className="flex gap-2 items-center bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
                   <select className="input-base !py-1 text-[10px]" value={a.source} onChange={e => {
@@ -320,21 +320,21 @@ export default function ServersView({ onBack, onSubViewChange }) {
                 onClick={() => setCurrentMock({...currentMock, assertions: [...currentMock.assertions, { source: 'header', property: 'Authorization', operator: '==', target: '' }]})}
                 className="text-[10px] font-bold text-blue-500 hover:underline"
               >
-                + Add Validação
+                {t.mocks.addValidation}
               </button>
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-500 font-bold">Cancelar</button>
-            <button onClick={saveMock} className="px-8 py-2 bg-emerald-600 text-white rounded-xl font-bold">Salvar Mock</button>
+            <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-500 font-bold">{t.common.cancel}</button>
+            <button onClick={saveMock} className="px-8 py-2 bg-emerald-600 text-white rounded-xl font-bold uppercase">{t.common.save}</button>
           </div>
         </div>
       ) : (
         <div className="grid gap-4">
           {mocks.length === 0 ? (
             <div className="py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2rem] text-slate-400">
-              Nenhum servidor mockado. Crie um para começar a simular APIs.
+              {t.mocks.emptyMocks}
             </div>
           ) : (
             mocks.map(m => (
@@ -361,10 +361,10 @@ export default function ServersView({ onBack, onSubViewChange }) {
                     <div className="flex items-center gap-2">
                       <code className="text-xs text-blue-500 font-mono">http://localhost:8080/mock{m.path}</code>
                       <button 
-                        onClick={() => { navigator.clipboard.writeText(`http://localhost:8080/mock${m.path}`); alert("URL copiada!"); }}
+                        onClick={() => { navigator.clipboard.writeText(`http://localhost:8080/mock${m.path}`); alert(t.mocks.urlCopied); }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 hover:text-blue-500"
                       >
-                        Copiar URL
+                        {t.mocks.copyUrl}
                       </button>
                     </div>
                   </div>
@@ -373,7 +373,7 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   <button 
                     onClick={() => toggleMockActive(m)}
                     className={`p-2 rounded-xl transition-all ${m.active ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}
-                    title={m.active ? "Parar Servidor" : "Iniciar Servidor"}
+                    title={m.active ? t.mocks.stopServer : t.mocks.startServer}
                   >
                     {m.active ? (
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
@@ -384,21 +384,21 @@ export default function ServersView({ onBack, onSubViewChange }) {
                   <button 
                     onClick={() => { setMonitoringMock(m); setLogs([]); }}
                     className="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
-                    title="Monitorar Tráfego"
+                    title={t.mocks.monitorTraffic}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                   </button>
                   <button 
                     onClick={() => { setCurrentMock(m); setIsEditing(true); }}
                     className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"
-                    title="Editar"
+                    title={t.collection.tooltips.edit}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                   <button 
                     onClick={() => deleteMock(m.id)}
                     className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
-                    title="Excluir"
+                    title={t.collection.tooltips.delete}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                   </button>

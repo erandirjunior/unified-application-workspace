@@ -10,11 +10,15 @@ import { useRequestForm } from './hooks/useRequestForm';
 import { useTestRunner } from './hooks/useTestRunner';
 import { parseCurl } from './utils/curlParser';
 import logo from './img/logo.png'; 
+import { pt } from './locales/pt';
+import { en } from './locales/en';
 
 function App() {
   // Hooks de Estado de UI e Navegação
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+  const [lang, setLang] = useState(localStorage.getItem('lang') || 'pt');
   const [view, setView] = useState('collections');
+  const t = lang === 'pt' ? pt : en;
   const [results, setResults] = useState('Aguardando comando...');
   const [isVarsModalOpen, setIsVarsModalOpen] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
@@ -78,7 +82,7 @@ function App() {
   const saveCurrentRequest = (name, colId) => {
     const newRequest = {
       id: Date.now().toString(),
-      name: name || 'Nova Requisição',
+      name: name || 'Nova Action',
       ...form
     };
 
@@ -226,7 +230,7 @@ function App() {
       };
       return { ...col, requests: recursiveUpdate(col.requests) };
     }));
-    if (!silent) showCustomToast('Requisição atualizada com sucesso!', 'success');
+    if (!silent) showCustomToast(t.toasts.reqUpdated || 'Success', 'success');
   };
 
   const handleImportFromCurl = (curlString, colId, folderId = null) => {
@@ -261,9 +265,9 @@ function App() {
 
         return { ...col, requests: updateItems(col.requests) };
       }));
-      showCustomToast('Requisição importada do cURL com sucesso!', 'success');
+      showCustomToast(t.toasts.curlSuccess, 'success');
     } catch (e) {
-      showCustomToast('Falha ao processar o comando cURL.', 'error');
+      showCustomToast(t.toasts.curlError, 'error');
     }
   };
 
@@ -350,7 +354,7 @@ function App() {
       };
       return { ...collection, requests: recursiveUpdate(collection.requests) };
     }));
-    showCustomToast('Nome da pasta atualizado!', 'success');
+    showCustomToast(t.toasts.folderUpdated, 'success');
   };
 
   const saveResponseToDoc = (colId, reqId, log) => {
@@ -510,7 +514,7 @@ function App() {
     return { ...col, requests: recursiveUpdate(col.requests) };
   }));
 
-  showCustomToast(`Resposta ${log.statusCode} salva na documentação!`, 'success');
+  showCustomToast(t.toasts.responseSaved.replace('{status}', log.statusCode), 'success');
 };
 
   const deleteCollection = (id) => {
@@ -771,11 +775,11 @@ function App() {
       <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-8">
           <img 
-                    src={logo} 
-                    alt="UAW Unified API Workspace Logo" 
-                    className="h-8 w-auto object-contain" 
-                    key={logo} // Adicionar a key força o React a remontar a imagem se o import mudar
-                  />
+            src={logo} 
+            alt={t.header.logoAlt} 
+            className="h-8 w-auto object-contain" 
+            key={logo} 
+          />
           <nav className="flex gap-4">
             <button 
               onClick={() => { 
@@ -785,9 +789,9 @@ function App() {
                 updateField('responses', []); // Garante inicialização após reset
                 setReportData(null); 
               }}
-              className={`text-sm font-bold transition-colors ${view === 'collections' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
+              className={`text-sm font-black transition-colors ${view === 'collections' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              Minhas Coleções
+              {t.header.myCollections}
             </button>
             <button 
               onClick={() => {
@@ -797,18 +801,28 @@ function App() {
                 updateField('responses', []); // Garante inicialização após reset
                 setActiveCollectionId(null);
               }}
-              className={`text-sm font-bold transition-colors ${view === 'config' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
+              className={`text-sm font-black transition-colors ${view === 'config' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
             >
-              Teste Rápido
+              {t.header.quickTest}
             </button>
           </nav>
         </div>
-        <button
+        <div className="flex items-center gap-3">
+          <select 
+            value={lang} 
+            onChange={(e) => { setLang(e.target.value); localStorage.setItem('lang', e.target.value); }}
+            className="input-base !w-16 !py-1 !px-1 text-[10px] font-black border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+          >
+            <option value="pt">BR</option>
+            <option value="en">EN</option>
+          </select>
+          <button
           className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:scale-110 transition-transform"
           onClick={toggleTheme}
         >
           {theme === 'light' ? '🌙' : '☀️'}
         </button>
+        </div>
       </header>
 
       <main className="flex-1 py-12 px-4 flex flex-col items-center overflow-y-auto">
@@ -818,6 +832,7 @@ function App() {
                 reportData={reportData} 
                 requestLogs={requestLogs} 
                 setView={setView}
+                t={t}
                 results={results}
                 config={{ ...form, body: form.bodyRaw }}
                 activeCollectionId={activeCollectionId}
@@ -834,6 +849,7 @@ function App() {
             ) : view === 'collections' ? (
               <CollectionsView 
                 collections={collections}
+                t={t}
                 onSelectRequest={handleEnterCollection}
                 onCreateCollection={createCollection}
                 onDeleteCollection={deleteCollection}
@@ -843,6 +859,7 @@ function App() {
             ) : view === 'collection-detail' ? (
               <CollectionView 
                 collection={activeCollection}
+                t={t}
                 onSelectRequest={(req, targetView, scenId, stepIdx, workflowId, subIdx) => { 
                   const sanitizedReq = { 
                     ...req, 
@@ -909,6 +926,7 @@ function App() {
                 request={{ ...form, id: form.activeRequestId, name: form.requestName }}
                 requests={getSelectedRequests()}
                 activeRequestId={form.activeRequestId}
+                t={t}
                 onSelectForEdit={(req) => {
                   updateRequestInCollection(true); // Salva a atual silenciosamente
                   const sanitizedReq = { 
@@ -984,17 +1002,19 @@ function App() {
                       className="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                      {form.activeScenarioId ? 'Voltar para o Cenário' : form.activeWorkflowId ? 'Voltar para o Workflow' : 'Voltar para Coleção'}
+                      {form.activeScenarioId ? t.config.actions.backToScen : form.activeWorkflowId ? t.config.actions.backToWork : t.config.actions.backToCol}
                     </button>
                   </div>
                 )}
                 <SaveRequestForm  
                   onSaveRequest={(name) => saveCurrentRequest(name, activeCollectionId)} 
                   requestName={form.requestName}
+                  t={t}
                   setRequestName={(v) => updateField('requestName', v)}
                 />
                 <ConfigView
                   {...form}
+                  t={t}
                   setUrl={(v) => updateField('url', v)} setMethod={(v) => updateField('method', v)}
                   setTotalRequests={(v) => updateField('totalRequests', v)} setDuration={(v) => updateField('duration', v)} setRampUp={(v) => updateField('rampUp', v)}
                   methodStyles={methodStyles}
@@ -1048,12 +1068,12 @@ function App() {
         <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
-              <span className="text-blue-500">curl</span> Importar Requisição
+              <span className="text-blue-500">curl</span> Importar Action
             </h3>
             <button onClick={() => setShowCurlModal(false)} className="text-slate-400 hover:text-rose-500 text-2xl">&times;</button>
           </div>
           <div className="p-6">
-            <label className="label-base">Cole o comando cURL abaixo</label>
+            <label className="label-base">{t.dashboard.importDescription}</label>
             <textarea
               className="input-base h-64 font-mono text-xs resize-none"
               placeholder="curl -X POST https://api.exemplo.com/users -d '...' "
@@ -1063,12 +1083,12 @@ function App() {
             <p className="mt-2 text-xs text-slate-500">Suporta headers, autenticação Basic/Bearer e corpos JSON/Raw.</p>
           </div>
           <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-            <button onClick={() => setShowCurlModal(false)} className="px-6 py-2 text-slate-600 dark:text-slate-400 font-bold">Cancelar</button>
+            <button onClick={() => setShowCurlModal(false)} className="px-6 py-2 text-slate-600 dark:text-slate-400 font-bold">{t.common.cancel}</button>
             <button 
               onClick={executeCurlImport}
-              className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+              className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 uppercase"
             >
-              Importar para a Coleção
+              {t.dashboard.import}
             </button>
           </div>
         </div>

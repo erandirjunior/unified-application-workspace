@@ -3,8 +3,8 @@
  */
 export function parseCurl(curlString) {
   const request = {
-    name: 'Requisição Importada',
-    requestName: 'Requisição Importada',
+    name: 'Action Importada',
+    requestName: 'Action Importada',
     method: 'GET',
     url: '',
     headers: [],

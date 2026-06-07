@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 // Certifique-se de que o caminho abaixo é o da imagem que você quer usar agora
 import logo from './img/logo.png'; 
 
-export default function CollectionsView({ collections, onSelectRequest, onCreateCollection, onDeleteCollection, onReorderCollection, onUpdateName }) {
+export default function CollectionsView({ collections, t, onSelectRequest, onCreateCollection, onDeleteCollection, onReorderCollection, onUpdateName }) {
   const [name, setName] = useState('');
   const [search, setSearch] = useState('');
 
@@ -237,7 +237,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
       <div className="flex justify-center">
         <img 
           src={logo} 
-          alt="API Test Suite Logo" 
+          alt={t.header.logoAlt} 
           className="h-24 w-auto object-contain" 
           key={logo} // Adicionar a key força o React a remontar a imagem se o import mudar
         />
@@ -249,7 +249,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
           type="text" 
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: API de Pagamentos - Produção"
+          placeholder={t.dashboard.placeholder}
           className="input-base !bg-white dark:!bg-slate-900 py-3 !px-8 text-xl shadow-inner border-slate-200 dark:border-slate-800 flex-1"
         />
         <button 
@@ -257,15 +257,15 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
           className="bg-blue-600 hover:bg-blue-700 text-white font-black px-12 rounded-2xl transition-all shadow-xl shadow-blue-500/30 active:scale-95 flex items-center justify-center gap-3 text-lg"
         >
           <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-          Nova Coleção
+          {t.dashboard.newCollection}
         </button>
       </div>
 
       {/* Barra de Busca e Filtro */}
       <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div className="space-y-1 text-left">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Suas Coleções</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{filteredCollections.length} pastas encontradas</p>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{t.dashboard.title}</h2>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{filteredCollections.length} {t.dashboard.itemsFound}</p>
         </div>
         
         <div className="flex gap-4 w-full md:w-auto items-center">
@@ -274,14 +274,14 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             className="px-6 py-3 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-800 shadow-sm whitespace-nowrap"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-            IMPORTAR
+            {t.dashboard.import}
           </button>
           <div className="w-full md:w-80 relative group">
             <input 
               type="text" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 Pesquisar coleções..."
+              placeholder={t.dashboard.search}
               className="input-base !py-3 shadow-sm !bg-slate-50 dark:!bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all"
             />
           </div>
@@ -294,7 +294,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1 min-w-0">
                 <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md">
-                  {col.requests?.length || 0} Itens
+                  {col.requests?.length || 0} {t.dashboard.itemsCount}
                 </span>
                 {renamingColId === col.id ? (
                   <input 
@@ -315,19 +315,19 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
                 )}
               </div>
               <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => { e.stopPropagation(); setRenamingColId(col.id); }} className="p-1 text-slate-400 hover:text-emerald-500 transition-colors" title="Renomear">
+                <button onClick={(e) => { e.stopPropagation(); setRenamingColId(col.id); }} className="p-1 text-slate-400 hover:text-emerald-500 transition-colors" title={t.dashboard.rename}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onReorderCollection(col.id, 'up'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Subir">
+                <button onClick={(e) => { e.stopPropagation(); onReorderCollection(col.id, 'up'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title={t.dashboard.moveUp}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/></svg>
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onReorderCollection(col.id, 'down'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title="Descer">
+                <button onClick={(e) => { e.stopPropagation(); onReorderCollection(col.id, 'down'); }} className="p-1 text-slate-400 hover:text-blue-500 transition-colors" title={t.dashboard.moveDown}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                 </button>
-                <button onClick={(e) => handleOpenExport(e, col)} className="p-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-md transition-colors" title="Exportar Coleção">
+                <button onClick={(e) => handleOpenExport(e, col)} className="p-1 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-md transition-colors" title={t.dashboard.export}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onDeleteCollection(col.id); }} className="p-1 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-md transition-colors" title="Excluir Coleção">
+                <button onClick={(e) => { e.stopPropagation(); onDeleteCollection(col.id); }} className="p-1 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 rounded-md transition-colors" title={t.dashboard.delete}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 </button>
               </div>
@@ -337,7 +337,7 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
               onClick={() => onSelectRequest(col)}
               className="mt-4 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-30 disabled:no-underline"
             >
-              Gerenciar Coleção →
+              {t.dashboard.manage}
             </button>
           </div>
         ))}
@@ -349,26 +349,26 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-xl font-bold dark:text-white">Exportar: {exportingCol.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">Selecione quais itens da coleção deseja incluir.</p>
+                <h3 className="text-xl font-bold dark:text-white">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">{t.dashboard.exportDescription}</p>
               </div>
               <button onClick={() => setExportOptionsModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto">
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Requisições & Pastas</h4>
-                {exportingCol.requests?.length > 0 ? exportingCol.requests.map(item => renderExportItem(item, 'requests')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">{t.collection.tabs.requests}</h4>
+                {exportingCol.requests?.length > 0 ? exportingCol.requests.map(item => renderExportItem(item, 'requests')) : <p className="text-xs text-slate-400 italic">{t.common.empty}</p>}
               </div>
               
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Cenários</h4>
-                {exportingCol.scenarios?.length > 0 ? exportingCol.scenarios.map(item => renderExportItem(item, 'scenarios')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">{t.collection.tabs.scenarios}</h4>
+                {exportingCol.scenarios?.length > 0 ? exportingCol.scenarios.map(item => renderExportItem(item, 'scenarios')) : <p className="text-xs text-slate-400 italic">{t.common.empty}</p>}
               </div>
 
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">Workflows</h4>
-                {exportingCol.workflows?.length > 0 ? exportingCol.workflows.map(item => renderExportItem(item, 'workflows')) : <p className="text-xs text-slate-400 italic">Vazio</p>}
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-1">{t.collection.tabs.workflows}</h4>
+                {exportingCol.workflows?.length > 0 ? exportingCol.workflows.map(item => renderExportItem(item, 'workflows')) : <p className="text-xs text-slate-400 italic">{t.common.empty}</p>}
               </div>
             </div>
 
@@ -377,13 +377,13 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
                 onClick={() => setExportOptionsModalOpen(false)} 
                 className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all"
               >
-                CANCELAR
+                {t.common.cancel}
               </button>
               <button 
                 onClick={handleExportOptionsNext} 
                 className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2"
               >
-                PRÓXIMO
+                {t.common.next}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
               </button>
             </div>
@@ -398,8 +398,8 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-xl font-bold dark:text-white">Exportar: {exportingCol.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">Selecione quais variáveis de ambiente deseja incluir no arquivo.</p>
+                <h3 className="text-xl font-bold dark:text-white">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
+                <p className="text-xs text-slate-500 mt-1">{t.dashboard.exportVarsDescription}</p>
               </div>
               <button onClick={() => setExportModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
             </div>
@@ -407,11 +407,11 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl">
                 <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                  {countSelectedVars()} variáveis selecionadas
+                  {countSelectedVars()} {t.common.selected}
                 </span>
                 <div className="flex gap-2">
-                  <button onClick={() => selectAllVars(true)} className="text-[10px] font-black bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-700 text-blue-600 hover:bg-blue-50 transition-all">SELECIONAR TODAS</button>
-                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 transition-all">LIMPAR</button>
+                  <button onClick={() => selectAllVars(true)} className="text-[10px] font-black bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-700 text-blue-600 hover:bg-blue-50 transition-all uppercase">{t.header.logoAlt}</button>
+                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 transition-all uppercase">LIMPAR</button>
                 </div>
               </div>
 
@@ -451,10 +451,10 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             </div>
 
             <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">VOLTAR</button>
+              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">{t.common.back}</button>
               <button onClick={() => executeExport(exportingCol, selectedExportOptions, selectedVars)} className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                EXPORTAR AGORA
+                {t.dashboard.exportNow}
               </button>
             </div>
           </div>
@@ -467,14 +467,14 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
           <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-xl font-bold dark:text-white">Importar Coleção</h3>
-                <p className="text-xs text-slate-500 mt-1">Selecione um arquivo JSON de coleção para importar.</p>
+                <h3 className="text-xl font-bold dark:text-white">{t.dashboard.importTitle}</h3>
+                <p className="text-xs text-slate-500 mt-1">{t.dashboard.importDescription}</p>
               </div>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
             </div>
 
             <div className="p-6 space-y-4">
-              <label htmlFor="import-file-input" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Arquivo de Coleção (.json)</label>
+              <label htmlFor="import-file-input" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t.dashboard.importLabel}</label>
               <input 
                 id="import-file-input"
                 type="file" 
@@ -488,10 +488,10 @@ export default function CollectionsView({ collections, onSelectRequest, onCreate
             </div>
 
             <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-              <button onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">CANCELAR</button>
+              <button onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 transition-all">{t.common.cancel}</button>
               <button onClick={handleImportCollection} className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                IMPORTAR
+                {t.dashboard.import}
               </button>
             </div>
           </div>

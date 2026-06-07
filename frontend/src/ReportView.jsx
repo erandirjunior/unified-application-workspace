@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ReportView({ reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
+export default function ReportView({ t, reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
   const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -231,7 +231,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
   const handleExportInspectedHTML = () => {
     if (!selectedLog) return;
-    const includeAuth = window.confirm("Deseja incluir os dados de autenticação no relatório HTML?");
+    const includeAuth = window.confirm(theme === 'dark' ? "Include auth data?" : "Deseja incluir dados de autenticação?");
     const blob = new Blob([generateInspectedLogHTML(selectedLog, includeAuth)], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -243,7 +243,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
   const handleExportInspectedPDF = () => {
     if (!selectedLog) return;
-    const includeAuth = window.confirm("Deseja incluir os dados de autenticação no arquivo PDF?");
+    const includeAuth = window.confirm(theme === 'dark' ? "Include auth data?" : "Deseja incluir dados de autenticação?");
     const win = window.open('', '_blank');
     win.document.write(generateInspectedLogHTML(selectedLog, includeAuth));
     win.document.close();
@@ -277,13 +277,13 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
                 setView('config');
               }}}
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            title="Voltar para Configuração"
+            title={t.report.back}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           </button>
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Relatório de Execução</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Monitoramento em tempo real do teste de carga</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t.report.title}</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">{t.report.subtitle}</p>
           </div>
           </div>
         <div className="flex gap-3">
@@ -291,19 +291,19 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
             <button
               onClick={onStop}
               className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-rose-500/20 active:scale-95 animate-pulse"
-              title="Interromper o teste agora"
+              title={t.report.stopTooltip}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h12v12H6z" />
               </svg>
-              STOP
+              {t.report.stop}
             </button>
           )}
           <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
             <button
               onClick={exportHTML}
               className="px-3 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-blue-500 transition-colors flex items-center gap-1"
-              title="Exportar como arquivo HTML"
+              title={t.report.exportHtml}
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               HTML
@@ -312,7 +312,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
             <button
               onClick={exportPDF}
               className="px-3 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-1"
-              title="Imprimir ou Salvar como PDF"
+              title={t.report.exportPdf}
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               PDF
@@ -342,7 +342,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
               }
             }}
             className="px-4 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-            title="Rodar o teste novamente com a mesma configuração"
+            title={t.report.reRun}
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
           </button>
@@ -350,7 +350,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
             <button
               onClick={() => setView('collection-detail')}
               className="px-4 text-blue-600 dark:text-blue-400 rounded-lg font-bold hover:bg-blue-600/20 transition-colors flex items-center gap-2"
-              title="Voltar para a coleção de onde esta requisição foi executada"
+              title={t.config.actions.backToCol}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             </button>
@@ -361,19 +361,19 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-1">
-          <span className="label-base !mb-1">Method</span>
+          <span className="label-base !mb-1">{t.report.method}</span>
           <span className={`font-bold method-${(config.method || 'multi').toLowerCase()}`}>{config.method || 'SCENARIO'}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-3">
-          <span className="label-base !mb-1">Target URL</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : "Múltiplas Requisições (Cenário)"}</span>
+          <span className="label-base !mb-1">{t.report.targetUrl}</span>
+          <span className="text-slate-700 dark:text-slate-200 font-bold truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : "Múltiplas Actions (Cenário)"}</span>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1">Total Planejado</span>
+          <span className="label-base !mb-1">{t.report.planned}</span>
           <span className="text-slate-700 dark:text-slate-200 font-bold">
-            {config.method === '' ? 'Varia por passo' : (
+            {config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : (
               config.duration > 0 ? (
                 config.rampUp > 0 && config.rampUp < config.duration 
                   ? (config.totalRequests * (config.duration - (config.rampUp / 2)))
@@ -383,11 +383,11 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
           </span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1">Duration</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.method === '' ? 'Varia por passo' : `${config.duration}s`}</span>
+          <span className="label-base !mb-1">{t.report.duration}</span>
+          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : `${config.duration}s`}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">Real Time</span>
+          <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">{t.report.realTime}</span>
           <span className="text-emerald-600 dark:text-emerald-400 font-bold">
             {isRunning 
               ? `${elapsedTime.toFixed(2)}s` 
@@ -400,15 +400,15 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
       {/* Performance Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center">
-          <span className="text-amber-600 dark:text-amber-400 text-sm font-bold uppercase tracking-widest">RPS Médio</span>
+          <span className="text-amber-600 dark:text-amber-400 text-sm font-bold uppercase tracking-widest">{t.report.avgRps}</span>
           <div className="text-4xl font-black text-amber-600 dark:text-amber-400 mt-2">{stats.rps} <span className="text-sm">req/s</span></div>
         </div>
         <div className="p-6 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-center">
-          <span className="text-cyan-600 dark:text-cyan-400 text-sm font-bold uppercase tracking-widest">Tempo Médio</span>
+          <span className="text-cyan-600 dark:text-cyan-400 text-sm font-bold uppercase tracking-widest">{t.report.avgTime}</span>
           <div className="text-4xl font-black text-cyan-600 dark:text-cyan-400 mt-2">{stats.avg} <span className="text-sm">ms</span></div>
         </div>
         <div className="p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl text-center">
-          <span className="text-purple-600 dark:text-purple-400 text-sm font-bold uppercase tracking-widest">Percentis Latência</span>
+          <span className="text-purple-600 dark:text-purple-400 text-sm font-bold uppercase tracking-widest">{t.report.percentiles}</span>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-left">
             <div className="flex justify-between border-b border-purple-500/10 pb-1" title="P50 (Mediana): 50% das requisições foram processadas em tempo igual ou menor que este valor.">
               <span className="text-[10px] text-slate-500 font-bold uppercase cursor-help">P50</span>
@@ -432,21 +432,21 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-center">
-          <span className="text-blue-600 dark:text-blue-400 text-sm font-bold uppercase tracking-widest">Total Requests</span>
+          <span className="text-blue-600 dark:text-blue-400 text-sm font-bold uppercase tracking-widest">{t.dashboard.itemsCount}</span>
           <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mt-2">{reportData?.totalRequests ?? '...'}</div>
         </div>
         <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
-          <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold uppercase tracking-widest">Sucesso</span>
+          <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold uppercase tracking-widest">{t.report.success}</span>
           <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{reportData?.successCount ?? '...'}</div>
         </div>
         <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
-          <span className="text-rose-600 dark:text-rose-400 text-sm font-bold uppercase tracking-widest">Falhas</span>
+          <span className="text-rose-600 dark:text-rose-400 text-sm font-bold uppercase tracking-widest">{t.report.failures}</span>
           <div className="text-4xl font-black text-rose-600 dark:text-rose-400 mt-2">{reportData?.errorCount ?? '...'}</div>
         </div>
       </div>
 
       <div className="flex justify-between items-end mb-2">
-        <label className="label-base !mb-0">Requisições (Clique para detalhes)</label>
+        <label className="label-base !mb-0">{t.report.requestsLabel}</label>
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1 border border-slate-200 dark:border-slate-700">
           <button 
             onClick={() => setLogFilter('all')}
@@ -458,13 +458,13 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
             onClick={() => setLogFilter('success')}
             className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${logFilter === 'success' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-500'}`}
           >
-            SUCESSO ({counts.success})
+            {t.report.filterSuccess} ({counts.success})
           </button>
           <button 
             onClick={() => setLogFilter('error')}
             className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${logFilter === 'error' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-rose-500'}`}
           >
-            ERRO ({counts.error})
+            {t.report.filterError} ({counts.error})
           </button>
         </div>
       </div>
@@ -473,7 +473,7 @@ export default function ReportView({ reportData, requestLogs, setView, config, r
         {requestLogs.length === 0 && !reportData ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p>Disparando workers...</p>
+            <p>{t.report.firing}</p>
           </div>
         ) : (
           <div className="space-y-1 flex flex-col-reverse">
