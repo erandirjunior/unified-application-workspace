@@ -7,7 +7,7 @@ const SectionHeader = ({ title, icon, isExpanded, onToggle }) => (
   >
     <div className="flex items-center gap-2">
       {icon}
-      <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">{title}</h3>
+      <h3 className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">{title}</h3>
     </div>
     <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
   </div>
@@ -56,18 +56,23 @@ export default function DocumentationView({
   request: requestProp, requests = [], activeRequestId, onSelectForEdit, t,
   collection, onBack, onEdit, onRun, methodStyles, onClearBodyParams,
   bodyRawDoc, authDoc, updateHeader, updatePathParam, updateBodyParam, updateRequestInCollection, bodyParams, addHeader, addPathParam, removeHeader, removePathParam, updateField,
-  updateResponse, addResponse, removeResponse,
+  updateResponse, addResponse, removeResponse, setDocumentation,
   addResponseField, removeResponseField, updateResponseField, onUpdateGeneralDoc,
   addBodyParam, removeBodyParam, setBodyRawDoc, setAuthDoc,
-  setUrl, setMethod, setDescription, setBodyRaw, setAuthType, setRequestName, setBodyType,
+  setUrl, setMethod, setBodyRaw, setAuthType, setRequestName, setBodyType,
   isRunning, theme
 }) {
   // Gerencia se recebemos uma lista ou uma única request para manter compatibilidade
-  const baseList = requests.length > 0 ? requests : (requestProp ? [requestProp] : []);
+  const baseList = requests.length > 0 ? [...requests] : (requestProp ? [requestProp] : []);
+
+  // Garante que a requisição ativa esteja sempre na lista para evitar que a documentação fique travada em itens selecionados anteriormente
+  if (activeRequestId && !baseList.some(r => String(r.id) === String(activeRequestId))) {
+    baseList.unshift(requestProp);
+  }
 
   const requestList = baseList.map(originalReq => {
     // Prioriza o requestProp (formulário) se o ID bater, garantindo reatividade imediata
-    if (originalReq.id !== activeRequestId) return { ...originalReq, responses: Array.isArray(originalReq.responses) ? originalReq.responses : [] };
+    if (String(originalReq.id) !== String(activeRequestId)) return { ...originalReq, responses: Array.isArray(originalReq.responses) ? originalReq.responses : [] };
 
     // Mesclamos o original (coleção) com o form (draft)
     // Garantimos que as responses não sejam perdidas se o form ainda não as carregou
@@ -78,11 +83,12 @@ export default function DocumentationView({
     return { 
       ...originalReq, 
       ...requestProp, 
-      id: originalReq.id, // Preserva o ID original
+      id: originalReq.id,
+      name: requestProp.requestName || originalReq.name, // Sincroniza o nome para o input
       responses: finalResps 
     };
   });
-  const request = requestList.find(r => r.id === activeRequestId) || requestList[0] || {};
+  const request = requestList.find(r => String(r.id) === String(activeRequestId)) || (activeRequestId ? requestList[0] : null) || {};
   
   const activeEnv = collection?.environments?.find(e => e.id === collection.activeEnvironmentId);
   const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'editor'
@@ -99,17 +105,15 @@ export default function DocumentationView({
     // Implementação básica de parser Markdown (Headers, Bold, Italic, Lists, Code, Links, Images)
     const html = text
       .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
       .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold mt-4 mb-2 text-slate-900 dark:text-white">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-6 mb-3 border-b border-slate-200 dark:border-slate-800 pb-1 text-slate-900 dark:text-white">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-black mt-8 mb-4 text-slate-900 dark:text-white">$1</h1>')
       .replace(/\*\*(.*)\*\*/gim, '<strong class="font-bold text-slate-900 dark:text-white">$1</strong>')
       .replace(/\*(.*)\*/gim, '<em class="italic">$1</em>')
-      .replace(/!\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
+      .replace(/!\[(.*?)\]\(\s*([^"'\s\)]+)(?:\s*(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
         return `<img src="${url}" alt="${alt}" ${title ? `title="${title}"` : ''} class="max-w-full h-auto rounded-xl my-4 shadow-md border border-slate-200 dark:border-slate-800" />`;
       })
-      .replace(/\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
+      .replace(/\[(.*?)\]\(\s*([^"'\s\)]+)(?:\s*(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
         return `<a href="${url}" ${title ? `title="${title}"` : ''} target="_blank" class="text-blue-500 hover:underline">${text}</a>`;
       })
       .replace(/`(.*?)`/gim, '<code class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-xs text-blue-600 dark:text-blue-400">$1</code>')
@@ -404,16 +408,16 @@ export default function DocumentationView({
     const renderStaticMarkdown = (text) => {
       if (!text) return "";
       return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/&/g, '&amp;')
         .replace(/^### (.*$)/gim, `<h3 style="font-size: 16px; font-weight: 700; margin-top: 15px; color: ${colors.title}">$1</h3>`)
         .replace(/^## (.*$)/gim, `<h2 style="font-size: 18px; font-weight: 700; margin-top: 20px; border-bottom: 1px solid ${colors.border}; color: ${colors.title}">$1</h2>`)
         .replace(/^# (.*$)/gim, `<h1 style="font-size: 22px; font-weight: 900; margin-top: 25px; color: ${colors.title}">$1</h1>`)
         .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
         .replace(/\*(.*)\*/gim, '<em>$1</em>')
-        .replace(/!\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
+        .replace(/!\[(.*?)\]\(\s*([^"'\s\)]+)(?:\s*(['"])(.*?)\3)?\s*\)/gim, (m, alt, url, q, title) => {
           return `<img src="${url}" alt="${alt}" ${title ? `title="${title}"` : ''} style="max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid ${colors.border};" />`;
         })
-        .replace(/\[(.*?)\]\(\s*(\S+?)(?:\s+(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
+        .replace(/\[(.*?)\]\(\s*([^"'\s\)]+)(?:\s*(['"])(.*?)\3)?\s*\)/gim, (m, text, url, q, title) => {
           return `<a href="${url}" ${title ? `title="${title}"` : ''} target="_blank" style="color: ${colors.mono}; text-decoration: underline;">${text}</a>`;
         })
         .replace(/`(.*?)`/gim, `<code style="background: ${isDark ? '#1e293b' : '#f1f5f9'}; padding: 2px 4px; border-radius: 4px; font-family: monospace;">$1</code>`)
@@ -421,16 +425,13 @@ export default function DocumentationView({
         .replace(/\n/gim, '<br />');
     };
 
-    const preambleHTML = collection?.generalDoc ? `
-      <section style="margin-bottom: 50px; border-bottom: 2px solid ${colors.border}; padding-bottom: 30px;">
-        <div style="font-size: 14px; line-height: 1.6; color: ${colors.text};">${renderStaticMarkdown(collection.generalDoc)}</div>
-      </section>
-    ` : '';
+    const preambleHTML = '';
 
     const contentHTML = targetRequests.map(request => {
       const resolvedUrl = resolveVariables(request.url);
       return `
         <div style="margin-bottom: 80px; page-break-after: always;">
+          <section><div class="box">${renderStaticMarkdown(request.documentation) || 'Nenhuma documentação detalhada fornecida para esta action.'}</div></section>
           <header style="border-bottom: 4px solid ${colors.mono}; padding-bottom: 10px;">
             <h1>${request.name}</h1>
             <div style="display: flex; align-items: center;">
@@ -438,7 +439,6 @@ export default function DocumentationView({
               <span class="url">${resolvedUrl}</span>
             </div>
           </header>
-          <section><h2>Descrição Geral</h2><div class="box">${renderStaticMarkdown(request.description) || 'Nenhuma descrição fornecida.'}</div></section>
           <section><h2>Autenticação</h2><div class="box"><strong>Tipo:</strong> ${!request.authType || request.authType === 'none' ? 'Sem Autenticação' : request.authType.toUpperCase()}<br/>${request.authDoc ? `<div style="margin-top: 10px;">${renderStaticMarkdown(request.authDoc)}</div>` : ''}</div></section>
           ${request.pathParams?.length ? `
           <section><h2>Path Parameters</h2><table style="${tableStyle}"><thead><tr><th style="${thStyle}">Parâmetro</th><th style="${thStyle}">Descrição</th><th style="${thStyle}">Obr.</th><th style="${thStyle}">Exemplo</th></tr></thead><tbody>
@@ -494,7 +494,7 @@ export default function DocumentationView({
       .url { font-family: monospace; color: ${colors.meta}; font-size: 14px; }
       section { margin-top: 30px; }
       h2 { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid ${colors.border}; padding-bottom: 5px; margin-bottom: 10px; }
-      .box { padding: 15px; border-radius: 8px; border: 1px solid ${colors.border}; background: ${isDark ? '#1e293b44' : '#f8fafc'}; font-size: 13px; white-space: pre-wrap; }
+      .box { font-size: 13px; }
       .mono { font-family: monospace; color: ${colors.mono}; }
       pre { background: #0f172a; color: #cbd5e1; padding: 15px; border-radius: 8px; font-size: 11px; overflow-x: auto; }
       @media print { body { padding: 0; } .no-print { display: none; } }
@@ -521,20 +521,20 @@ export default function DocumentationView({
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-4">
       {/* Header da Documentação */}
-      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
+      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 flex-wrap gap-3">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           </button>
           <div>
             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/30">
+               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/30">
                  {requestList.length}
                </div>
                <div>
-                 <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate">
+                 <h1 className="text-lg font-black text-slate-900 dark:text-white truncate">
                    {isEditing ? t.documentation.editorTitle : t.documentation.title}
                  </h1>
                  <p className="text-slate-500 text-xs font-mono mt-1">
@@ -548,7 +548,7 @@ export default function DocumentationView({
         {isEditing && (
           <button 
             onClick={() => updateRequestInCollection()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[10px] transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             {t.documentation.updateBtn}
@@ -570,13 +570,13 @@ export default function DocumentationView({
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
           <button 
             onClick={() => setViewMode('preview')}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {t.documentation.preview}
           </button>
           <button 
             onClick={() => setViewMode('editor')}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition-all ${viewMode === 'editor' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${viewMode === 'editor' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {t.documentation.editor}
           </button>
@@ -584,13 +584,13 @@ export default function DocumentationView({
       </div>
 
       {isEditing && requestList.length > 1 && (
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-wrap gap-2">
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5">
           <span className="text-[10px] font-black text-slate-500 uppercase w-full mb-1">Selecione para editar:</span>
           {requestList.map(req => (
             <button 
               key={req.id}
               onClick={() => onSelectForEdit(req)}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+              className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all border ${
                 activeRequestId === req.id 
                   ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
                   : 'bg-white dark:bg-slate-900 text-slate-600 border-slate-200 dark:border-slate-800 hover:border-blue-500'
@@ -602,30 +602,16 @@ export default function DocumentationView({
         </div>
       )}
 
-      {/* Documentação Geral (Markdown) */}
-      <section className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Documentação Geral</h3>
+      {/* Introdução da Coleção (Apenas no Preview) */}
+      {/* {!isEditing && collection?.generalDoc && (
+        <section className="bg-slate-50 dark:bg-slate-900/20 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Guia da Coleção</span>
           </div>
-          {isEditing && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Markdown Ativo</span>}
-        </div>
-        <div className="p-6">
-          {isEditing ? (
-            <textarea 
-              className="input-base min-h-[150px] font-mono text-sm !bg-slate-50 dark:!bg-slate-950" 
-              placeholder="Descreva informações globais da API, guia de autenticação, base URL, etc. (Suporta Markdown)"
-              value={collection?.generalDoc || ''}
-              onChange={(e) => onUpdateGeneralDoc(e.target.value)}
-            />
-          ) : (
-            <div className="min-h-[60px]">
-              {collection?.generalDoc ? renderMarkdown(collection.generalDoc) : <p className="text-slate-400 italic text-sm">Nenhuma documentação geral fornecida para esta coleção.</p>}
-            </div>
-          )}
-        </div>
-      </section>
+          {renderMarkdown(collection.generalDoc)}
+        </section>
+      )} */}
 
       {requestList.map((req, reqIdx) => {
         // No modo editor, só mostramos os campos se for a request ativa
@@ -648,21 +634,38 @@ export default function DocumentationView({
         const activeBodyParams = (req.id === activeRequestId) ? bodyParams : (req.bodyParams || []);
 
         return (
-          <div key={req.id} className={`${!isEditing && reqIdx > 0 ? 'pt-12 border-t border-slate-200 dark:border-slate-800' : ''}`}>
+          <div key={req.id} className={`${!isEditing && reqIdx > 0 ? 'pt-8 border-t border-slate-200 dark:border-slate-800' : ''}`}>
+            {/* Documentação Específica da Action - Movida para o Topo */}
+            <section className="mb-6">
+              <SectionHeader title="Documentação Geral" icon={<svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} />
+              {isEditing ? (
+                <textarea 
+                  className="input-base min-h-[200px] font-sans text-sm !bg-slate-50 dark:!bg-slate-950" 
+                  placeholder="Descreva esta action detalhadamente (Suporta Markdown)..."
+                  value={req.documentation || ''}
+                  onChange={(e) => setDocumentation(e.target.value)}
+                />
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    {req.documentation ? renderMarkdown(req.documentation) : <p className="text-slate-400 italic">Nenhuma documentação detalhada fornecida para esta action.</p>}
+                </div>
+              )}
+            </section>
+
             {!isEditing && (
-              <div className="flex items-center gap-3 mb-8">
+              <div className="flex items-center gap-3 mb-4">
                 <span className={`text-[10px] font-black px-2 py-1 rounded-lg border ${methodStyles[req.method]}`}>{req.method}</span>
-                <h2 className="text-xl font-black text-slate-800 dark:text-white">{req.name}</h2>
+                <h2 className="text-base font-black text-slate-800 dark:text-white truncate">{req.name}</h2>
                 <p className="text-[10px] font-mono text-slate-400 truncate flex-1">{resolveVariables(req.url)}</p>
               </div>
             )}
             
             {isEditing && (
-              <div className="grid grid-cols-1 gap-4 mb-8">
+              <div className="grid grid-cols-1 gap-3 mb-4">
                 <div>
                   <label className="label-base">Nome da Requisição</label>
                   <input 
-                    className="input-base text-lg font-bold" 
+                    className="input-base text-sm font-bold" 
                     value={req.name} 
                     onChange={(e) => setRequestName(e.target.value)} 
                   />
@@ -676,24 +679,7 @@ export default function DocumentationView({
               </div>
             )}
 
-      <div className="space-y-12">
-        {/* Descrição */}
-        <section>
-          <SectionHeader title="Documentação da URL" icon={<svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>} />
-          {isEditing ? (
-            <textarea 
-              className="input-base min-h-[120px] font-sans text-sm" 
-              placeholder="Escreva aqui uma visão geral do que este endpoint faz..."
-                value={req.description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          ) : (
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                {req.description ? renderMarkdown(req.description) : <p className="text-slate-400 italic">Nenhuma descrição fornecida.</p>}
-            </div>
-          )}
-        </section>
-
+      <div className="space-y-6">
         {/* Segurança */}
         {(isEditing || req.authType !== 'none' || req.authDoc) && (
           <section>
@@ -704,13 +690,13 @@ export default function DocumentationView({
             onToggle={() => setAuthExpanded(!authExpanded)}
           />
           {authExpanded && (
-            <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+            <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
               <div className="flex items-center gap-2 text-sm font-bold dark:text-slate-200">
                 <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 {isEditing ? (
                   <select className="input-base !py-1 !text-xs bg-transparent max-w-xs" value={req.authType || 'none'} onChange={(e) => setAuthType(e.target.value)}>
                     <option value="none">Nenhum</option>
-                    <option value="bearer">Bearer</option>
+                    <option value="bearer">Bearer Token</option>
                     <option value="basic">Basic</option>
                     <option value="apikey">API Key</option>
                   </select>
@@ -719,10 +705,10 @@ export default function DocumentationView({
                 )}
               </div>
               {isEditing ? (
-                <textarea className="input-base text-[11px] min-h-[60px] mt-4" placeholder="Explique como obter as credenciais..." value={authDoc || ''} onChange={(e) => setAuthDoc(e.target.value)} />
-              ) : req.authDoc && (
+                <textarea className="input-base text-[11px] min-h-[60px] mt-4" placeholder="Explique como obter as credenciais..." value={req.authDoc || ''} onChange={(e) => setAuthDoc(e.target.value)} />
+              ) : (req.authDoc || req.authToken || req.authUsername) && (
                 <div className="mt-4">
-                  {renderMarkdown(authDoc)}
+                  {renderMarkdown(req.authDoc)}
                 </div>
               )}
             </div>
@@ -885,12 +871,12 @@ export default function DocumentationView({
                   <textarea 
                     className="input-base text-xs min-h-[100px]" 
                     placeholder="Explique o schema ou campos importantes do corpo da requisição..."
-                    value={req.bodyRawDoc || ''}
+                        value={req.bodyRawDoc || ''} 
                     onChange={(e) => setBodyRawDoc(e.target.value)}
                   />
                 ) : req.bodyRawDoc && (
                   <div className="mb-4">
-                    {renderMarkdown(req.bodyRawDoc)}
+                        {renderMarkdown(req.bodyRawDoc)}
                   </div>
                 )}
               </div>
@@ -933,7 +919,7 @@ export default function DocumentationView({
 
             {/* Exemplo de Body Raw no Preview */}
             {!isEditing && req.bodyRaw && (
-              <div className="mb-6 relative group">
+              <div className="mb-4 relative group">
               <pre className="bg-slate-950 p-6 rounded-2xl text-slate-300 font-mono text-xs overflow-x-auto border border-slate-800">
                 {req.bodyRaw}
               </pre>
@@ -948,30 +934,30 @@ export default function DocumentationView({
 
             {/* Tabela de Parâmetros / Campos (Agora disponível para todos os tipos de body) */}
             {req.bodyType !== 'none' && (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 mb-4">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold uppercase text-[10px] whitespace-nowrap">
                     <tr>
-                      <th className="px-4 py-3 w-[20%]">Campo / Chave</th>
-                      <th className="px-4 py-3 w-[20%]">Valor / Tipo</th>
-                      <th className="px-4 py-3 w-[35%]">Descrição</th>
-                      <th className="px-4 py-3 w-16 text-center">Obr.</th>
-                      <th className="px-4 py-3 w-[20%]">Exemplo</th>
-                      {isEditing && <th className="px-4 py-3 w-10"></th>}
+                      <th className="px-3 py-2 w-[20%]">Campo / Chave</th>
+                      <th className="px-3 py-2 w-[20%]">Valor / Tipo</th>
+                      <th className="px-3 py-2 w-[35%]">Descrição</th>
+                      <th className="px-3 py-2 w-16 text-center">Obr.</th>
+                      <th className="px-3 py-2 w-[20%]">Exemplo</th>
+                      {isEditing && <th className="px-3 py-2 w-10"></th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {activeBodyParams.map((p, i) => (
-                      <tr key={i} className="dark:text-slate-300">
-                        <td className="px-4 py-3 font-mono text-amber-500 break-all align-top">
+                      <tr key={i} className="dark:text-slate-300 text-xs">
+                        <td className="px-3 py-2 font-mono text-amber-500 break-all align-top">
                           {isEditing ? <input className="input-base !py-1 !px-2 text-xs" value={p.key} onChange={(e) => updateBodyParam(i, 'key', e.target.value)} /> : (p.key || '-')}
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-2 align-top">
                           {isEditing ? (
                             <div className="flex gap-1">
                               <select className="input-base !py-1 !px-1 text-[10px] w-14" value={p.type} onChange={(e) => updateBodyParam(i, 'type', e.target.value)}>
                                 <option value="text">string</option>
-                                <option value="int">int</option>
+                                <option value="int">integer</option>
                                 <option value="float">float</option>
                                 <option value="array">array</option>
                                 <option value="object">object</option>
@@ -988,17 +974,17 @@ export default function DocumentationView({
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-2 align-top">
                           {isEditing ? <textarea className="input-base !py-1 !px-2 text-xs min-h-[32px]" value={p.docDescription} onChange={(e) => updateBodyParam(i, 'docDescription', e.target.value)} /> : <span className="text-slate-500 text-xs whitespace-pre-wrap">{p.docDescription || '-'}</span>}
                         </td>
-                        <td className="px-4 py-3 text-center align-top">
+                        <td className="px-3 py-2 text-center align-top">
                           {isEditing ? <input type="checkbox" checked={p.docRequired} onChange={(e) => updateBodyParam(i, 'docRequired', e.target.checked)} /> : (p.docRequired ? <span className="text-rose-500 font-bold">Sim</span> : 'Não')}
                         </td>
-                        <td className="px-4 py-3 align-top">
+                        <td className="px-3 py-2 align-top">
                           {isEditing ? <input className="input-base !py-1 !px-2 text-xs" value={p.docExample} onChange={(e) => updateBodyParam(i, 'docExample', e.target.value)} /> : <code className="text-[10px] text-slate-400 break-all">{p.docExample || '-'}</code>}
                         </td>
                         {isEditing && (
-                          <td className="px-4 py-3 text-center align-top">
+                          <td className="px-3 py-2 text-center align-top">
                             <button onClick={() => removeBodyParam(i)} className="text-rose-500 hover:text-rose-700">×</button>
                           </td>
                         )}
@@ -1085,21 +1071,21 @@ export default function DocumentationView({
                         <table className="w-full text-left text-sm">
                           <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-bold uppercase text-[10px] whitespace-nowrap">
                             <tr>
-                              <th className="px-4 py-3 w-[20%]">Campo / Chave</th>
-                              <th className="px-4 py-3 w-[20%]">Tipo</th>
-                              <th className="px-4 py-3 w-[35%]">Descrição</th>
-                              <th className="px-4 py-3 w-16 text-center">Obr.</th>
-                              <th className="px-4 py-3 w-[20%]">Exemplo</th>
-                              <th className="px-4 py-3 w-10"></th>
+                              <th className="px-3 py-2 w-[20%]">Campo / Chave</th>
+                              <th className="px-3 py-2 w-[20%]">Tipo</th>
+                              <th className="px-3 py-2 w-[35%]">Descrição</th>
+                              <th className="px-3 py-2 w-16 text-center">Obr.</th>
+                              <th className="px-3 py-2 w-[20%]">Exemplo</th>
+                              <th className="px-3 py-2 w-10"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {(Array.isArray(resp.bodyFields) ? resp.bodyFields : []).map((field, fieldIdx) => (
-                              <tr key={fieldIdx} className="dark:text-slate-300">
-                                <td className="px-4 py-3 font-mono text-purple-500 break-all align-top">
+                              <tr key={fieldIdx} className="dark:text-slate-300 text-xs">
+                                <td className="px-3 py-2 font-mono text-purple-500 break-all align-top">
                                   <input className="input-base !py-1 !px-2 text-xs" value={field.key} onChange={(e) => updateResponseField(i, fieldIdx, 'key', e.target.value)} />
                                 </td>
-                                <td className="px-4 py-3 align-top">
+                                <td className="px-3 py-2 align-top">
                                   <select className="input-base !py-1 !px-1 text-[10px] w-full" value={field.type} onChange={(e) => updateResponseField(i, fieldIdx, 'type', e.target.value)}>
                                     <option value="text">string</option>
                                     <option value="int">int</option>
@@ -1110,16 +1096,16 @@ export default function DocumentationView({
                                     <option value="enum">enum</option>
                                   </select>
                                 </td>
-                                <td className="px-4 py-3 align-top">
+                                <td className="px-3 py-2 align-top">
                                   <textarea className="input-base !py-1 !px-2 text-xs min-h-[32px]" value={field.docDescription} onChange={(e) => updateResponseField(i, fieldIdx, 'docDescription', e.target.value)} />
                                 </td>
-                                <td className="px-4 py-3 text-center align-top">
+                                <td className="px-3 py-2 text-center align-top">
                                   <input type="checkbox" checked={field.docRequired} onChange={(e) => updateResponseField(i, fieldIdx, 'docRequired', e.target.checked)} />
                                 </td>
-                                <td className="px-4 py-3 align-top">
+                                <td className="px-3 py-2 align-top">
                                   <input className="input-base !py-1 !px-2 text-xs" value={field.docExample} onChange={(e) => updateResponseField(i, fieldIdx, 'docExample', e.target.value)} />
                                 </td>
-                                <td className="px-4 py-3 text-center align-top">
+                                <td className="px-3 py-2 text-center align-top">
                                   <button onClick={(e) => { e.stopPropagation(); removeResponseField(i, fieldIdx); }} className="text-rose-500 hover:text-rose-700">×</button>
                                 </td>
                               </tr>
@@ -1195,7 +1181,7 @@ export default function DocumentationView({
 
       {/* Snippet cURL ao final da página */}
       {!isEditing && requestList.length === 1 && (
-        <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800">
+        <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800">
         <div className="flex justify-between items-center mb-4">
           <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Exemplo de Requisição (cURL)</h4>
           <button onClick={() => copyToClipboard(generateCurl())} className="text-blue-500 hover:text-blue-400 text-xs font-bold transition-colors">Copiar Comando</button>
@@ -1209,7 +1195,7 @@ export default function DocumentationView({
       {isEditing && <p className="text-center text-xs text-emerald-500 font-bold animate-pulse">● Modo de Edição Ativo - Alterações são salvas automaticamente na coleção.</p>}
 
       {/* Dica Swagger */}
-      <div className="text-center pt-12">
+      <div className="text-center pt-8">
         <p className="text-[10px] text-slate-400 italic">Esta documentação é gerada automaticamente com base nas configurações da requisição e do ambiente ativo.</p>
       </div>
     </div>

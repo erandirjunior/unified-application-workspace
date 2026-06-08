@@ -1,6 +1,63 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ReportView({ t, reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeScenarioId, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
+const MiniChart = ({ data, color, label, unit, isRunning, height = 40 }) => {
+  const isEmpty = !data || data.length < 2;
+  const max = Math.max(...data, 1);
+  const width = 300;
+  const padding = 2;
+  const step = isEmpty ? 0 : width / (data.length - 1);
+  
+  const getX = (i) => i * step;
+  const getY = (v) => height - ((v / max) * (height - padding * 2)) - padding;
+
+  const points = isEmpty ? "" : data.map((v, i) => `${getX(i)},${getY(v)}`).join(' ');
+  const areaPoints = isEmpty ? "" : `${points} ${getX(data.length - 1)},${height} 0,${height}`;
+  const gradientId = `grad-${label.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+  return (
+    <div className="bg-slate-900/40 rounded-2xl p-4 border border-white/5 space-y-3 backdrop-blur-sm hover:bg-slate-900/60 transition-all duration-500 group relative overflow-hidden">
+      {!isEmpty && (
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      )}
+      <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase tracking-widest">
+        <div className="flex items-center gap-2">
+          <div className={`w-1.5 h-1.5 rounded-full ${isEmpty ? 'bg-slate-700' : ''}`} style={!isEmpty ? { backgroundColor: color, boxShadow: `0 0 8px ${color}` } : {}}></div>
+          <span>{label}</span>
+        </div>
+        <span className="text-slate-300 bg-white/5 px-1.5 py-0.5 rounded font-mono">
+          {isEmpty ? '--' : Math.max(...data).toFixed(data.length > 20 ? 0 : 1)}{unit}
+        </span>
+      </div>
+      <div className="flex items-end justify-center" style={{ height: `${height}px` }}>
+        {isEmpty ? (
+          <span className="text-[10px] text-slate-700 italic">{isRunning ? 'Capturando...' : 'Sem dados'}</span>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                <stop offset="100%" stopColor={color} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={areaPoints} fill={`url(#${gradientId})`} className="transition-all duration-1000 ease-out" />
+            <polyline
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={points}
+              className="transition-all duration-1000 ease-out group-hover:stroke-[2.5px]"
+              style={{ filter: `drop-shadow(0 0 3px ${color}66)` }}
+            />
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default function ReportView({ t, reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
   const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -165,6 +222,43 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
     return { avg: (avg || 0).toFixed(2), p50: (p50 || 0).toFixed(2), p90: (p90 || 0).toFixed(2), p95: (p95 || 0).toFixed(2), p99: (p99 || 0).toFixed(2), rps };
   })();
 
+  // Dados para os gráficos de tendência
+  const trendData = (() => {
+    if (!requestLogs || requestLogs.length < 2) return { reqTrend: [], errTrend: [], timeTrend: [] };
+
+    const groups = {};
+    // Itera por todo o log em ordem cronológica (assumindo que o runner adiciona ao início ou fim)
+    // Se o runner usa logs = [novo, ...antigos], precisamos dar reverse para o gráfico ler esquerda -> direita
+    const chronologicalLogs = [...requestLogs].reverse();
+
+    chronologicalLogs.forEach(log => {
+      const time = log.timestamp;
+      if (!groups[time]) groups[time] = { reqs: 0, errs: 0 };
+      groups[time].reqs++;
+      if (!log.success) groups[time].errs++;
+    });
+
+    const times = Object.keys(groups).sort();
+    
+    // Lógica de amostragem (downsampling) para o gráfico de latência (máx 60 pontos)
+    const rawLatencies = chronologicalLogs.map(l => l.responseTime);
+    const maxPoints = 60;
+    const sampledLatencies = rawLatencies.length <= maxPoints 
+      ? rawLatencies 
+      : Array.from({ length: maxPoints }, (_, i) => {
+          const start = Math.floor(i * (rawLatencies.length / maxPoints));
+          const end = Math.floor((i + 1) * (rawLatencies.length / maxPoints));
+          const bucket = rawLatencies.slice(start, end);
+          return bucket.reduce((a, b) => a + b, 0) / bucket.length;
+        });
+
+    return {
+      reqTrend: times.map(t => groups[t].reqs),
+      errTrend: times.map(t => groups[t].errs),
+      timeTrend: sampledLatencies
+    };
+  })();
+
   const sensitiveHeaders = ['authorization', 'x-api-key', 'cookie', 'set-cookie', 'proxy-authorization', 'token', 'access-token'];
 
   const redactHeaders = (headers, includeAuth) => {
@@ -265,32 +359,13 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => {
-              // Se estamos em um cenário ou workflow, volta para a coleção. Senão, para a configuração padrão.
-              if (activeCollectionId && (activeScenarioId || activeWorkflowId)) {
-                setView('collection-detail');
-              } else {
-                setView('config');
-              }}}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            title={t.report.back}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-          </button>
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">{t.report.title}</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">{t.report.subtitle}</p>
-          </div>
-          </div>
-        <div className="flex gap-3">
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-4">
+      <div className="flex justify-between items-center border-b border-white/5 pb-4 gap-2 flex-wrap">
+        <div className="flex gap-2">
           {isRunning && (
             <button
               onClick={onStop}
-              className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-rose-500/20 active:scale-95 animate-pulse"
+              className="px-3 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg font-bold text-[10px] transition-all flex items-center gap-2 animate-pulse"
               title={t.report.stopTooltip}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -299,77 +374,40 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
               {t.report.stop}
             </button>
           )}
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+          <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 border border-white/5">
             <button
               onClick={exportHTML}
-              className="px-3 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-blue-500 transition-colors flex items-center gap-1"
+              className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:text-blue-500 transition-colors flex items-center gap-1"
               title={t.report.exportHtml}
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               HTML
             </button>
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 self-center"></div>
+            <div className="w-px h-3 bg-white/5 self-center mx-1"></div>
             <button
               onClick={exportPDF}
-              className="px-3 py-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-500 transition-colors flex items-center gap-1"
+              className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:text-rose-500 transition-colors flex items-center gap-1"
               title={t.report.exportPdf}
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               PDF
             </button>
           </div>
-          <button
-            onClick={() => {
-              if (lastExecutedPayload) {
-                sendRequests(lastExecutedPayload);
-              } else {
-                const headerMap = {};
-                (config.headers || []).forEach(h => {
-                  if (h.key) headerMap[h.key] = h.value;
-                });
-
-                const payload = {
-                  ...config,
-                  url: config.url,
-                  method: config.method,
-                  totalRequests: parseInt(config.totalRequests),
-                  duration: parseInt(config.duration),
-                  rampUp: parseInt(config.rampUp || 0),
-                  headers: headerMap,
-                  body: config.body || config.bodyRaw || '',
-                };
-                sendRequests(payload);
-              }
-            }}
-            className="px-4 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-            title={t.report.reRun}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
-          </button>
-          {activeCollectionId && config.activeRequestId && ( // Mostra o botão Coleção apenas se veio de uma request salva
-            <button
-              onClick={() => setView('collection-detail')}
-              className="px-4 text-blue-600 dark:text-blue-400 rounded-lg font-bold hover:bg-blue-600/20 transition-colors flex items-center gap-2"
-              title={t.config.actions.backToCol}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-1">
-          <span className="label-base !mb-1">{t.report.method}</span>
-          <span className={`font-bold method-${(config.method || 'multi').toLowerCase()}`}>{config.method || 'SCENARIO'}</span>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-white/5 overflow-hidden">
+          <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.method}</span>
+          <span className={`font-black text-xs method-${(config.method || 'multi').toLowerCase()}`}>{config.method || (config.requests ? 'AUTOMATION' : 'SCENARIO')}</span>
         </div>
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 md:col-span-3">
-          <span className="label-base !mb-1">{t.report.targetUrl}</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : "Múltiplas Actions (Cenário)"}</span>
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-white/5 overflow-hidden min-w-0">
+          <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.targetUrl}</span>
+          <span className="text-slate-300 font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? "Fluxo Multi-step" : "Múltiplas (Cenário)")}</span>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-3">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.planned}</span>
           <span className="text-slate-700 dark:text-slate-200 font-bold">
@@ -398,50 +436,59 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       </div>
 
       {/* Performance Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center">
-          <span className="text-amber-600 dark:text-amber-400 text-sm font-bold uppercase tracking-widest">{t.report.avgRps}</span>
-          <div className="text-4xl font-black text-amber-600 dark:text-amber-400 mt-2">{stats.rps} <span className="text-sm">req/s</span></div>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-[2rem] text-center">
+          <span className="text-amber-500 text-[9px] font-black uppercase tracking-widest opacity-60">{t.report.avgRps}</span>
+          <div className="text-2xl font-black text-amber-500 mt-1">{stats.rps} <span className="text-[10px]">r/s</span></div>
         </div>
-        <div className="p-6 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl text-center">
-          <span className="text-cyan-600 dark:text-cyan-400 text-sm font-bold uppercase tracking-widest">{t.report.avgTime}</span>
-          <div className="text-4xl font-black text-cyan-600 dark:text-cyan-400 mt-2">{stats.avg} <span className="text-sm">ms</span></div>
+        <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-[2rem] text-center">
+          <span className="text-cyan-500 text-[9px] font-black uppercase tracking-widest opacity-60">{t.report.avgTime}</span>
+          <div className="text-2xl font-black text-cyan-500 mt-1">{stats.avg} <span className="text-[10px]">ms</span></div>
         </div>
-        <div className="p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl text-center">
-          <span className="text-purple-600 dark:text-purple-400 text-sm font-bold uppercase tracking-widest">{t.report.percentiles}</span>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4 text-left">
-            <div className="flex justify-between border-b border-purple-500/10 pb-1" title="P50 (Mediana): 50% das requisições foram processadas em tempo igual ou menor que este valor.">
-              <span className="text-[10px] text-slate-500 font-bold uppercase cursor-help">P50</span>
-              <span className="font-mono font-bold text-purple-600 dark:text-purple-300">{stats.p50}ms</span>
+        <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-[2rem] text-center flex flex-col justify-center">
+          <span className="text-purple-500 text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">{t.report.percentiles}</span>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div className="flex justify-between border-b border-purple-500/5 pb-0.5">
+              <span className="text-[9px] text-slate-500 font-bold uppercase">P50</span>
+              <span className="text-xs font-mono font-black text-slate-200">{stats.p50}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
             </div>
-            <div className="flex justify-between border-b border-purple-500/10 pb-1" title="P90: 90% das requisições foram processadas em tempo igual ou menor que este valor.">
-              <span className="text-[10px] text-slate-500 font-bold uppercase cursor-help">P90</span>
-              <span className="font-mono font-bold text-purple-600 dark:text-purple-300">{stats.p90}ms</span>
+            <div className="flex justify-between border-b border-purple-500/5 pb-0.5">
+              <span className="text-[9px] text-slate-500 font-bold uppercase">P90</span>
+              <span className="text-xs font-mono font-black text-purple-400">{stats.p90}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
             </div>
-            <div className="flex justify-between border-b border-purple-500/10 pb-1" title="P95: 95% das requisições foram processadas em tempo igual ou menor que este valor.">
-              <span className="text-[10px] text-slate-500 font-bold uppercase cursor-help">P95</span>
-              <span className="font-mono font-bold text-purple-600 dark:text-purple-300">{stats.p95}ms</span>
+            <div className="flex justify-between border-b border-purple-500/10 pb-0.5">
+              <span className="text-[9px] text-slate-500 font-bold uppercase">P95</span>
+              <span className="text-xs font-mono font-black text-purple-400">{stats.p95}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
             </div>
-            <div className="flex justify-between border-b border-purple-500/10 pb-1" title="P99: 99% das requisições foram processadas em tempo igual ou menor que este valor.">
-              <span className="text-[10px] text-slate-500 font-bold uppercase cursor-help">P99</span>
-              <span className="font-mono font-bold text-purple-600 dark:text-purple-300">{stats.p99}ms</span>
+            <div className="flex justify-between border-b border-purple-500/10 pb-0.5">
+              <span className="text-[9px] text-slate-500 font-bold uppercase">P99</span>
+              <span className="text-xs font-mono font-black text-rose-400">{stats.p99}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="p-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-center">
-          <span className="text-blue-600 dark:text-blue-400 text-sm font-bold uppercase tracking-widest">{t.dashboard.itemsCount}</span>
-          <div className="text-4xl font-black text-blue-600 dark:text-blue-400 mt-2">{reportData?.totalRequests ?? '...'}</div>
+      {/* Gráficos de Tendência */}
+      <div className="grid grid-cols-1 gap-4">
+         <div className="grid grid-cols-2 gap-4">
+            <MiniChart data={trendData.reqTrend} color="#3b82f6" label="Vazão (Req/s)" unit=" reqs" isRunning={isRunning} />
+            <MiniChart data={trendData.errTrend} color="#ef4444" label="Erros detectados" unit=" errs" isRunning={isRunning} />
+         </div>
+         <MiniChart data={trendData.timeTrend} color="#10b981" label="Latência por Action (Ms x Requests)" unit="ms" isRunning={isRunning} height={120} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
+          <span className="text-blue-500 text-[8px] font-black uppercase tracking-widest">{t.dashboard.itemsCount}</span>
+          <div className="text-xl font-black text-blue-500 mt-1">{reportData?.totalRequests ?? '...'}</div>
         </div>
-        <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
-          <span className="text-emerald-600 dark:text-emerald-400 text-sm font-bold uppercase tracking-widest">{t.report.success}</span>
-          <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{reportData?.successCount ?? '...'}</div>
+        <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl text-center">
+          <span className="text-emerald-500 text-[8px] font-black uppercase tracking-widest">{t.report.success}</span>
+          <div className="text-xl font-black text-emerald-500 mt-1">{reportData?.successCount ?? '...'}</div>
         </div>
-        <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-center">
-          <span className="text-rose-600 dark:text-rose-400 text-sm font-bold uppercase tracking-widest">{t.report.failures}</span>
-          <div className="text-4xl font-black text-rose-600 dark:text-rose-400 mt-2">{reportData?.errorCount ?? '...'}</div>
+        <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-center">
+          <span className="text-rose-500 text-[8px] font-black uppercase tracking-widest">{t.report.failures}</span>
+          <div className="text-xl font-black text-rose-500 mt-1">{reportData?.errorCount ?? '...'}</div>
         </div>
       </div>
 
@@ -469,7 +516,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
         </div>
       </div>
 
-      <div className="bg-slate-950 rounded-xl p-2 font-mono text-xs text-slate-400 h-[450px] overflow-y-auto border border-slate-800 shadow-inner flex flex-col-reverse">
+      <div className="bg-slate-950 rounded-xl p-1 font-mono text-xs text-slate-400 h-[300px] overflow-y-auto border border-slate-800 shadow-inner flex flex-col-reverse">
         {requestLogs.length === 0 && !reportData ? (
           <div className="flex flex-col items-center justify-center h-full space-y-3">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -490,7 +537,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
                 </div>
                 <span className="w-[50px] text-blue-400 font-bold flex-shrink-0 uppercase">{log.method}</span>
                 <span className="flex-1 truncate text-slate-400 group-hover:text-slate-200">{log.url}</span>
-                <span className="text-slate-500 w-[70px] text-right">{log.responseTime}ms</span>
+                <span className="text-slate-300 font-mono font-bold w-[70px] text-right">{log.responseTime}<span className="text-[9px] opacity-40 ml-0.5">ms</span></span>
               </div>
             ))}
           </div>

@@ -17,7 +17,7 @@ export const en = {
   dashboard: {
     title: "Your Collections",
     itemsFound: "collections found",
-    itemsCount: "Items",
+    itemsCount: "Actions",
     import: "IMPORT",
     importTitle: "Import Collection",
     importDescription: "Select a collection JSON file to import.",
@@ -37,9 +37,31 @@ export const en = {
     delete: "Delete Collection",
     placeholder: "Ex: Payment API - Production"
   },
+  workflow: {
+    editor: {
+      title: "Workflow Editor:",
+      parallelTitle: "Parallel Execution",
+      parallelEmpty: "Empty - Add parallel requests",
+      empty: "Start building your logical workflow",
+      emptySub: "Combine sequential and parallel executions to automate complex processes.",
+      note: "Note: Workflow mode supports load parameters. Sequential and parallel steps will follow their individual thread configurations.",
+      note: "Note: Workflow mode supports load parameters. Sequential and parallel steps will follow their individual thread configurations.",
+      stepSingle: "Single Request",
+      stepSingleSub: "Sequential execution",
+      stepParallel: "Parallel Group",
+      stepParallelSub: "Run multiple at once",
+      stepCopy: "Copy from Collection",
+      stepCopySub: "Use existing request",
+      stepWait: "Wait Step",
+      stepWaitSub: "Wait for a specific time",
+      addStep: "+ Add",
+      copyStep: "+ Copy",
+      errorEmpty: "Add steps to the workflow before running.",
+    }
+  },
   collection: {
     tabs: {
-      requests: "Requests",
+      requests: "Actions",
       scenarios: "Scenarios",
       workflows: "Workflows",
       mocks: "Mocks"
@@ -51,7 +73,8 @@ export const en = {
       unifiedDoc: "GENERATE UNIFIED DOC",
     },
     subtitle: "Collection workspace",
-    exploreTitle: "Explore Items",
+    exploreTitle: "Select an Action to get started",
+    selectWorkflow: "Select a Workflow to get started",
     searchPlaceholder: "Search requests...",
     emptySearch: "No items match the search",
     emptyRoot: "Drag items here to move to root",
@@ -89,7 +112,7 @@ export const en = {
     title: "Test Scenarios",
     newBtn: "+ New Scenario",
     placeholder: "Scenario name...",
-    requestsCount: "Requests",
+    requestsCount: "Actions",
     editor: {
       title: "Scenario Editor:",
       addComponents: "Add Components",
@@ -118,7 +141,7 @@ export const en = {
   },
   workflows: {
     title: "Intelligent Flows (Workflows)",
-    newBtn: "+ New Workflow",
+    newBtn: "Workflow",
     placeholder: "Workflow name...",
     stepsCount: "Execution Blocks",
     editor: {
@@ -143,8 +166,9 @@ export const en = {
   },
   mocks: {
     title: "Mock Servers",
-    newBtn: "+ Create Endpoint",
+    newBtn: "Mock",
     monitoring: "Monitoring:",
+    monitoringLive: "Live Monitoring",
     requestsReceived: "Requests Received",
     emptyMocks: "No mock servers. Create one to start simulating APIs.",
     emptyLogs: "Waiting for endpoint calls...",
@@ -163,6 +187,7 @@ export const en = {
     bodyLabel: "Response Body (JSON/XML/Text)",
     uploadLabel: "File Upload",
     readyToServe: "Ready to serve",
+    supportsVars: "Supports {{variables}}",
     validationTitle: "Validate Input (Guard)",
     validationSub: "If the request does not meet these criteria, the server will return 400 Bad Request.",
     addValidation: "+ Add Validation",
@@ -170,7 +195,11 @@ export const en = {
     urlCopied: "URL copied!",
     startServer: "Start Server",
     stopServer: "Stop Server",
+    stopMonitoring: "Stop",
     monitorTraffic: "Monitor Traffic",
+    startMonitoring: "Run the mock to start monitoring",
+    selectMock: "Select a Mock to manage or monitor",
+    confirmDelete: "Delete this mock?",
     typeText: "TEXT/JSON",
     typeFile: "FILE"
   },
@@ -181,7 +210,7 @@ export const en = {
     rps: "Requests Per Second (RPS)",
     duration: "Duration",
     rampUp: "Ramp-up",
-    variables: "Variables",
+    variables: "Environments",
     done: "I got it",
     sections: {
       auth: "Authentication",
@@ -197,6 +226,14 @@ export const en = {
       backToCol: "Back to Collection",
       backToScen: "Back to Scenario",
       backToWork: "Back to Workflow"
+    },
+    panels: {
+      documentation: "Documentation",
+      execution: "Execution",
+      maximize: "Maximize",
+      restore: "Restore",
+      expand: "Expand",
+      collapse: "Collapse"
     },
     dynamicVars: {
       title: "Dynamic Variables",
@@ -236,7 +273,7 @@ export const en = {
     avgRps: "Average RPS",
     avgTime: "Average Time",
     percentiles: "Latency Percentiles",
-    requestsLabel: "Requests (Click for details)",
+    requestsLabel: "Actions (Click for details)",
     filterAll: "ALL",
     filterSuccess: "SUCCESS",
     filterError: "ERROR",

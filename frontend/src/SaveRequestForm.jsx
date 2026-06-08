@@ -1,21 +1,60 @@
 import React from 'react';
 
-export default function SaveRequestForm({ onSaveRequest, requestName, setRequestName, t }) {
+export default function SaveRequestForm({ onSaveRequest, requestName, setRequestName, method = 'GET', setMethod, onRun, onClose, t }) {
   const handleSave = () => {
     if (!requestName.trim()) return;
     onSaveRequest(requestName);
-    setRequestName('');
+  };
+
+  const methodStyles = { // Not used in this component, but kept for context if needed elsewhere
+    GET: 'bg-[#0A2E22] text-[#00D084]',
+    POST: 'bg-[#332200] text-[#FFB020]',
+    PUT: 'bg-[#002A4E] text-[#3B82F6]',
+    DELETE: 'bg-[#3B0B0B] text-[#EF4444]',
+    PATCH: 'bg-[#2D004E] text-[#A78BFA]',
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 items-end bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
-      <div className="flex-1 w-full">
-        <label htmlFor="request-name" className="label-base">{t.documentation.requestName}</label>
-        <input id="request-name" type="text" value={requestName} onChange={(e) => setRequestName(e.target.value)} className="input-base" placeholder={t.dashboard.placeholder} />
-      </div>
-      <button onClick={handleSave} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-8 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-        {t.common.save}
-      </button>
+    <div className="grid grid-cols-12 gap-4 h-[60px] items-center bg-[#161E31] border border-white/5 rounded-xl px-4 shadow-lg overflow-hidden mb-5">
+       {/* Action Name Input */}
+       <div className="col-span-7">
+         <input 
+           className="w-full bg-transparent text-sm font-mono text-slate-200 outline-none placeholder:text-slate-600" 
+           value={requestName} 
+           onChange={(e) => setRequestName(e.target.value)}
+           placeholder="Nome da Action..."
+         />
+       </div>
+
+       {/* Action Buttons */}
+       {onRun && (
+         <div className="col-span-2">
+           <button 
+             onClick={onRun}
+             className="w-full h-10 bg-[#7C5CFF] hover:brightness-110 text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest shadow-lg shadow-[#7C5CFF]/20"
+           >
+             Run
+           </button>
+         </div>
+       )}
+       <div className="col-span-2">
+         <button onClick={handleSave} className="w-full h-10 bg-[#111827] border border-white/10 text-slate-400 hover:text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest">
+           Save
+         </button>
+       </div>
+        {onClose && (
+          <div className="col-span-1 flex justify-center">
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-500 hover:text-rose-500 transition-colors rounded-lg"
+              title="Fechar Action"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
     </div>
   );
 }

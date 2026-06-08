@@ -18,9 +18,11 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [lang, setLang] = useState(localStorage.getItem('lang') || 'pt');
   const [view, setView] = useState('collections');
+  const [activeTab, setActiveTab] = useState('requests');
   const t = lang === 'pt' ? pt : en;
   const [results, setResults] = useState('Aguardando comando...');
   const [isVarsModalOpen, setIsVarsModalOpen] = useState(false);
+  const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
   const [selectedRequestIds, setSelectedRequestIds] = useState([]);
   // Notificações e Modais
@@ -58,7 +60,7 @@ function App() {
   const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast);
 
   const sendRequests = async (payload = null) => {
-    setView('report');
+    if (view !== 'collection-detail') setView('report');
     await runRequests(payload);
   };
 
@@ -80,15 +82,17 @@ function App() {
     }
   }, [showToast]);
   const saveCurrentRequest = (name, colId) => {
+    const finalName = name || form.requestName || 'Nova Action';
     const newRequest = {
+      ...form,
       id: Date.now().toString(),
-      name: name || 'Nova Action',
-      ...form
+      name: finalName
     };
 
     setCollections(prev => prev.map(col => 
       col.id === colId ? { ...col, requests: [...col.requests, newRequest] } : col
     ));
+    updateField('requestName', ''); // Limpa o campo apenas após criar uma nova via Dashboard
   };
 
   const viewDocumentation = (req) => {
@@ -101,6 +105,7 @@ function App() {
           : [] 
       };
       loadRequest(sanitizedReq);
+      updateField('requestName', req.name);
       setView('documentation');
     } else {
       setView('documentation');
@@ -138,6 +143,8 @@ function App() {
   const handleEnterCollection = (col) => {
     setActiveCollectionId(col.id);
     setSelectedRequestIds([]); // Limpa a seleção ao entrar em uma nova coleção para evitar lixo de estado
+    resetForm(); // Garante que o formulário comece limpo ao trocar de coleção
+    setActiveTab('requests');
     setView('collection-detail');
   };
 
@@ -155,25 +162,6 @@ function App() {
         showCustomToast('Erro: Todas as respostas na documentação devem possuir um Status Code.', 'error');
         return;
       }
-    }
-
-    if (form.activeScenarioId !== null && form.activeStepIndex !== null) {
-      setCollections(prev => prev.map(col => {
-        if (col.id !== activeCollectionId) return col;
-        const newScenarios = (col.scenarios || []).map(scen => {
-          if (scen.id !== form.activeScenarioId) return scen;
-          const newSteps = [...scen.steps];
-          newSteps[form.activeStepIndex] = {
-            ...newSteps[form.activeStepIndex],
-            ...form,
-            name: form.requestName
-          };
-          return { ...scen, steps: newSteps };
-        });
-        return { ...col, scenarios: newScenarios };
-      }));
-      if (!silent) showCustomToast('Passo do cenário atualizado!', 'success');
-      return;
     }
 
     if (form.activeWorkflowId !== null && form.activeStepIndex !== null) {
@@ -296,6 +284,13 @@ function App() {
     if (!col) return;
 
     let canMove = false;
+    // Verifica em Workflows
+    const wfIndex = (col.workflows || []).findIndex(w => w.id === itemId);
+    if (wfIndex !== -1) {
+      const nextIdx = direction === 'up' ? wfIndex - 1 : wfIndex + 1;
+      if (nextIdx >= 0 && nextIdx < col.workflows.length) canMove = true;
+    }
+
     const findAndCheck = (items) => {
       const idx = items.findIndex(i => i.id === itemId);
       if (idx !== -1) {
@@ -311,6 +306,17 @@ function App() {
 
     setCollections(prev => prev.map(col => {
       if (col.id !== colId) return col;
+
+      // Tenta reordenar nos Workflows
+      const wIdx = (col.workflows || []).findIndex(w => w.id === itemId);
+      if (wIdx !== -1) {
+        const nIdx = direction === 'up' ? wIdx - 1 : wIdx + 1;
+        const result = [...col.workflows];
+        const [removed] = result.splice(wIdx, 1);
+        result.splice(nIdx, 0, removed);
+        return { ...col, workflows: result };
+      }
+
       const recursiveReorder = (items) => {
         const index = items.findIndex(i => i.id === itemId);
         if (index !== -1) {
@@ -369,9 +375,6 @@ function App() {
       const step = w?.steps?.[form.activeStepIndex];
       const actualId = form.activeSubIndex !== null ? step?.requests?.[form.activeSubIndex]?.id : step?.id;
       if (actualId !== reqId) return;
-    } else if (form.activeScenarioId && form.activeStepIndex !== null) {
-      const s = targetCol.scenarios?.find(s => s.id === form.activeScenarioId);
-      if (s?.steps?.[form.activeStepIndex]?.id !== reqId) return;
     }
 
   const statusCodeStr = String(log.statusCode || 'ERR');
@@ -419,7 +422,6 @@ function App() {
      baseResps = findInItems(targetCol.requests || []) || [];
      // Se não achou na raiz, busca em cenários e workflows
      if (baseResps.length === 0) {
-       targetCol.scenarios?.forEach(s => s.steps?.forEach(step => { if (step.id === reqId) baseResps = step.responses || []; }));
        targetCol.workflows?.forEach(w => w.steps?.forEach(step => {
          if (step.id === reqId) baseResps = step.responses || [];
          else if (step.type === 'parallel') step.requests?.forEach(r => { if (r.id === reqId) baseResps = r.responses || []; });
@@ -428,7 +430,7 @@ function App() {
 
      // Guard Final: Se não estiver em modo automação, verifica se a request existe na raiz/pastas
      // Isso evita disparar setCollections se o reqId não pertencer a esta coleção
-     if (!form.activeWorkflowId && !form.activeScenarioId) {
+     if (!form.activeWorkflowId) {
         const itemExists = (items) => items.some(i => i.id === reqId || (i.type === 'folder' && itemExists(i.requests || [])));
         if (!itemExists(targetCol.requests || [])) return;
      }
@@ -484,22 +486,6 @@ function App() {
       })};
     }
 
-    // Se for passo de cenário
-    if (form.activeScenarioId && form.activeStepIndex !== null) {
-      return { ...col, scenarios: (col.scenarios || []).map(s => {
-        if (s.id !== form.activeScenarioId) return s;
-        const steps = [...s.steps];
-        const step = { ...steps[form.activeStepIndex] };
-        if (step.id !== reqId) return s;
-
-        const resps = Array.isArray(step.responses) ? [...step.responses] : [];
-        const idx = resps.findIndex(r => String(r.statusCode) === statusCodeStr);
-        if (idx >= 0) resps[idx] = newResponse; else resps.unshift(newResponse);
-        steps[form.activeStepIndex] = { ...step, responses: resps };
-        return { ...s, steps };
-      })};
-    }
-
     // Caso padrão: Request raiz ou pasta
     const recursiveUpdate = (items) => items.map(item => {
       if (item.id === reqId) {
@@ -534,7 +520,6 @@ function App() {
         requests: [], 
         environments: [{ id: 'default', name: 'Global', variables: [] }],
         activeEnvironmentId: 'default',
-        scenarios: [],
         workflows: []
       }]);
     }
@@ -696,10 +681,10 @@ function App() {
             body: r.bodyRaw || '',
             bodyType: r.bodyType,
             bodyParams: r.bodyParams || [],
-            totalRequests: isWorkflowMode ? 1 : (parseInt(r.totalRequests) || 1),
-            duration: isWorkflowMode ? 0 : (parseInt(r.duration) || 0),
-            rampUp: isWorkflowMode ? 0 : (parseInt(r.rampUp) || 0),
-            single: isWorkflowMode ? true : !!r.single
+            totalRequests: (parseInt(r.totalRequests) || 1),
+            duration: (parseInt(r.duration) || 0),
+            rampUp: (parseInt(r.rampUp) || 0),
+            single: (parseInt(r.totalRequests) || 1) <= 1
           };
         };
 
@@ -714,10 +699,6 @@ function App() {
       if (scenId) {
         if (isWorkflow) {
           updateField('activeWorkflowId', scenId);
-          updateField('activeScenarioId', null);
-        } else {
-          updateField('activeScenarioId', scenId);
-          updateField('activeWorkflowId', null);
         }
       }
       updateField('method', ''); // Limpa para sinalizar "Múltiplas" no ReportView
@@ -769,55 +750,84 @@ function App() {
   };
 
   return (
-    <>
-    <div className="h-screen w-full bg-slate-50 dark:bg-slate-950 flex flex-col transition-colors duration-300 overflow-hidden">
+    <div className="h-screen w-full bg-[#0B1020] text-slate-200 font-['Inter',_sans-serif] flex flex-col transition-colors duration-300 overflow-hidden selection:bg-[#7C5CFF]/30">
+      {/* Main App Header */}
       {/* Barra Superior (Menu) */}
-      <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4 flex justify-between items-center sticky top-0 z-40 shadow-sm">
-        <div className="flex items-center gap-8">
-          <img 
-            src={logo} 
-            alt={t.header.logoAlt} 
-            className="h-8 w-auto object-contain" 
-            key={logo} 
-          />
-          <nav className="flex gap-4">
-            <button 
-              onClick={() => { 
-                setView('collections'); 
-                setActiveCollectionId(null); 
-                resetForm(); 
-                updateField('responses', []); // Garante inicialização após reset
-                setReportData(null); 
-              }}
-              className={`text-sm font-black transition-colors ${view === 'collections' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
-            >
-              {t.header.myCollections}
-            </button>
-            <button 
-              onClick={() => {
-                setView('config');
-                setReportData(null);
-                resetForm();
-                updateField('responses', []); // Garante inicialização após reset
-                setActiveCollectionId(null);
-              }}
-              className={`text-sm font-black transition-colors ${view === 'config' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'}`}
-            >
-              {t.header.quickTest}
-            </button>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <select 
-            value={lang} 
-            onChange={(e) => { setLang(e.target.value); localStorage.setItem('lang', e.target.value); }}
-            className="input-base !w-16 !py-1 !px-1 text-[10px] font-black border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+      <header className="w-full bg-[#111827] border-b border-white/5 flex justify-between items-center sticky top-0 z-40 shadow-xl">
+        <div className="flex items-center gap-8 mr-8">
+          <button 
+            onClick={() => {
+              setView('collections');
+              setActiveCollectionId(null);
+              resetForm();
+              setReportData(null);
+            }}
+            className="hover:opacity-80 transition-opacity"
           >
-            <option value="pt">BR</option>
-            <option value="en">EN</option>
-          </select>
+            <img 
+              src={logo} 
+              alt={t.header.logoAlt} 
+              className="h-8 w-auto object-contain" 
+              key={logo} 
+            />
+          </button>
+        </div>
+
+        {/* Menu Centralizado da Collection */}
+        <div className="flex-1 flex justify-left">
+          {activeCollectionId && view === 'collection-detail' && (
+            <nav className="flex gap-8">
+              {['requests', 'workflows', 'mocks'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    // Reseta estados de edição ao trocar de aba via header para voltar às listagens
+                    updateField('activeWorkflowId', null);
+                    updateField('activeStepIndex', null);
+                    updateField('activeSubIndex', null);
+                  }}
+                  className={`text-xs font-black uppercase tracking-widest transition-all border-b-1 ${
+                    activeTab === tab // This is the active tab highlight
+                      ? 'text-blue-600 border-blue-600' 
+                      : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t.collection.tabs[tab]}
+                </button>
+              ))}
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 self-center mx-2"></div>
+              <button
+                onClick={() => {
+                  // Abre o modal de gerenciamento de variáveis/ambientes da coleção
+                  setIsEnvModalOpen(true);
+                }}
+                className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-500 transition-all pb-1 border-b-2 border-transparent"
+              >
+                {t.config.variables}
+              </button>
+            </nav>
+          )}
+        </div>
+        {/* Right side of header */}
+        <div className="flex items-center gap-3">
+          <div className="relative group">
+            <select 
+              value={lang} 
+              onChange={(e) => { setLang(e.target.value); localStorage.setItem('lang', e.target.value); }}
+              className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 pl-4 pr-8 py-2 rounded-full text-[10px] font-black tracking-widest cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 border-none shadow-sm"
+            >
+              <option value="pt">BR</option>
+              <option value="en">EN</option>
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-slate-600 transition-colors">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
           <button
-          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:scale-110 transition-transform"
+          className="p-2 rounded-full bg-[#161E31] hover:scale-110 transition-transform"
           onClick={toggleTheme}
         >
           {theme === 'light' ? '🌙' : '☀️'}
@@ -825,8 +835,8 @@ function App() {
         </div>
       </header>
 
-      <main className="flex-1 py-12 px-4 flex flex-col items-center overflow-y-auto">
-          <div className="w-full max-w-5xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-8">
+      <main className={`flex-1 flex flex-col overflow-hidden ${view === 'collection-detail' ? 'bg-[#0B1020]' : 'py-12 px-4 overflow-y-auto items-center'}`}>
+          <div className={`w-full flex flex-col ${view === 'collection-detail' ? 'max-w-full h-full' : 'max-w-5xl bg-[#111827] rounded-2xl shadow-2xl border border-white/5 p-8 transition-all'}`}>
             {view === 'report' ? (
               <ReportView 
                 reportData={reportData} 
@@ -836,7 +846,6 @@ function App() {
                 results={results}
                 config={{ ...form, body: form.bodyRaw }}
                 activeCollectionId={activeCollectionId}
-                activeScenarioId={form.activeScenarioId}
                 activeWorkflowId={form.activeWorkflowId}
                 activeCollection={activeCollection}
                 theme={theme}
@@ -859,26 +868,118 @@ function App() {
             ) : view === 'collection-detail' ? (
               <CollectionView 
                 collection={activeCollection}
+                activeTab={activeTab}
+                isEnvModalOpen={isEnvModalOpen}
+                setIsEnvModalOpen={setIsEnvModalOpen}
+                onTabChange={setActiveTab}
                 t={t}
                 onSelectRequest={(req, targetView, scenId, stepIdx, workflowId, subIdx) => { 
+                // Salva o estado da action/passo atual antes de carregar a nova
+                // Isso garante a persistência de campos como 'documentation' ao navegar pela barra lateral
+                if (form.activeRequestId || (form.activeWorkflowId && form.activeStepIndex !== null)) {
+                  updateRequestInCollection(true);
+                }
+
                   const sanitizedReq = { 
                     ...req, 
                     responses: Array.isArray(req.responses) 
                       ? req.responses.map(r => ({ ...r, bodyFields: Array.isArray(r.bodyFields) ? r.bodyFields : [] })) 
                       : [] 
                   };
+                  // Limpa resultados de execução anteriores ao trocar de action
+                  setReportData(null);
+                  setRequestLogs([]);
+                  
                   loadRequest(sanitizedReq, scenId, stepIdx, workflowId, subIdx);
+                  
+                  // Sincroniza todos os campos de UI e Documentação de uma vez
+                  updateField('requestName', req.name || 'Nova Action');
+                  updateField('documentation', req.documentation || '');
+                  updateField('description', req.documentation || ''); // Mantém compatibilidade se algum componente ainda ler 'description'
+                  updateField('authDoc', req.authDoc || '');
+                  updateField('bodyRawDoc', req.bodyRawDoc || '');
+                  
                   // Sincroniza manualmente os IDs de contexto no estado do formulário
-                  updateField('activeScenarioId', scenId || null);
                   updateField('activeWorkflowId', workflowId || null);
                   updateField('activeStepIndex', stepIdx ?? null);
                   updateField('activeSubIndex', subIdx ?? null);
-                  setView(targetView || 'config'); 
                 }}
-                onViewDocumentation={viewDocumentation}
+                onViewDocumentation={(req) => viewDocumentation(req)}
                 onRunRequest={handleRunSavedRequest}
                 onRunSingleRequest={handleRunSingleSavedRequest}
+                reportData={reportData}
+                requestLogs={requestLogs}
+                isRunning={isRunning}
+                stopTest={stopTest}
+                sendRequests={sendRequests}
+                lastExecutedPayload={lastExecutedPayload}
+                onSaveResponseToDoc={saveResponseToDoc}
                 onBack={() => setView('collections')}
+                // Props para o Editor embutido
+                requestName={form.requestName}
+                editorProps={{
+                  ...form,
+                  t,
+                  setUrl: (v) => updateField('url', v),
+                  setMethod: (v) => updateField('method', v),
+                  setTotalRequests: (v) => updateField('totalRequests', v),
+                  setDuration: (v) => updateField('duration', v),
+                  setRampUp: (v) => updateField('rampUp', v),
+                  methodStyles,
+                  addHeader: () => addListItem('headers', { key: '', value: '' }),
+                  removeHeader: (i) => removeListItem('headers', i),
+                  updateHeader: (i, f, v) => updateIndexedField('headers', i, f, v),
+                  setBodyType: (v) => updateField('bodyType', v),
+                  setBodyRaw: (v) => updateField('bodyRaw', v),
+                  addBodyParam: (p) => addListItem('bodyParams', p && !p.nativeEvent ? p : { key: '', value: '', type: 'text' }),
+                  removeBodyParam: (i) => removeListItem('bodyParams', i),
+                  updateBodyParam: (i, f, v) => updateIndexedField('bodyParams', i, f, v),
+                  setAuthType: (v) => updateField('authType', v),
+                  setAuthToken: (v) => updateField('authToken', v),
+                  setAuthUsername: (v) => updateField('authUsername', v),
+                  setAuthPassword: (v) => updateField('authPassword', v),
+                  setApiKeyValue: (v) => updateField('apiKeyValue', v),
+                  setRequestName: (v) => updateField('requestName', v),
+                  sendRequests: () => sendRequests(form),
+                  setDescription: (v) => updateField('description', v),
+                  updateRequestInCollection,
+                  setAssertions: (v) => updateField('assertions', v),
+                  setExtractions: (v) => updateField('extractions', v),
+                  showCustomToast
+                }}
+                // Props para a Documentação na sidebar
+                docProps={{
+                  request: { ...form, id: form.activeRequestId, name: form.requestName },
+                  requests: getSelectedRequests(),
+                  activeRequestId: form.activeRequestId,
+                  bodyRawDoc: form.bodyRawDoc,
+                  authDoc: form.authDoc,
+                  bodyParams: form.bodyParams,
+                  updateHeader: (i, f, v) => updateIndexedField('headers', i, f, v),
+                  updatePathParam: (i, f, v) => updateIndexedField('pathParams', i, f, v),
+                  updateResponse: (i, f, v) => updateIndexedField('responses', i, f, v),
+                  addResponse: (curr) => updateField('responses', [...(Array.isArray(curr) ? curr : []), { statusCode: '', description: '', body: '', bodyFields: [] }]),
+                  removeResponse: (i) => removeListItem('responses', i),
+                  addResponseField,
+                  removeResponseField,
+                  updateResponseField,
+                  addHeader: () => addListItem('headers', { key: '', value: '' }),
+                  addPathParam: () => addListItem('pathParams', { key: '', value: '', docRequired: true }),
+                  removeHeader: (i) => removeListItem('headers', i),
+                  removePathParam: (i) => removeListItem('pathParams', i),
+                  addBodyParam: (p) => addListItem('bodyParams', p && !p.nativeEvent ? p : { key: '', value: '', type: 'text' }),
+                  removeBodyParam: (i) => removeListItem('bodyParams', i),
+                  updateBodyParam: (i, f, v) => updateIndexedField('bodyParams', i, f, v),
+                  updateField,
+                  setBodyRawDoc: (v) => updateField('bodyRawDoc', v),
+                  setAuthDoc: (v) => updateField('authDoc', v),
+                  setDocumentation: (v) => updateField('documentation', v),
+                  setBodyRaw: (v) => updateField('bodyRaw', v),
+                  setAuthType: (v) => updateField('authType', v),
+                  setRequestName: (v) => updateField('requestName', v),
+                  showCustomToast
+                }}
+                onCloseRequestEditor={resetForm} // New prop: function to reset the form state
               onDeleteRequest={deleteRequest}
               onDeleteFolder={deleteFolder}
               onDeleteWorkflow={deleteWorkflow}
@@ -887,7 +988,6 @@ function App() {
               onUpdateEnvironments={updateCollectionEnvironments}
               onSetActiveEnvironment={setActiveEnvironment}
               onUpdateName={updateCollectionName}
-              onUpdateScenarios={colMethods.updateCollectionScenarios}
               onUpdateWorkflows={colMethods.updateCollectionWorkflows}
               onAddRequest={colMethods.addRequestToCollection}
               onAddFolder={colMethods.addFolderToCollection}
@@ -898,9 +998,7 @@ function App() {
               onMoveRequest={colMethods.moveRequestInCollection}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
-              activeScenarioId={form.activeScenarioId}
               activeWorkflowId={form.activeWorkflowId}
-              setActiveScenarioId={(v) => updateField('activeScenarioId', v)}
               setActiveWorkflowId={(v) => updateField('activeWorkflowId', v)}
               setActiveStepIndex={(v) => updateField('activeStepIndex', v)}
               setActiveSubIndex={(v) => updateField('activeSubIndex', v)}
@@ -914,6 +1012,7 @@ function App() {
                       : [] 
                   };
                   loadRequest(sanitizedReq);
+                  updateField('requestName', selected[0].name);
                 } else {
                   resetForm();
                   updateField('responses', []);
@@ -936,6 +1035,7 @@ function App() {
                       : [] 
                   };
                   loadRequest(sanitizedReq); // Carrega a próxima garantindo responses
+                  updateField('requestName', req.name);
                 }}
                 collection={activeCollection}
                 bodyRawDoc={form.bodyRawDoc}
@@ -1002,16 +1102,18 @@ function App() {
                       className="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-2 transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                      {form.activeScenarioId ? t.config.actions.backToScen : form.activeWorkflowId ? t.config.actions.backToWork : t.config.actions.backToCol}
+                      {form.activeWorkflowId ? t.config.actions.backToWork : t.config.actions.backToCol}
                     </button>
                   </div>
                 )}
-                <SaveRequestForm  
-                  onSaveRequest={(name) => saveCurrentRequest(name, activeCollectionId)} 
-                  requestName={form.requestName}
-                  t={t}
-                  setRequestName={(v) => updateField('requestName', v)}
-                />
+                <div className="max-w-[1100px] mx-auto">
+                  <SaveRequestForm  
+                    onSaveRequest={(name) => saveCurrentRequest(name, activeCollectionId)} 
+                    requestName={form.requestName}
+                    t={t}
+                    setRequestName={(v) => updateField('requestName', v)}
+                  />
+                </div>
                 <ConfigView
                   {...form}
                   t={t}
@@ -1041,7 +1143,6 @@ function App() {
                   activeRequestId={form.activeRequestId}
                   setAssertions={(v) => updateField('assertions', v)} 
                   setExtractions={(v) => updateField('extractions', v)}
-                  isScenarioMode={form.activeScenarioId !== null}
                   activeWorkflowId={form.activeWorkflowId}
                   showCustomToast={showCustomToast} // Passa a função de toast
                 />
@@ -1050,7 +1151,6 @@ function App() {
           </div>
       </main>
 
-    </div>
     {showToast && (
       <div className={`fixed bottom-8 right-8 p-4 rounded-lg shadow-lg text-white flex items-center gap-3 animate-in fade-in slide-in-from-right-8 duration-300 z-50
         ${toastType === 'success' ? 'bg-emerald-500' : toastType === 'error' ? 'bg-rose-500' : 'bg-blue-500'}`}
@@ -1063,10 +1163,10 @@ function App() {
     )}
 
     {/* Modal de Importação cURL */}
-    {showCurlModal && (
+    {showCurlModal && ( // Curl Import Modal
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="bg-[#111827] rounded-3xl w-full max-w-2xl shadow-2xl border border-[#161E31] overflow-hidden">
+          <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-[#161E31]">
             <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
               <span className="text-blue-500">curl</span> Importar Action
             </h3>
@@ -1082,7 +1182,7 @@ function App() {
             />
             <p className="mt-2 text-xs text-slate-500">Suporta headers, autenticação Basic/Bearer e corpos JSON/Raw.</p>
           </div>
-          <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+          <div className="p-6 bg-[#161E31] border-t border-slate-700 flex justify-end gap-3">
             <button onClick={() => setShowCurlModal(false)} className="px-6 py-2 text-slate-600 dark:text-slate-400 font-bold">{t.common.cancel}</button>
             <button 
               onClick={executeCurlImport}
@@ -1097,9 +1197,9 @@ function App() {
 
     {/* Confirmation Modal */}
     {showConfirmModal && (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300"> {/* Confirmation Modal */}
+        <div className="bg-[#111827] rounded-3xl w-full max-w-md shadow-2xl border border-[#161E31] overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-[#161E31]">
             <h3 className="text-xl font-bold dark:text-white">Confirmação</h3>
             <button 
               onClick={() => setShowConfirmModal(false)} 
@@ -1111,7 +1211,7 @@ function App() {
             {confirmMessage}
           </div>
 
-          <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+          <div className="p-6 bg-[#161E31] border-t border-slate-700 flex justify-end gap-3">
             <button 
               onClick={() => {
                 setShowConfirmModal(false);
@@ -1132,8 +1232,8 @@ function App() {
           </div>
         </div>
       </div>
-    )}
-    </>
+    )} 
+    </div>
   );
 }
 

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ServersView({ onBack, onSubViewChange, t }) {
+export default function ServersView({ 
+  onBack, onSubViewChange, t, 
+  monitoringMock, setMonitoringMock, 
+  isEditing, setIsEditing, 
+  currentMock, setCurrentMock, 
+  fetchMocksExternal,
+  embedded = false
+}) {
   const [mocks, setMocks] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [monitoringMock, setMonitoringMock] = useState(null);
   const [logs, setLogs] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
-  const [currentMock, setCurrentMock] = useState({
-    name: '', path: '/', method: 'GET',
-    response: { status: 200, body: '{}', headers: { 'Content-Type': 'application/json' }, isFile: false, fileName: '', fileContent: '' }, active: false,
-    assertions: []
-  });
 
   const API_BASE = "http://localhost:8080";
 
@@ -73,11 +73,13 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
     });
     setIsEditing(false);
     fetchMocks();
+    if (fetchMocksExternal) fetchMocksExternal();
   };
 
   const deleteMock = async (id) => {
     await fetch(`${API_BASE}/manage-mocks?id=${id}`, { method: 'DELETE' });
     fetchMocks();
+    if (fetchMocksExternal) fetchMocksExternal();
   };
 
   const handleFileChange = (e) => {
@@ -102,24 +104,26 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
   if (monitoringMock) {
     return (
       <div className="animate-in fade-in duration-500 space-y-6">
-        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
-              <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] http://localhost:8080/mock{monitoringMock.path}</p>
+        {!embedded && (
+          <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
+                <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] http://localhost:8080/mock{monitoringMock.path}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
-          </div>
-        </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-3 max-h-[600px] overflow-y-auto pr-2">
+        <div className={`grid grid-cols-1 ${embedded ? 'gap-4' : 'lg:grid-cols-3 gap-6'}`}>
+          <div className={`${embedded ? '' : 'lg:col-span-1'} space-y-3 max-h-[600px] overflow-y-auto pr-2`}>
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t.mocks.requestsReceived}</h3>
             {logs.length === 0 ? (
               <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs italic">
@@ -144,11 +148,14 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
             )}
           </div>
 
-          <div className="lg:col-span-2 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 min-h-[400px]">
+          <div className={`${embedded ? '' : 'lg:col-span-2'} bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 min-h-[400px]`}>
             {selectedLog ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                   <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{t.mocks.transactionDetails}</h3>
+                  <button onClick={() => setSelectedLog(null)} className="p-1 text-slate-500 hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/5">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -212,52 +219,40 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
     );
   }
 
-  return (
-    <div className="animate-in fade-in duration-500 space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">{isEditing ? (currentMock.id ? t.mocks.editTitle : t.mocks.createTitle) : t.mocks.title}</h2>
-        </div>
-        {!isEditing && (
-          <button 
-            onClick={() => {
-              setCurrentMock({ name: 'Novo Mock', path: '/api/v1/resource', method: 'GET', response: { status: 200, body: '{}', headers: { 'Content-Type': 'application/json' } }, assertions: [] });
-              setIsEditing(true);
-            }}
-            className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20"
-          >
-            {t.mocks.newBtn}
-          </button>
-        )}
-      </div>
-
-      {isEditing ? (
-        <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 sm:col-span-1">
-              <label htmlFor="mock-name" className="label-base">{t.mocks.friendlyName}</label>
-              <input id="mock-name" className="input-base" value={currentMock.name} onChange={e => setCurrentMock({...currentMock, name: e.target.value})} />
+  if (isEditing) {
+    return (
+        <div className={`space-y-6 px-4 ${embedded ? '' : 'bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800'}`}>
+          {!embedded && (
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">{currentMock?.id ? t.mocks.editTitle : t.mocks.createTitle}</h2>
+              <button onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-white text-2xl">&times;</button>
             </div>
-            <div>
+          )}
+          <div className="flex gap-4">
+            <div className="w-36">
               <label htmlFor="mock-method" className="label-base">{t.config.method}</label>
-              <select id="mock-method" className="input-base" value={currentMock.method} onChange={e => setCurrentMock({...currentMock, method: e.target.value})}>
+              <select id="mock-method" className={`input-base !py-3.5 !px-5 font-bold text-base shadow-md rounded-xl cursor-pointer bg-[#161E31] border-[#161E31] ${
+                currentMock.method === 'GET' ? 'method-get' : 
+                currentMock.method === 'POST' ? 'method-post' : 
+                currentMock.method === 'PUT' ? 'method-put' : 
+                currentMock.method === 'DELETE' ? 'method-delete' : ''
+              }`} value={currentMock.method} onChange={e => setCurrentMock({...currentMock, method: e.target.value})}>
                 <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option><option value="DELETE">DELETE</option><option value="ALL">ANY METHOD</option>
               </select>
             </div>
-          </div>
-          
-          <div>
-            <label htmlFor="mock-path" className="label-base">Path (use :param para dinâmico)</label>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-slate-400">/mock</span>
-              <input className="input-base font-mono" value={currentMock.path} onChange={e => setCurrentMock({...currentMock, path: e.target.value})} placeholder="/users/:id" />
+            <div className="flex-1">
+              <label htmlFor="mock-path" className="label-base">{t.mocks.pathLabel}</label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-slate-400">/mock</span>
+                <input className="input-base font-mono" value={currentMock.path} onChange={e => setCurrentMock({...currentMock, path: e.target.value})} placeholder="/users/:id" />
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b border-emerald-500/20 pb-1">
-                <h3 className="text-sm font-black text-emerald-500 uppercase tracking-widest">Simular Resposta</h3>
+                <h3 className="text-sm font-black text-emerald-500 uppercase tracking-widest">{t.mocks.simulateResponse}</h3>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setCurrentMock({...currentMock, response: {...currentMock.response, isFile: false}})}
@@ -272,7 +267,50 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
               
               <div>
                 <label htmlFor="mock-status" className="label-base">HTTP Status</label>
-                <input id="mock-status" type="number" className="input-base" value={currentMock.response.status} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, status: parseInt(e.target.value)}})} />
+                <select id="mock-status" className="input-base" value={currentMock.response.status} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, status: parseInt(e.target.value)}})}>
+                  <optgroup label="1xx - Informational">
+                    <option value="100">100 - Continue</option>
+                    <option value="101">101 - Switching Protocols</option>
+                    <option value="102">102 - Processing</option>
+                  </optgroup>
+                  <optgroup label="2xx - Success">
+                    <option value="200">200 - OK</option>
+                    <option value="201">201 - Created</option>
+                    <option value="202">202 - Accepted</option>
+                    <option value="203">203 - Non-Authoritative Information</option>
+                    <option value="204">204 - No Content</option>
+                    <option value="206">206 - Partial Content</option>
+                  </optgroup>
+                  <optgroup label="3xx - Redirection">
+                    <option value="301">301 - Moved Permanently</option>
+                    <option value="302">302 - Found</option>
+                    <option value="303">303 - See Other</option>
+                    <option value="304">304 - Not Modified</option>
+                    <option value="307">307 - Temporary Redirect</option>
+                    <option value="308">308 - Permanent Redirect</option>
+                  </optgroup>
+                  <optgroup label="4xx - Client Error">
+                    <option value="400">400 - Bad Request</option>
+                    <option value="401">401 - Unauthorized</option>
+                    <option value="403">403 - Forbidden</option>
+                    <option value="404">404 - Not Found</option>
+                    <option value="405">405 - Method Not Allowed</option>
+                    <option value="408">408 - Request Timeout</option>
+                    <option value="409">409 - Conflict</option>
+                    <option value="410">410 - Gone</option>
+                    <option value="413">413 - Payload Too Large</option>
+                    <option value="415">415 - Unsupported Media Type</option>
+                    <option value="422">422 - Unprocessable Entity</option>
+                    <option value="429">429 - Too Many Requests</option>
+                  </optgroup>
+                  <optgroup label="5xx - Server Error">
+                    <option value="500">500 - Internal Server Error</option>
+                    <option value="501">501 - Not Implemented</option>
+                    <option value="502">502 - Bad Gateway</option>
+                    <option value="503">503 - Service Unavailable</option>
+                    <option value="504">504 - Gateway Timeout</option>
+                  </optgroup>
+                </select>
               </div>
 
               <div>
@@ -324,90 +362,15 @@ export default function ServersView({ onBack, onSubViewChange, t }) {
               </button>
             </div>
           </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-            <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-500 font-bold">{t.common.cancel}</button>
-            <button onClick={saveMock} className="px-8 py-2 bg-emerald-600 text-white rounded-xl font-bold uppercase">{t.common.save}</button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {mocks.length === 0 ? (
-            <div className="py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2rem] text-slate-400">
-              {t.mocks.emptyMocks}
+          {!embedded && (
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <button onClick={() => setIsEditing(false)} className="px-6 py-2 text-slate-500 font-bold">{t.common.cancel}</button>
+              <button onClick={saveMock} className="px-8 py-2 bg-emerald-600 text-white rounded-xl font-bold uppercase">{t.common.save}</button>
             </div>
-          ) : (
-            mocks.map(m => (
-              <div key={m.id} className={`p-6 bg-white dark:bg-slate-800/40 border rounded-3xl flex justify-between items-center group transition-all ${m.active ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-slate-200 dark:border-slate-800'}`}>
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <span className={`text-[10px] font-black px-2 py-1 rounded-lg border block mb-1 ${
-                      m.method === 'GET' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5' : 'text-blue-500 border-blue-500/20 bg-blue-500/5'
-                    }`}>
-                      {m.method}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-400">{m.response.status}</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      {m.active && (
-                        <span className="flex h-2 w-2 relative">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                      )}
-                      <h3 className={`font-bold ${m.active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{m.name}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs text-blue-500 font-mono">http://localhost:8080/mock{m.path}</code>
-                      <button 
-                        onClick={() => { navigator.clipboard.writeText(`http://localhost:8080/mock${m.path}`); alert(t.mocks.urlCopied); }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-slate-400 hover:text-blue-500"
-                      >
-                        {t.mocks.copyUrl}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => toggleMockActive(m)}
-                    className={`p-2 rounded-xl transition-all ${m.active ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}
-                    title={m.active ? t.mocks.stopServer : t.mocks.startServer}
-                  >
-                    {m.active ? (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => { setMonitoringMock(m); setLogs([]); }}
-                    className="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
-                    title={t.mocks.monitorTraffic}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                  </button>
-                  <button 
-                    onClick={() => { setCurrentMock(m); setIsEditing(true); }}
-                    className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors"
-                    title={t.collection.tooltips.edit}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  </button>
-                  <button 
-                    onClick={() => deleteMock(m.id)}
-                    className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
-                    title={t.collection.tooltips.delete}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                  </button>
-                </div>
-              </div>
-            ))
           )}
         </div>
-      )}
-    </div>
-  );
+    );
+  }
+
+  return null; // O dashboard principal agora é a sidebar
 }

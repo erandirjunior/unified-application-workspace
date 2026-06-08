@@ -123,7 +123,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
     const currentIndex = isTopLevel ? index : subIndex;
 
     return (
-      <div key={step.id} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+      <div key={step.id} className="group flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:border-blue-500/30 transition-all">
         <div className="flex items-center gap-3 overflow-hidden">
           {isWaitStep ? (
             <span className="text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-500/20 text-amber-500 uppercase">⌛ WAIT</span>
@@ -148,7 +148,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             )}
           </div>
         </div>
-        <div className="flex gap-1 group-hover:opacity-100 opacity-0 transition-opacity">
+        <div className="flex gap-1 group-hover:opacity-100 opacity-0 transition-opacity shrink-0">
           <button 
             disabled={currentIndex === 0}
             onClick={() => isTopLevel ? moveStep(index, 'up') : moveSubStep(index, subIndex, 'up')} 
@@ -191,22 +191,10 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">{t.workflows.editor.title} {name}</h2>
-        <div className="flex gap-2">
-          <button onClick={handleSave} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs">{t.common.save}</button>
-          <button onClick={() => onRun(steps)} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-indigo-500/20">{t.config.actions.runRequests}</button>
-        </div>
-      </div>
-
+    <div className="space-y-8 animate-in fade-in duration-500 px-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Toolbox */}
         <div className="lg:col-span-1 space-y-4">
-          <div>
-            <label className="label-base">{t.workflows.placeholder}</label>
-            <input className="input-base text-lg font-bold" value={name} onChange={e => setName(e.target.value)} placeholder={t.workflows.placeholder} />
-          </div>
           <div>
             <label className="label-base">{t.config.descriptionPlaceholder}</label>
             <textarea className="input-base min-h-[100px] text-sm" value={description} onChange={e => setDescription(e.target.value)} placeholder={t.config.descriptionPlaceholder} />
