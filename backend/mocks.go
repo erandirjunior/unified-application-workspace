@@ -30,6 +30,7 @@ type MockDefinition struct {
 	Response    MockResponse   `json:"response"`
 	Assertions  []Assertion    `json:"assertions"` // Validação da requisição recebida
 	Active      bool           `json:"active"`
+	Delay       int            `json:"delay"` // Delay em milissegundos antes de responder
 }
 
 var (
@@ -220,6 +221,11 @@ func mockServerHandler(w http.ResponseWriter, r *http.Request) {
 
 	status := matchedMock.Response.Status
 	if status == 0 { status = http.StatusOK }
+
+	// Aplica o delay configurado antes de enviar a resposta
+	if matchedMock.Delay > 0 {
+		time.Sleep(time.Duration(matchedMock.Delay) * time.Millisecond)
+	}
 
 	if matchedMock.Response.IsFile && matchedMock.Response.FileContent != "" {
 		content, err := base64.StdEncoding.DecodeString(matchedMock.Response.FileContent)

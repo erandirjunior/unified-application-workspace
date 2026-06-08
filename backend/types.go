@@ -45,9 +45,23 @@ type LoadTestRequest struct {
 }
 
 type WorkflowStep struct {
-	Type     string            `json:"type"`     // "request", "parallel", "wait"
-	Requests []LoadTestRequest `json:"requests"` // Usado para 'parallel'
-	LoadTestRequest                    // Usado para 'request' e metadados
+	Type      string            `json:"type"`      // "request", "parallel", "wait", "loop", "condition"
+	Requests  []LoadTestRequest `json:"requests"`  // Usado para 'parallel'
+	Steps     []WorkflowStep    `json:"steps"`     // Usado para 'loop' (passos internos) e 'condition' (then)
+	ElseSteps []WorkflowStep    `json:"elseSteps"` // Usado para 'condition' (else)
+	Loop      *LoopCondition    `json:"loop"`      // Condição do loop
+	Condition *LoopCondition    `json:"condition"` // Condição do if/else (reutiliza mesma struct)
+	LoadTestRequest                                // Usado para 'request' e metadados
+}
+
+type LoopCondition struct {
+	Source     string          `json:"source"`     // "status", "body", "header", "variable"
+	Property   string          `json:"property"`   // json path, header name ou variable name
+	Operator   string          `json:"operator"`   // "==", "!=", "contains", "exists", ">", "<"
+	Target     string          `json:"target"`     // valor esperado
+	MaxIter    int             `json:"maxIter"`    // máximo de iterações (segurança, só para loop)
+	Logic      string          `json:"logic"`      // "and" ou "or" (para múltiplas condições)
+	Conditions []LoopCondition `json:"conditions"` // condições adicionais
 }
 
 type LoadTestResult struct {

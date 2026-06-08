@@ -33,14 +33,32 @@ const prepareRequest = (req) => {
 
 const processPayloadAuth = (payload) => {
   if (payload.requests) {
+    const processStep = (step) => {
+      if (step.type === 'parallel') {
+        return { ...step, requests: step.requests.map(prepareRequest) };
+      }
+      if (step.type === 'loop') {
+        return { ...step, steps: (step.steps || []).map(processStep) };
+      }
+      if (step.type === 'condition') {
+        return { 
+          ...step, 
+          steps: (step.steps || []).map(processStep),
+          elseSteps: (step.elseSteps || []).map(processStep)
+        };
+      }
+      if (step.type === 'request' || !step.type) {
+        return prepareRequest(step);
+      }
+      return step;
+    };
+
     return {
       ...payload,
       totalRequests: parseInt(payload.totalRequests || 0, 10),
       duration: parseInt(payload.duration || 0, 10),
       rampUp: parseInt(payload.rampUp || 0, 10),
-      requests: payload.requests.map(step => step.type === 'parallel' 
-        ? { ...step, requests: step.requests.map(prepareRequest) } 
-        : (step.type === 'request' || !step.type ? prepareRequest(step) : step))
+      requests: payload.requests.map(processStep)
     };
   }
   return prepareRequest(payload);

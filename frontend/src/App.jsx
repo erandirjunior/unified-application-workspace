@@ -172,15 +172,46 @@ function App() {
           const newSteps = [...workflow.steps];
           
           if (form.activeSubIndex !== null) {
-            // Edição dentro de um Grupo Paralelo
+            // Edição dentro de um Grupo (Paralelo, Loop ou Condition)
             const group = { ...newSteps[form.activeStepIndex] };
-            const newGroupRequests = [...group.requests];
-            newGroupRequests[form.activeSubIndex] = {
-              ...newGroupRequests[form.activeSubIndex],
-              ...form,
-              name: form.requestName
-            };
-            newSteps[form.activeStepIndex] = { ...group, requests: newGroupRequests };
+            if (group.type === 'loop') {
+              const newLoopSteps = [...(group.steps || [])];
+              newLoopSteps[form.activeSubIndex] = {
+                ...newLoopSteps[form.activeSubIndex],
+                ...form,
+                name: form.requestName
+              };
+              newSteps[form.activeStepIndex] = { ...group, steps: newLoopSteps };
+            } else if (group.type === 'condition') {
+              // Tenta encontrar o sub-step no branch "steps" (then)
+              const thenSteps = [...(group.steps || [])];
+              if (form.activeSubIndex < thenSteps.length) {
+                thenSteps[form.activeSubIndex] = {
+                  ...thenSteps[form.activeSubIndex],
+                  ...form,
+                  name: form.requestName
+                };
+                newSteps[form.activeStepIndex] = { ...group, steps: thenSteps };
+              } else {
+                // É do branch "elseSteps"
+                const elseIdx = form.activeSubIndex - thenSteps.length;
+                const elseSteps = [...(group.elseSteps || [])];
+                elseSteps[elseIdx] = {
+                  ...elseSteps[elseIdx],
+                  ...form,
+                  name: form.requestName
+                };
+                newSteps[form.activeStepIndex] = { ...group, elseSteps };
+              }
+            } else {
+              const newGroupRequests = [...(group.requests || [])];
+              newGroupRequests[form.activeSubIndex] = {
+                ...newGroupRequests[form.activeSubIndex],
+                ...form,
+                name: form.requestName
+              };
+              newSteps[form.activeStepIndex] = { ...group, requests: newGroupRequests };
+            }
           } else {
             // Edição de requisição no nível raiz do Workflow
             newSteps[form.activeStepIndex] = {
@@ -684,12 +715,27 @@ function App() {
             totalRequests: (parseInt(r.totalRequests) || 1),
             duration: (parseInt(r.duration) || 0),
             rampUp: (parseInt(r.rampUp) || 0),
-            single: (parseInt(r.totalRequests) || 1) <= 1
+            single: (parseInt(r.totalRequests) || 1) <= 1 && (parseInt(r.duration) || 0) <= 0
           };
         };
 
         if (s.type === 'parallel') {
           return { ...s, requests: (s.requests || []).map(formatReq) };
+        }
+        if (s.type === 'loop') {
+          return { 
+            type: 'loop', 
+            loop: s.loop, 
+            steps: (s.steps || []).map(sub => formatStep(sub, isWorkflowMode))
+          };
+        }
+        if (s.type === 'condition') {
+          return { 
+            type: 'condition', 
+            condition: s.condition, 
+            steps: (s.steps || []).map(sub => formatStep(sub, isWorkflowMode)),
+            elseSteps: (s.elseSteps || []).map(sub => formatStep(sub, isWorkflowMode))
+          };
         }
         return { ...formatReq(s), type: s.type || 'request' };
       };
@@ -835,8 +881,8 @@ function App() {
         </div>
       </header>
 
-      <main className={`flex-1 flex flex-col overflow-hidden ${view === 'collection-detail' ? 'bg-[#0B1020]' : 'py-12 px-4 overflow-y-auto items-center'}`}>
-          <div className={`w-full flex flex-col ${view === 'collection-detail' ? 'max-w-full h-full' : 'max-w-5xl bg-[#111827] rounded-2xl shadow-2xl border border-white/5 p-8 transition-all'}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden ${view === 'collection-detail' || view === 'collections' ? 'bg-[#0B1020]' : 'py-12 px-4 overflow-y-auto items-center'}`}>
+          <div className={`w-full flex flex-col ${view === 'collection-detail' || view === 'collections' ? 'max-w-full h-full' : 'max-w-5xl bg-[#111827] rounded-2xl shadow-2xl border border-white/5 p-8 transition-all'}`}>
             {view === 'report' ? (
               <ReportView 
                 reportData={reportData} 

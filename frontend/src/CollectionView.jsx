@@ -173,7 +173,7 @@ export default function CollectionView({
     if (setActiveWorkflowId) setActiveWorkflowId(newId);
   };
 
-  const handleAddNewMock = () => {
+  const handleAddNewMock = async () => {
     const newMock = { 
       id: Date.now().toString(), 
       name: 'Novo Mock', 
@@ -186,6 +186,15 @@ export default function CollectionView({
     setSelectedMock(newMock);
     setIsEditingMock(true);
     setMonitoringMock(null);
+    // Salva imediatamente no backend para aparecer na listagem lateral
+    try {
+      await fetch("http://localhost:8080/manage-mocks", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMock)
+      });
+      fetchMocksList();
+    } catch (e) {}
   };
 
   // Lógica de filtragem recursiva para buscar em pastas e requisições

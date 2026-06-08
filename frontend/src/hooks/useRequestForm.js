@@ -56,9 +56,9 @@ export function useRequestForm() {
     setForm({
       url: req.url || INITIAL_FORM.url,
       method: req.method || INITIAL_FORM.method,
-      totalRequests: req.totalRequests || req.threads || INITIAL_FORM.totalRequests,
-      duration: req.duration || INITIAL_FORM.duration,
-      rampUp: req.rampUp || INITIAL_FORM.rampUp,
+      totalRequests: req.totalRequests ?? req.threads ?? INITIAL_FORM.totalRequests,
+      duration: req.duration ?? INITIAL_FORM.duration,
+      rampUp: req.rampUp ?? INITIAL_FORM.rampUp,
       headers: req.headers || [{ key: '', value: '' }],
       bodyType: req.bodyType || 'none',
       bodyRaw: req.bodyRaw || '',

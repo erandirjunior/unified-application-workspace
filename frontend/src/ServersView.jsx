@@ -314,6 +314,22 @@ export default function ServersView({
               </div>
 
               <div>
+                <label htmlFor="mock-delay" className="label-base">{t.mocks?.delayLabel || 'Response Delay (ms)'}</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    id="mock-delay"
+                    type="number" 
+                    min="0" 
+                    className="input-base font-mono" 
+                    value={currentMock.delay || 0} 
+                    onChange={e => setCurrentMock({...currentMock, delay: parseInt(e.target.value) || 0})} 
+                    placeholder="0"
+                  />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">ms</span>
+                </div>
+              </div>
+
+              <div>
                 <label htmlFor="mock-payload" className="label-base">{currentMock.response.isFile ? 'Upload do Arquivo' : 'Response Body (JSON/XML/Text)'}</label>
                 {currentMock.response.isFile ? (
                   <div className="space-y-2">

@@ -80,7 +80,7 @@ export default function ConfigView({
       </div>
 
       {/* Parâmetros de Carga */}
-      {!isScenarioMode && !activeWorkflowId && (
+      {!isScenarioMode && (
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rps}</label>
