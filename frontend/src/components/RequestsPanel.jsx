@@ -1,0 +1,115 @@
+import React from 'react';
+import SaveRequestForm from '../SaveRequestForm';
+import ConfigView from '../ConfigView';
+import DocumentationView from '../DocumentationView';
+import ReportView from '../ReportView';
+
+export default function RequestsPanel({
+  t,
+  collection,
+  editorProps,
+  isEditingAction,
+  rightPanelTab,
+  setRightPanelTab,
+  rightPanelSize,
+  setRightPanelSize,
+  isRunning,
+  reportData,
+  requestLogs,
+  sendRequests,
+  stopTest,
+  lastExecutedPayload,
+  onSaveResponseToDoc,
+  docProps,
+  onCloseRequestEditor,
+}) {
+  if (!isEditingAction) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-slate-500 italic space-y-4">
+        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+        </div>
+        <p className="text-sm">{t.collection.exploreTitle || "Selecione uma Action para começar"}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex overflow-hidden">
+      {/* Coluna 2: Editor de Requisição */}
+      {rightPanelSize !== 'maximized' && (
+        <div className="flex-1 flex flex-col border-r border-white/5 bg-[#0B1020] overflow-hidden p-6 custom-scrollbar">
+          <div className="max-w-[1100px] w-full mx-auto">
+            <SaveRequestForm 
+              onSaveRequest={editorProps.updateRequestInCollection}
+              requestName={editorProps.requestName}
+              setRequestName={editorProps.setRequestName}
+              method={editorProps.method}
+              setMethod={editorProps.setMethod}
+              onRun={editorProps.sendRequests}
+              onClose={onCloseRequestEditor}
+              t={t}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar max-w-[1100px] w-full mx-auto px-4">
+            <ConfigView {...editorProps} />
+          </div>
+        </div>
+      )}
+
+      {/* Coluna 3: Painel Lateral (Execução/Docs) */}
+      <div className={`flex flex-col bg-[#111827] transition-all duration-500 border-l border-white/5 ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[450px]'}`}>
+        <div className={`p-4 border-b border-white/5 shrink-0 flex items-center gap-3 ${rightPanelSize === 'minimized' ? 'flex-col !p-2' : ''}`}>
+          {rightPanelSize !== 'minimized' ? (
+            <div className="flex flex-1 bg-[#0B1020] p-1 rounded-2xl border border-white/5">
+              <button onClick={() => setRightPanelTab('docs')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${rightPanelTab === 'docs' ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'text-slate-500 hover:text-slate-400 hover:bg-white/[0.02]'}`}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                {t.config.panels.documentation}
+              </button>
+              <button onClick={() => setRightPanelTab('execution')} className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${rightPanelTab === 'execution' ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'text-slate-500 hover:text-slate-400 hover:bg-white/[0.02]'}`}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                {t.config.panels.execution}
+                {isRunning && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 py-2">
+              <button onClick={() => { setRightPanelTab('docs'); setRightPanelSize('normal'); }} className={`p-2 rounded-lg ${rightPanelTab === 'docs' ? 'text-blue-500 bg-blue-500/10' : 'text-slate-500'}`} title={t.config.panels.documentation}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </button>
+              <button onClick={() => { setRightPanelTab('execution'); setRightPanelSize('normal'); }} className={`p-2 rounded-lg relative ${rightPanelTab === 'execution' ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-500'}`} title={t.config.panels.execution}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                {isRunning && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.6)]"></span>}
+              </button>
+            </div>
+          )}
+
+          <div className={`flex gap-1 ${rightPanelSize === 'minimized' ? 'flex-col mt-auto' : ''}`}>
+            <button onClick={() => setRightPanelSize(rightPanelSize === 'maximized' ? 'normal' : 'maximized')} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'maximized' ? 'Restaurar' : 'Maximizar'}>
+              {rightPanelSize === 'maximized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 9h6m-6 6h6M4 4h16v16H4V4z"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 8V4h4M4 16v4h4M16 4h4v4M16 20h4v-4"/></svg>}
+            </button>
+            <button onClick={() => setRightPanelSize(rightPanelSize === 'minimized' ? 'normal' : 'minimized')} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'minimized' ? 'Expandir' : 'Recolher'}>
+              {rightPanelSize === 'minimized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>}
+            </button>
+          </div>
+        </div>
+        
+        <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 ${rightPanelSize === 'minimized' ? 'hidden' : 'block'}`}>
+          {rightPanelTab === 'docs' ? (
+            <DocumentationView 
+              key={editorProps.activeRequestId || 'empty'}
+              {...docProps} 
+              requests={[]} 
+              t={t} 
+              collection={collection} 
+              onBack={() => setRightPanelTab('execution')} 
+              methodStyles={editorProps.methodStyles} 
+            />
+          ) : (
+            <ReportView t={t} reportData={reportData} requestLogs={requestLogs} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
