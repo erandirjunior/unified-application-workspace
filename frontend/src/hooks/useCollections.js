@@ -35,7 +35,8 @@ export function useCollections() {
         requests: col.requests && col.requests.length > 0 ? col.requests : [{ id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' }], // Garante requests
         activeEnvironmentId: col.activeEnvironmentId || 'default',
         scenarios: (col.scenarios || []).map(s => ({ ...s, steps: s.steps || [] })),
-        workflows: (col.workflows || []).map(w => ({ ...w, steps: w.steps || [] }))
+        workflows: (col.workflows || []).map(w => w.type === 'folder' ? w : ({ ...w, steps: w.steps || [] })),
+        mockFolders: col.mockFolders || []
       }));
     } catch (e) {
       return [{ 
@@ -133,32 +134,52 @@ export function useCollections() {
     }));
   };
 
-  const addFolderToCollection = (colId, name) => {
+  const addFolderToCollection = (colId, name, section = 'requests') => {
     const newFolder = { id: Date.now().toString(), type: 'folder', name: name || 'Nova Pasta', requests: [] };
-    setCollections(prev => prev.map(col => col.id === colId ? { ...col, requests: [...col.requests, newFolder] } : col));
-  };
-
-  const moveRequestInCollection = (colId, requestId, targetFolderId = null) => {
     setCollections(prev => prev.map(col => {
       if (col.id !== colId) return col;
-      let requestToMove = null;
-      const extract = (items) => {
+      if (section === 'workflows') {
+        return { ...col, workflows: [...(col.workflows || []), newFolder] };
+      }
+      if (section === 'mocks') {
+        // Para mocks, não usa pastas no backend, mas permite organização local
+        return { ...col, mockFolders: [...(col.mockFolders || []), newFolder] };
+      }
+      return { ...col, requests: [...col.requests, newFolder] };
+    }));
+  };
+
+  const moveRequestInCollection = (colId, requestId, targetFolderId = null, section = 'requests', itemData = null) => {
+    setCollections(prev => prev.map(col => {
+      if (col.id !== colId) return col;
+      
+      const sourceKey = section === 'workflows' ? 'workflows' : section === 'mocks' ? 'mockFolders' : 'requests';
+      const items = col[sourceKey] || [];
+      
+      let itemToMove = null;
+      const extract = (list) => {
         const result = [];
-        for (const item of items) {
-          if (item.id === requestId) requestToMove = item;
+        for (const item of list) {
+          if (item.id === requestId) itemToMove = item;
           else if (item.type === 'folder') result.push({ ...item, requests: extract(item.requests || []) });
           else result.push(item);
         }
         return result;
       };
-      const cleanedRequests = extract(col.requests);
-      if (!requestToMove) return col;
-      const insert = (items) => items.map(item => {
-        if (item.id === targetFolderId) return { ...item, requests: [...(item.requests || []), requestToMove] };
+      const cleaned = extract(items);
+      
+      // Se não encontrou no array, usa itemData fornecido (ex: mock do backend)
+      if (!itemToMove && itemData) itemToMove = itemData;
+      if (!itemToMove) return col;
+      
+      const insert = (list) => list.map(item => {
+        if (item.id === targetFolderId) return { ...item, requests: [...(item.requests || []), itemToMove] };
         if (item.type === 'folder') return { ...item, requests: insert(item.requests || []) };
         return item;
       });
-      return { ...col, requests: !targetFolderId ? [...cleanedRequests, requestToMove] : insert(cleanedRequests) };
+      
+      const updated = !targetFolderId ? [...cleaned, itemToMove] : insert(cleaned);
+      return { ...col, [sourceKey]: updated };
     }));
   };
 

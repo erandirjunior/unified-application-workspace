@@ -310,9 +310,26 @@ function App() {
     });
   };
 
-  const reorderItemInCollection = (colId, itemId, direction) => {
+  const reorderItemInCollection = (colId, itemId, direction, section) => {
     const col = collections.find(c => c.id === colId);
     if (!col) return;
+
+    // Determina o array alvo baseado na seção
+    if (section === 'mocks') {
+      const items = col.mockFolders || [];
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx === -1) return;
+      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= items.length) return;
+      setCollections(prev => prev.map(c => {
+        if (c.id !== colId) return c;
+        const result = [...(c.mockFolders || [])];
+        const [removed] = result.splice(idx, 1);
+        result.splice(newIdx, 0, removed);
+        return { ...c, mockFolders: result };
+      }));
+      return;
+    }
 
     let canMove = false;
     // Verifica em Workflows
@@ -375,7 +392,7 @@ function App() {
     ));
   };
 
-  const updateFolderName = (colId, newName, folderId) => {
+  const updateFolderName = (colId, newName, folderId, section = 'requests') => {
     setCollections(prev => prev.map(collection => {
       if (collection.id !== colId) return collection;
       const recursiveUpdate = (items) => {
@@ -389,6 +406,12 @@ function App() {
           return item;
         });
       };
+      if (section === 'workflows') {
+        return { ...collection, workflows: recursiveUpdate(collection.workflows || []) };
+      }
+      if (section === 'mocks') {
+        return { ...collection, mockFolders: recursiveUpdate(collection.mockFolders || []) };
+      }
       return { ...collection, requests: recursiveUpdate(collection.requests) };
     }));
     showCustomToast(t.toasts.folderUpdated, 'success');
@@ -569,7 +592,7 @@ function App() {
     });
   };
 
-  const deleteFolder = (colId, folderId) => {
+  const deleteFolder = (colId, folderId, section = 'requests') => {
     showCustomConfirm('Tem certeza que deseja excluir esta pasta e todas as requisições dentro dela?', () => {
       setCollections(prev => prev.map(collection => {
         if (collection.id !== colId) return collection;
@@ -580,6 +603,12 @@ function App() {
               : item
           );
         };
+        if (section === 'workflows') {
+          return { ...collection, workflows: recursiveFilter(collection.workflows || []) };
+        }
+        if (section === 'mocks') {
+          return { ...collection, mockFolders: recursiveFilter(collection.mockFolders || []) };
+        }
         return { ...collection, requests: recursiveFilter(collection.requests) };
       }));
       showCustomToast('Pasta excluída com sucesso!', 'success');
@@ -822,19 +851,56 @@ function App() {
         {/* Menu Centralizado da Collection */}
         <div className="flex-1 flex justify-left">
           {activeCollectionId && view === 'collection-detail' && (
-            <nav className="flex gap-8">
-              {['requests', 'workflows', 'mocks'].map((tab) => (
+            <nav className="flex gap-8 items-center">
+              {/* Actions dropdown */}
+              <div className="relative group/actions">
+                <button
+                  onClick={() => {
+                    setActiveTab('requests');
+                    updateField('activeWorkflowId', null);
+                    updateField('activeStepIndex', null);
+                    updateField('activeSubIndex', null);
+                  }}
+                  className={`text-xs font-black uppercase tracking-widest transition-all border-b-1 flex items-center gap-1 ${
+                    activeTab === 'requests'
+                      ? 'text-blue-600 border-blue-600' 
+                      : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {t.collection.tabs.requests}
+                  <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                {/* Submenu */}
+                <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/actions:opacity-100 group-hover/actions:visible transition-all duration-200 z-50">
+                  <div className="theme-surface border theme-border rounded-xl shadow-xl p-2 min-w-[180px]">
+                    <button 
+                      onClick={() => {
+                        setActiveTab('requests');
+                        updateField('activeWorkflowId', null);
+                        updateField('activeStepIndex', null);
+                        updateField('activeSubIndex', null);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold theme-text hover:bg-blue-500/10 hover:text-blue-500 transition-all text-left"
+                    >
+                      <span className="w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 text-blue-500 text-[9px] font-black">H</span>
+                      HTTP Request
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Outros tabs */}
+              {['workflows', 'mocks'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => {
                     setActiveTab(tab);
-                    // Reseta estados de edição ao trocar de aba via header para voltar às listagens
                     updateField('activeWorkflowId', null);
                     updateField('activeStepIndex', null);
                     updateField('activeSubIndex', null);
                   }}
                   className={`text-xs font-black uppercase tracking-widest transition-all border-b-1 ${
-                    activeTab === tab // This is the active tab highlight
+                    activeTab === tab
                       ? 'text-blue-600 border-blue-600' 
                       : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-200'
                   }`}
@@ -845,7 +911,6 @@ function App() {
               <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 self-center mx-2"></div>
               <button
                 onClick={() => {
-                  // Abre o modal de gerenciamento de variáveis/ambientes da coleção
                   setIsEnvModalOpen(true);
                 }}
                 className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-500 transition-all border-b-2 border-transparent"

@@ -53,8 +53,9 @@ export default function CollectionSidebar({
     setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleDragStart = (e, requestId) => {
+  const handleDragStart = (e, requestId, section = 'requests') => {
     e.dataTransfer.setData("requestId", requestId);
+    e.dataTransfer.setData("section", section);
   };
 
   const handleDragOverFolder = (e, folderId) => {
@@ -67,14 +68,15 @@ export default function CollectionSidebar({
     setDragOverFolderId(null);
   };
 
-  const handleDropOnFolder = (e, folderId) => {
+  const handleDropOnFolder = (e, folderId, section = 'requests') => {
     e.preventDefault();
     e.stopPropagation();
     setDragOverFolderId(null);
     setIsDraggingOverRoot(false);
     const requestId = e.dataTransfer.getData("requestId");
+    const dragSection = e.dataTransfer.getData("section") || section;
     if (requestId && requestId !== folderId) {
-      onMoveRequest(collection.id, requestId, folderId);
+      onMoveRequest(collection.id, requestId, folderId, dragSection);
     }
   };
 
@@ -83,8 +85,9 @@ export default function CollectionSidebar({
     setIsDraggingOverRoot(false);
     setDragOverFolderId(null);
     const requestId = e.dataTransfer.getData("requestId");
+    const section = e.dataTransfer.getData("section") || 'requests';
     if (requestId) {
-      onMoveRequest(collection.id, requestId, null);
+      onMoveRequest(collection.id, requestId, null, section);
     }
   };
 
@@ -231,7 +234,12 @@ export default function CollectionSidebar({
     <div key={folder.id} className="space-y-1">
       <div 
         onClick={() => toggleFolder(folder.id)}
-        className={`flex items-center gap-2 h-[38px] px-3 rounded-lg transition-all group border border-transparent bg-transparent hover:bg-white/5`}
+        onDragOver={(e) => handleDragOverFolder(e, folder.id)}
+        onDragLeave={handleDragLeaveFolder}
+        onDrop={(e) => handleDropOnFolder(e, folder.id, 'workflows')}
+        className={`flex items-center gap-2 h-[38px] px-3 rounded-lg transition-all group border border-transparent ${
+          dragOverFolderId === folder.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-transparent hover:bg-white/5'
+        }`}
       >
         <svg className={`w-3.5 h-3.5 transition-transform text-slate-500 ${expandedFolders[folder.id] ? 'rotate-90 theme-text-secondary' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg>
         <svg className="w-4 h-4 text-amber-500/80 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
@@ -281,7 +289,12 @@ export default function CollectionSidebar({
     <div key={folder.id} className="space-y-1">
       <div 
         onClick={() => toggleFolder(folder.id)}
-        className={`flex items-center gap-2 h-[38px] px-3 rounded-lg transition-all group border border-transparent bg-transparent hover:bg-white/5`}
+        onDragOver={(e) => handleDragOverFolder(e, folder.id)}
+        onDragLeave={handleDragLeaveFolder}
+        onDrop={(e) => handleDropOnFolder(e, folder.id, 'mocks')}
+        className={`flex items-center gap-2 h-[38px] px-3 rounded-lg transition-all group border border-transparent ${
+          dragOverFolderId === folder.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-transparent hover:bg-white/5'
+        }`}
       >
         <svg className={`w-3.5 h-3.5 transition-transform text-slate-500 ${expandedFolders[folder.id] ? 'rotate-90 theme-text-secondary' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg>
         <svg className="w-4 h-4 text-amber-500/80 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>
@@ -330,6 +343,8 @@ export default function CollectionSidebar({
   const renderWorkflowListItem = (workflow, index, parentList, isNested = false) => (
     <div 
       key={workflow.id}
+      draggable
+      onDragStart={(e) => handleDragStart(e, workflow.id, 'workflows')}
       onClick={() => { if (rightPanelSize === 'maximized') setRightPanelSize('normal'); onTabChange('workflows'); setEditingWorkflowId(workflow.id); }}
       className={`group flex items-center justify-between gap-2 h-[40px] px-3 rounded-lg cursor-pointer transition-all border ${
         editingWorkflowId === workflow.id 
@@ -358,6 +373,8 @@ export default function CollectionSidebar({
   const renderMockListItem = (mock, index, parentList, isNested = false) => (
     <div 
       key={mock.id}
+      draggable
+      onDragStart={(e) => handleDragStart(e, mock.id, 'mocks')}
       onClick={() => {
         onTabChange('mocks');
         if (rightPanelSize === 'maximized') setRightPanelSize('normal');
@@ -494,10 +511,10 @@ export default function CollectionSidebar({
       </div>
       
       <div 
-        className={`flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar ${isDraggingOverRoot && activeTab === 'requests' ? 'bg-blue-500/5' : ''}`}
-        onDragOver={(e) => { if(activeTab === 'requests') { e.preventDefault(); setIsDraggingOverRoot(true); } }}
+        className={`flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar ${isDraggingOverRoot ? 'bg-blue-500/5' : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setIsDraggingOverRoot(true); }}
         onDragLeave={() => setIsDraggingOverRoot(false)}
-        onDrop={activeTab === 'requests' ? handleDropOnRoot : undefined}
+        onDrop={handleDropOnRoot}
       >
         {activeTab === 'requests' ? (
           <>
@@ -523,7 +540,11 @@ export default function CollectionSidebar({
           </>
         ) : (
           <>
-            {filteredMocks.map((mock, index) => renderMockListItem(mock, index, filteredMocks))}
+            {filteredMocks.map((mock, index) => 
+              mock.type === 'folder' 
+                ? renderMockFolderItem(mock, index, filteredMocks) 
+                : renderMockListItem(mock, index, filteredMocks)
+            )}
             {filteredMocks.length === 0 && (
               <div className="py-20 text-center text-slate-500 text-xs italic">{t.common.empty}</div>
             )}

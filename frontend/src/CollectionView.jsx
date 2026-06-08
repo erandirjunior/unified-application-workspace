@@ -218,10 +218,35 @@ export default function CollectionView({
 
   const filteredItems = getFilteredItems(collection.requests, search.toLowerCase());
   const filteredWorkflows = getFilteredItems(collection.workflows || [], search.toLowerCase());
-  const filteredMocks = mocks.filter(m => 
-    m.name?.toLowerCase().includes(search.toLowerCase()) || 
-    m.path?.toLowerCase().includes(search.toLowerCase())
-  );
+  
+  // Combina pastas de mocks (armazenadas na coleção) com mocks do backend
+  const getMockIdsInFolders = (folders) => {
+    const ids = new Set();
+    const collect = (items) => items.forEach(item => {
+      if (item.type === 'folder') collect(item.requests || []);
+      else ids.add(item.id);
+    });
+    collect(folders || []);
+    return ids;
+  };
+  const mockIdsInFolders = getMockIdsInFolders(collection.mockFolders);
+  const mockItems = [
+    ...(collection.mockFolders || []),
+    ...mocks.filter(m => !mockIdsInFolders.has(m.id))
+  ];
+  const filteredMocks = search.trim() 
+    ? getFilteredItems(mockItems, search.toLowerCase())
+    : mockItems;
+
+  // Wrapper para mover que lida com mocks do backend → mockFolders
+  const handleMoveRequest = (colId, itemId, targetFolderId, section) => {
+    if (section === 'mocks') {
+      const mockFromBackend = mocks.find(m => m.id === itemId);
+      onMoveRequest(colId, itemId, targetFolderId, section, mockFromBackend);
+      return;
+    }
+    onMoveRequest(colId, itemId, targetFolderId, section);
+  };
 
   // Verifica se temos uma action selecionada para exibir o editor
   const isEditingAction = editorProps?.activeRequestId || 
@@ -269,7 +294,7 @@ export default function CollectionView({
           onDeleteFolder={onDeleteFolder}
           onDeleteWorkflow={onDeleteWorkflow}
           onReorderItem={onReorderItem}
-          onMoveRequest={onMoveRequest}
+          onMoveRequest={handleMoveRequest}
           onUpdateFolderName={onUpdateFolderName}
           onUpdateWorkflows={onUpdateWorkflows}
           editingWorkflowId={editingWorkflowId}

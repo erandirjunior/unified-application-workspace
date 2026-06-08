@@ -325,7 +325,6 @@ export default function ServersView({
                     onChange={e => setCurrentMock({...currentMock, delay: parseInt(e.target.value) || 0})} 
                     placeholder="0"
                   />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">ms</span>
                 </div>
               </div>
 

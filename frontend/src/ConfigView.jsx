@@ -84,15 +84,15 @@ export default function ConfigView({
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rps}</label>
-            <input type="number" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={totalRequests} onChange={(e) => setTotalRequests(e.target.value)} />
+            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={totalRequests} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setTotalRequests(v); }} />
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.duration}</label>
-            <input type="number" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={duration} onChange={(e) => setDuration(e.target.value)} />
+            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={duration} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setDuration(v); }} />
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rampUp}</label>
-            <input type="number" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => setRampUp(e.target.value)} />
+            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setRampUp(v); }} />
           </div>
         </div>
       )}
