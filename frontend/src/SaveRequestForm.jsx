@@ -15,11 +15,11 @@ export default function SaveRequestForm({ onSaveRequest, requestName, setRequest
   };
 
   return (
-    <div className="grid grid-cols-12 gap-4 h-[60px] items-center bg-[#161E31] border border-white/5 rounded-xl px-4 shadow-lg overflow-hidden mb-5">
+    <div className="grid grid-cols-12 gap-4 h-[60px] items-center theme-elevated border theme-border rounded-xl px-4 shadow-lg overflow-hidden mb-5">
        {/* Action Name Input */}
        <div className="col-span-7">
          <input 
-           className="w-full bg-transparent text-sm font-mono text-slate-200 outline-none placeholder:text-slate-600" 
+           className="w-full bg-transparent text-sm font-mono theme-text outline-none placeholder:text-slate-600" 
            value={requestName} 
            onChange={(e) => setRequestName(e.target.value)}
            placeholder="Nome da Action..."
@@ -38,7 +38,7 @@ export default function SaveRequestForm({ onSaveRequest, requestName, setRequest
          </div>
        )}
        <div className="col-span-2">
-         <button onClick={handleSave} className="w-full h-10 bg-[#111827] border border-white/10 text-slate-400 hover:text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest">
+         <button onClick={handleSave} className="w-full h-10 theme-surface border theme-border text-slate-400 hover:text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest">
            Save
          </button>
        </div>

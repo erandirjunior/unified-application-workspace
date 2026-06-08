@@ -796,10 +796,10 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-full bg-[#0B1020] text-slate-200 font-['Inter',_sans-serif] flex flex-col transition-colors duration-300 overflow-hidden selection:bg-[#7C5CFF]/30">
+    <div className="h-screen w-full theme-base font-['Inter',_sans-serif] flex flex-col transition-colors duration-300 overflow-hidden selection:bg-[var(--accent)]/30" style={{ color: 'var(--text-primary)' }}>
       {/* Main App Header */}
       {/* Barra Superior (Menu) */}
-      <header className="w-full bg-[#111827] border-b border-white/5 flex justify-between items-center sticky top-0 z-40 shadow-xl">
+      <header className="w-full theme-header border-b theme-border flex justify-between items-center sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-8 mr-8">
           <button 
             onClick={() => {
@@ -848,7 +848,7 @@ function App() {
                   // Abre o modal de gerenciamento de variáveis/ambientes da coleção
                   setIsEnvModalOpen(true);
                 }}
-                className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-500 transition-all pb-1 border-b-2 border-transparent"
+                className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-500 transition-all border-b-2 border-transparent"
               >
                 {t.config.variables}
               </button>
@@ -856,7 +856,7 @@ function App() {
           )}
         </div>
         {/* Right side of header */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pr-4">
           <div className="relative group">
             <select 
               value={lang} 
@@ -873,7 +873,7 @@ function App() {
             </div>
           </div>
           <button
-          className="p-2 rounded-full bg-[#161E31] hover:scale-110 transition-transform"
+          className="p-2 rounded-full theme-elevated hover:scale-110 transition-transform"
           onClick={toggleTheme}
         >
           {theme === 'light' ? '🌙' : '☀️'}
@@ -881,8 +881,8 @@ function App() {
         </div>
       </header>
 
-      <main className={`flex-1 flex flex-col overflow-hidden ${view === 'collection-detail' || view === 'collections' ? 'bg-[#0B1020]' : 'py-12 px-4 overflow-y-auto items-center'}`}>
-          <div className={`w-full flex flex-col ${view === 'collection-detail' || view === 'collections' ? 'max-w-full h-full' : 'max-w-5xl bg-[#111827] rounded-2xl shadow-2xl border border-white/5 p-8 transition-all'}`}>
+      <main className={`flex-1 flex flex-col overflow-hidden ${view === 'collection-detail' || view === 'collections' ? 'theme-base' : 'py-12 px-4 overflow-y-auto items-center'}`}>
+          <div className={`w-full flex flex-col ${view === 'collection-detail' || view === 'collections' ? 'max-w-full h-full' : 'max-w-5xl theme-surface rounded-2xl shadow-2xl border theme-border p-8 transition-all'}`}>
             {view === 'report' ? (
               <ReportView 
                 reportData={reportData} 

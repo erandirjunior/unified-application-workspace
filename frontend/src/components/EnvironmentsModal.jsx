@@ -19,23 +19,23 @@ export default function EnvironmentsModal({
 }) {
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-[70] animate-in fade-in duration-300">
-      <div className="bg-[#111827] rounded-3xl w-full max-w-4xl shadow-2xl border border-white/5 flex flex-col h-[70vh]">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center">
-          <h3 className="text-xl font-bold dark:text-white flex items-center gap-2">
+      <div className="theme-surface rounded-3xl w-full max-w-4xl shadow-2xl border theme-border flex flex-col h-[70vh]">
+        <div className="p-6 border-b theme-border flex justify-between items-center">
+          <h3 className="text-xl font-bold theme-text flex items-center gap-2">
             <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" /></svg>
             {t.collection.envModalTitle}
           </h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors text-2xl">&times;</button>
+          <button onClick={onClose} className="theme-text-muted hover:text-rose-500 transition-colors text-2xl">&times;</button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar do Modal */}
-          <div className="w-64 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-4 space-y-2 overflow-y-auto">
+          <div className="w-64 border-r theme-border theme-elevated p-4 space-y-2 overflow-y-auto">
             {(collection.environments || []).map(env => (
               <div 
                 key={env.id}
                 onClick={() => setEditingEnvId(env.id)}
-                className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${editingEnvId === env.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${editingEnvId === env.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'hover:bg-black/5 dark:hover:bg-white/5 theme-text-secondary'}`}
               >
                 {isRenamingEnv === env.id ? (
                   <input 
@@ -54,7 +54,7 @@ export default function EnvironmentsModal({
                 </div>
               </div>
             ))}
-            <button onClick={onAddEnvironment} className="w-full p-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all text-xs font-bold">{t.collection.envModal.newEnv}</button>
+            <button onClick={onAddEnvironment} className="w-full p-3 border-2 border-dashed theme-border rounded-xl theme-text-muted hover:text-blue-500 hover:border-blue-500 transition-all text-xs font-bold">{t.collection.envModal.newEnv}</button>
           </div>
 
           {/* Conteúdo de Variáveis */}
@@ -62,7 +62,7 @@ export default function EnvironmentsModal({
             {currentEnv ? (
               <>
                 <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">{t.collection.envModal.varsTitle} {currentEnv.name}</h4>
+                  <h4 className="text-sm font-black theme-text-muted uppercase tracking-widest">{t.collection.envModal.varsTitle} {currentEnv.name}</h4>
                   <button onClick={onAddVariable} className="text-xs font-bold text-blue-500 hover:underline">{t.collection.envModal.addVar}</button>
                 </div>
                 <div className="space-y-3">
@@ -76,12 +76,12 @@ export default function EnvironmentsModal({
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-400 italic">{t.collection.envModal.selectEnv}</div>
+              <div className="flex items-center justify-center h-full theme-text-muted italic">{t.collection.envModal.selectEnv}</div>
             )}
           </div>
         </div>
 
-        <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+        <div className="p-6 theme-elevated border-t theme-border flex justify-end">
           <button onClick={onClose} className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold">{t.collection.envModal.done}</button>
         </div>
       </div>

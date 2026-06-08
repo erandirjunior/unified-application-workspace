@@ -163,12 +163,12 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   const renderConditionEditor = (step, condField) => {
     const cond = step[condField] || {};
     return (
-      <div className="p-3 bg-[#0B1020] border border-white/10 rounded-xl space-y-3">
+      <div className="p-3 theme-base border theme-border rounded-xl space-y-3">
         <div className="flex justify-between items-center">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{condField === 'loop' ? (t.workflows?.editor?.loopCondition || 'Repetir enquanto') : (t.workflows?.editor?.conditionIf || 'Se')}</p>
           <div className="flex items-center gap-2">
             {(cond.conditions || []).length > 0 && (
-              <select className="text-[9px] bg-[#161E31] border border-white/10 rounded-lg px-2 py-1 font-black uppercase text-slate-300 cursor-pointer" value={cond.logic || 'and'} onChange={(e) => updateNestedCondField(step.id, condField, 'logic', e.target.value)}>
+              <select className="text-[9px] theme-elevated border theme-border rounded-lg px-2 py-1 font-black uppercase theme-text-secondary cursor-pointer" value={cond.logic || 'and'} onChange={(e) => updateNestedCondField(step.id, condField, 'logic', e.target.value)}>
                 <option value="and">AND</option>
                 <option value="or">OR</option>
               </select>
@@ -178,16 +178,16 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
         </div>
         {renderConditionRow(step.id, condField, cond)}
         {(cond.conditions || []).map((sub, ci) => (
-          <div key={ci} className="flex gap-2 flex-wrap items-center pt-2 border-t border-white/5">
+          <div key={ci} className="flex gap-2 flex-wrap items-center pt-2 border-t theme-border">
             <span className="text-[9px] font-black text-[#7C5CFF]/60 uppercase px-1.5 py-0.5 bg-[#7C5CFF]/5 rounded">{cond.logic || 'AND'}</span>
             {renderConditionRow(step.id, condField, sub, ci)}
             <button onClick={() => removeExtraCond(step.id, condField, ci)} className="p-1 text-rose-500/60 hover:text-rose-400 transition-colors"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth="2.5"/></svg></button>
           </div>
         ))}
         {condField === 'loop' && (
-          <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+          <div className="flex items-center gap-2 pt-2 border-t theme-border">
             <span className="text-[9px] font-bold text-slate-500">Max iterações:</span>
-            <input type="number" min="1" className="w-16 text-xs bg-[#161E31] border border-white/10 rounded-lg px-2 py-1 font-bold text-slate-200 text-center focus:outline-none focus:border-[#7C5CFF]/50" value={cond.maxIter || 10} onChange={(e) => updateNestedCondField(step.id, condField, 'maxIter', parseInt(e.target.value) || 10)} />
+            <input type="number" min="1" className="w-16 text-xs theme-elevated border theme-border rounded-lg px-2 py-1 font-bold theme-text text-center focus:outline-none focus:border-[#7C5CFF]/50" value={cond.maxIter || 10} onChange={(e) => updateNestedCondField(step.id, condField, 'maxIter', parseInt(e.target.value) || 10)} />
           </div>
         )}
       </div>
@@ -201,20 +201,20 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
     };
     return (
       <div className="flex gap-2 flex-wrap items-center">
-        <select className="text-xs bg-[#161E31] border border-white/10 rounded-lg px-2.5 py-1.5 font-bold text-slate-200 cursor-pointer focus:outline-none focus:border-[#7C5CFF]/50" value={cond.source || 'status'} onChange={(e) => onChange('source', e.target.value)}>
+        <select className="text-xs theme-elevated border theme-border rounded-lg px-2.5 py-1.5 font-bold theme-text cursor-pointer focus:outline-none focus:border-[#7C5CFF]/50" value={cond.source || 'status'} onChange={(e) => onChange('source', e.target.value)}>
           <option value="status">Status</option>
           <option value="body">Body</option>
           <option value="header">Header</option>
           <option value="variable">Variável</option>
         </select>
         {cond.source !== 'status' && (
-          <input className="text-xs bg-[#161E31] border border-white/10 rounded-lg px-2.5 py-1.5 font-mono text-slate-300 flex-1 min-w-[80px] focus:outline-none focus:border-[#7C5CFF]/50" placeholder="property" value={cond.property || ''} onChange={(e) => onChange('property', e.target.value)} />
+          <input className="text-xs theme-elevated border theme-border rounded-lg px-2.5 py-1.5 font-mono theme-text-secondary flex-1 min-w-[80px] focus:outline-none focus:border-[#7C5CFF]/50" placeholder="property" value={cond.property || ''} onChange={(e) => onChange('property', e.target.value)} />
         )}
-        <select className="text-xs bg-[#161E31] border border-white/10 rounded-lg px-2.5 py-1.5 font-bold text-slate-200 cursor-pointer focus:outline-none focus:border-[#7C5CFF]/50" value={cond.operator || '=='} onChange={(e) => onChange('operator', e.target.value)}>
+        <select className="text-xs theme-elevated border theme-border rounded-lg px-2.5 py-1.5 font-bold theme-text cursor-pointer focus:outline-none focus:border-[#7C5CFF]/50" value={cond.operator || '=='} onChange={(e) => onChange('operator', e.target.value)}>
           <option value="==">==</option><option value="!=">!=</option><option value="contains">contém</option><option value="exists">existe</option><option value="not_exists">não existe</option><option value=">">&gt;</option><option value=">=">&gt;=</option><option value="<">&lt;</option><option value="<=">&lt;=</option>
         </select>
         {cond.operator !== 'exists' && cond.operator !== 'not_exists' && (
-          <input className="text-xs bg-[#161E31] border border-white/10 rounded-lg px-2.5 py-1.5 font-mono text-slate-300 w-20 focus:outline-none focus:border-[#7C5CFF]/50" placeholder="200" value={cond.target || ''} onChange={(e) => onChange('target', e.target.value)} />
+          <input className="text-xs theme-elevated border theme-border rounded-lg px-2.5 py-1.5 font-mono theme-text-secondary w-20 focus:outline-none focus:border-[#7C5CFF]/50" placeholder="200" value={cond.target || ''} onChange={(e) => onChange('target', e.target.value)} />
         )}
       </div>
     );
@@ -229,7 +229,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             <label className="label-base">{t.config.descriptionPlaceholder}</label>
             <textarea className="input-base min-h-[80px] text-sm" value={description} onChange={e => setDescription(e.target.value)} placeholder={t.config.descriptionPlaceholder} />
           </div>
-          <div className="p-4 bg-[#111827] rounded-2xl border border-white/5">
+          <div className="p-4 theme-surface rounded-2xl border theme-border">
             <h3 className="text-[9px] font-black text-slate-500 uppercase mb-3 tracking-widest">{t.scenarios?.editor?.addComponents || 'Adicionar'}</h3>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -240,9 +240,9 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                 { fn: () => addStep(makeWait()), icon: '⏳', label: 'Wait', color: 'amber' },
                 { fn: () => setIsCopyModalOpen(true), icon: '📋', label: 'Copiar', color: 'emerald' },
               ].map((item, i) => (
-                <button key={i} onClick={item.fn} className={`flex items-center gap-2 p-2.5 bg-[#161E31] border border-white/5 rounded-xl hover:border-${item.color}-500/30 transition-all text-left`}>
+                <button key={i} onClick={item.fn} className={`flex items-center gap-2 p-2.5 theme-elevated border theme-border rounded-xl hover:border-${item.color}-500/30 transition-all text-left`}>
                   <span className="text-sm">{item.icon}</span>
-                  <span className="text-[10px] font-bold text-slate-300">{item.label}</span>
+                  <span className="text-[10px] font-bold theme-text-secondary">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -268,7 +268,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Steps do Workflow</span>
               )}
             </div>
-            <div className="flex bg-[#161E31] border border-white/10 rounded-lg p-0.5 shrink-0">
+            <div className="flex theme-elevated border theme-border rounded-lg p-0.5 shrink-0">
               <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'list' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>Lista</button>
               <button onClick={() => setViewMode('flowchart')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'flowchart' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>Fluxograma</button>
             </div>
@@ -276,7 +276,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
 
           {/* Vista Fluxograma */}
           {viewMode === 'flowchart' && (
-            <div className="bg-[#111827] border border-white/5 rounded-2xl p-6 overflow-auto max-h-[600px]">
+            <div className="theme-surface border theme-border rounded-2xl p-6 overflow-auto max-h-[600px]">
               <FlowchartView steps={steps} />
             </div>
           )}
@@ -292,7 +292,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
               const isContainer = ['loop', 'condition', 'parallel'].includes(step.type);
 
               return (
-                <div key={step.id} className={`group rounded-xl transition-all ${isContainer ? 'bg-[#111827] border border-white/5 hover:border-[#7C5CFF]/20 overflow-hidden' : 'flex items-center gap-3 p-3 bg-[#111827] border border-white/5 hover:border-[#7C5CFF]/20'}`}>
+                <div key={step.id} className={`group rounded-xl transition-all ${isContainer ? 'theme-surface border theme-border hover:border-[#7C5CFF]/20 overflow-hidden' : 'flex items-center gap-3 p-3 theme-surface border theme-border hover:border-[#7C5CFF]/20'}`}>
                   {/* ===== CONTAINER STEPS (loop, condition, parallel) ===== */}
                   {isContainer && (
                     <div>
@@ -300,8 +300,8 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                       <div className="flex items-center gap-3 p-3">
                         <span className="text-sm w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 shrink-0">{meta.icon}</span>
                         <div className="flex-1 min-w-0 flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-200">{meta.label}</span>
-                          <span className="text-[9px] text-slate-500 bg-[#0B1020] px-1.5 py-0.5 rounded">{children} item{children !== 1 ? 's' : ''}</span>
+                          <span className="text-xs font-bold theme-text">{meta.label}</span>
+                          <span className="text-[9px] text-slate-500 theme-base px-1.5 py-0.5 rounded">{children} item{children !== 1 ? 's' : ''}</span>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <button disabled={index === 0} onClick={() => moveStep(index, 'up')} className={`p-1 text-slate-500 hover:text-blue-400 ${index === 0 ? 'opacity-20' : ''}`}>
@@ -344,14 +344,14 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                       <div className="flex-1 min-w-0">
                         {step.type === 'wait' ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-300">Aguardar</span>
-                            <input type="number" min="1" className="w-14 text-xs bg-[#161E31] border border-white/10 rounded-lg px-2 py-1 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500/50" value={step.url || '5'} onChange={(e) => { updateStepField(step.id, 'url', e.target.value); updateStepField(step.id, 'name', `Pausa (${e.target.value}s)`); }} onClick={(e) => e.stopPropagation()} />
+                            <span className="text-xs font-bold theme-text-secondary">Aguardar</span>
+                            <input type="number" min="1" className="w-14 text-xs theme-elevated border theme-border rounded-lg px-2 py-1 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500/50" value={step.url || '5'} onChange={(e) => { updateStepField(step.id, 'url', e.target.value); updateStepField(step.id, 'name', `Pausa (${e.target.value}s)`); }} onClick={(e) => e.stopPropagation()} />
                             <span className="text-xs text-slate-500">segundos</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 overflow-hidden">
                             <span className="text-[9px] font-black px-1.5 py-0.5 rounded border border-blue-500/20 text-blue-400 uppercase shrink-0">{step.method}</span>
-                            <span className="text-xs font-bold text-slate-200 truncate">{step.name}</span>
+                            <span className="text-xs font-bold theme-text truncate">{step.name}</span>
                           </div>
                         )}
                       </div>
@@ -392,23 +392,23 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
       {/* Modal de Cópia */}
       {isCopyModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
-          <div className="bg-[#111827] rounded-3xl w-full max-w-2xl shadow-2xl border border-white/5 flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#161E31]">
+          <div className="theme-surface rounded-3xl w-full max-w-2xl shadow-2xl border theme-border flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b theme-border flex justify-between items-center theme-elevated">
               <div>
                 <h3 className="text-lg font-bold text-white">{t.scenarios?.editor?.copyModal?.title || 'Copiar da Coleção'}</h3>
                 <p className="text-xs text-slate-500 mt-1">{t.scenarios?.editor?.copyModal?.subtitle || 'Selecione uma action para adicionar'}</p>
               </div>
               <button onClick={() => setIsCopyModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-2xl">&times;</button>
             </div>
-            <div className="p-4 border-b border-white/5">
-              <input autoFocus type="text" placeholder={t.scenarios?.editor?.copyModal?.search || 'Pesquisar...'} className="w-full bg-[#161E31] border border-white/5 text-slate-200 rounded-xl px-4 py-2.5 text-xs placeholder:text-slate-600 outline-none" value={copySearch} onChange={(e) => setCopySearch(e.target.value)} />
+            <div className="p-4 border-b theme-border">
+              <input autoFocus type="text" placeholder={t.scenarios?.editor?.copyModal?.search || 'Pesquisar...'} className="w-full theme-elevated border theme-border theme-text rounded-xl px-4 py-2.5 text-xs placeholder:text-slate-600 outline-none" value={copySearch} onChange={(e) => setCopySearch(e.target.value)} />
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {getAllRequests(collection?.requests).filter(r => r.name?.toLowerCase().includes(copySearch.toLowerCase()) || r.url?.toLowerCase().includes(copySearch.toLowerCase())).map(req => (
-                <div key={req.id} onClick={() => copyRequestToWorkflow(req)} className="flex items-center justify-between p-3 bg-[#161E31] border border-white/5 rounded-xl hover:border-[#7C5CFF]/30 transition-all cursor-pointer group">
+                <div key={req.id} onClick={() => copyRequestToWorkflow(req)} className="flex items-center justify-between p-3 theme-elevated border theme-border rounded-xl hover:border-[#7C5CFF]/30 transition-all cursor-pointer group">
                   <div className="flex items-center gap-3 overflow-hidden">
                     <span className="text-[9px] font-black px-1.5 py-0.5 rounded border border-blue-500/20 text-blue-400">{req.method}</span>
-                    <span className="text-xs font-bold text-slate-200 truncate">{req.name}</span>
+                    <span className="text-xs font-bold theme-text truncate">{req.name}</span>
                   </div>
                   <span className="text-blue-400 opacity-0 group-hover:opacity-100 font-bold text-[10px]">Adicionar →</span>
                 </div>
@@ -418,7 +418,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
         </div>
       )}
 
-      <div className="pt-4 border-t border-white/5 text-center">
+      <div className="pt-4 border-t theme-border text-center">
         <p className="text-[9px] text-slate-600 italic">{t.workflows?.editor?.note || 'Workflows suportam carga, loops, condicionais e paralelismo.'}</p>
       </div>
     </div>

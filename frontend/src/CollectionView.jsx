@@ -229,7 +229,7 @@ export default function CollectionView({
                           (editorProps?.activeWorkflowId && editorProps?.activeStepIndex !== null);
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0B1020] overflow-hidden">
+    <div className="flex flex-col h-full w-full theme-base overflow-hidden">
       {/* Modal de Gerenciamento de Ambientes */}
       {isEnvModalOpen && (
         <EnvironmentsModal

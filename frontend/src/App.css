@@ -5,21 +5,75 @@
 @layer base {
   html { scrollbar-gutter: stable; }
   html, body { @apply m-0 p-0; box-sizing: border-box; }
+
+  :root {
+    --bg-base: #ffffff;
+    --bg-surface: #f8fafc;
+    --bg-elevated: #f1f5f9;
+    --bg-input: #ffffff;
+    --bg-header: #ffffff;
+    --border-base: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #7C5CFF;
+    --accent-surface: rgba(124, 92, 255, 0.06);
+  }
+
+  .dark {
+    --bg-base: #0B1020;
+    --bg-surface: #111827;
+    --bg-elevated: #161E31;
+    --bg-input: #161E31;
+    --bg-header: #111827;
+    --border-base: rgba(255, 255, 255, 0.05);
+    --border-subtle: rgba(255, 255, 255, 0.03);
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
+    --accent: #7C5CFF;
+    --accent-surface: rgba(124, 92, 255, 0.08);
+  }
 }
 
 @layer components {
   .input-base {
-    @apply w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm;
+    @apply w-full p-3 rounded-lg text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10;
+    background: var(--bg-input);
+    border: 1px solid var(--border-base);
+    color: var(--text-primary);
+  }
+  .input-base::placeholder {
+    color: var(--text-muted);
   }
   .label-base {
-    @apply block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400;
+    @apply block mb-1.5 text-xs font-bold uppercase tracking-wider;
+    color: var(--text-muted);
   }
   .collapse-card {
-    @apply border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-4 bg-white dark:bg-slate-900/50 shadow-sm;
+    @apply rounded-xl overflow-hidden mb-4 shadow-sm;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-base);
   }
   .collapse-trigger {
-    @apply p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-slate-700 dark:text-slate-200 font-semibold;
+    @apply p-4 flex justify-between items-center cursor-pointer transition-colors font-semibold;
+    color: var(--text-primary);
   }
+  .collapse-trigger:hover {
+    background: var(--bg-elevated);
+  }
+
+  /* Utilitários de tema */
+  .theme-base { background: var(--bg-base); }
+  .theme-surface { background: var(--bg-surface); }
+  .theme-elevated { background: var(--bg-elevated); }
+  .theme-header { background: var(--bg-header); }
+  .theme-border { border-color: var(--border-base); }
+  .theme-border-subtle { border-color: var(--border-subtle); }
+  .theme-text { color: var(--text-primary); }
+  .theme-text-secondary { color: var(--text-secondary); }
+  .theme-text-muted { color: var(--text-muted); }
 }
 
 /* Estilização Customizada do Input de Arquivo para Tailwind */

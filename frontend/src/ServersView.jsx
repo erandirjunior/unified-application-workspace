@@ -108,7 +108,7 @@ export default function ServersView({
           <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-6">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
+                <h1 className="text-2xl font-black text-slate-900 theme-text truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
                 <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] http://localhost:8080/mock{monitoringMock.path}</p>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function ServersView({
                       {log.statusCode}
                     </span>
                   </div>
-                  <div className="text-xs font-bold dark:text-slate-200 truncate">{log.method} {log.url}</div>
+                  <div className="text-xs font-bold dark:theme-text truncate">{log.method} {log.url}</div>
                 </div>
               ))
             )}
@@ -152,7 +152,7 @@ export default function ServersView({
             {selectedLog ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">{t.mocks.transactionDetails}</h3>
+                  <h3 className="text-sm font-black text-slate-900 theme-text uppercase tracking-widest">{t.mocks.transactionDetails}</h3>
                   <button onClick={() => setSelectedLog(null)} className="p-1 text-slate-500 hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-500/5">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -170,7 +170,7 @@ export default function ServersView({
                     {selectedLog.requestBody && (
                       <div>
                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Body</p>
-                        <pre className="text-[10px] bg-slate-950 p-3 rounded-xl text-slate-300 whitespace-pre-wrap border border-slate-800 max-h-[150px] overflow-y-auto font-mono">
+                        <pre className="text-[10px] bg-slate-950 p-3 rounded-xl theme-text-secondary whitespace-pre-wrap border border-slate-800 max-h-[150px] overflow-y-auto font-mono">
                           {selectedLog.requestBody}
                         </pre>
                       </div>
@@ -192,7 +192,7 @@ export default function ServersView({
                     {selectedLog.responseBody ? (
                       <div>
                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Body</p>
-                        <pre className="text-[10px] bg-slate-950 p-3 rounded-xl text-slate-300 whitespace-pre-wrap border border-slate-800 max-h-[300px] overflow-y-auto font-mono">
+                        <pre className="text-[10px] bg-slate-950 p-3 rounded-xl theme-text-secondary whitespace-pre-wrap border border-slate-800 max-h-[300px] overflow-y-auto font-mono">
                           {selectedLog.responseBody}
                         </pre>
                       </div>
@@ -224,14 +224,14 @@ export default function ServersView({
         <div className={`space-y-6 px-4 ${embedded ? '' : 'bg-slate-50 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800'}`}>
           {!embedded && (
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">{currentMock?.id ? t.mocks.editTitle : t.mocks.createTitle}</h2>
+              <h2 className="text-xl font-bold text-slate-800 theme-text">{currentMock?.id ? t.mocks.editTitle : t.mocks.createTitle}</h2>
               <button onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-white text-2xl">&times;</button>
             </div>
           )}
           <div className="flex gap-4">
             <div className="w-36">
               <label htmlFor="mock-method" className="label-base">{t.config.method}</label>
-              <select id="mock-method" className={`input-base !py-3.5 !px-5 font-bold text-base shadow-md rounded-xl cursor-pointer bg-[#161E31] border-[#161E31] ${
+              <select id="mock-method" className={`input-base !py-3.5 !px-5 font-bold text-base shadow-md rounded-xl cursor-pointer theme-elevated border-[#161E31] ${
                 currentMock.method === 'GET' ? 'method-get' : 
                 currentMock.method === 'POST' ? 'method-post' : 
                 currentMock.method === 'PUT' ? 'method-put' : 

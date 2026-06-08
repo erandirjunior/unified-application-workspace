@@ -46,7 +46,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                 return { ...prev, [type]: newSection };
               });
             }}
-            className="w-4 h-4 rounded border-slate-600 text-[#7C5CFF] focus:ring-[#7C5CFF] bg-[#0B1020]"
+            className="w-4 h-4 rounded border-slate-600 text-[#7C5CFF] focus:ring-[#7C5CFF] theme-base"
           />
           <div className="flex items-center gap-2 min-w-0">
             {item.type === 'folder' ? (
@@ -56,7 +56,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
             ) : (
               <span className={`text-[8px] font-black px-1 rounded border flex-shrink-0 ${item.method === 'GET' ? 'text-emerald-400 border-emerald-500/20' : 'text-blue-400 border-blue-500/20'}`}>{item.method}</span>
             )}
-            <span className={`text-xs truncate ${item.type === 'folder' ? 'font-bold text-slate-200' : 'text-slate-400'}`}>
+            <span className={`text-xs truncate ${item.type === 'folder' ? 'font-bold theme-text' : 'text-slate-400'}`}>
               {item.name}
             </span>
           </div>
@@ -242,7 +242,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t.dashboard.placeholder}
-              className="flex-1 bg-[#161E31] border border-white/5 text-slate-200 rounded-xl px-5 py-3 text-sm font-mono placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-[#7C5CFF]/30 transition-all"
+              className="flex-1 theme-elevated border theme-border theme-text rounded-xl px-5 py-3 text-sm font-mono placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-[#7C5CFF]/30 transition-all"
             />
             <button 
               onClick={() => { if(name.trim()) { onCreateCollection(name); setName(''); } }}
@@ -255,16 +255,16 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
         </div>
 
         {/* Barra de Busca e Filtro */}
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-white/5 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b theme-border pb-6">
           <div className="space-y-1 text-left">
-            <h2 className="text-lg font-bold text-white">{t.dashboard.title}</h2>
+            <h2 className="text-lg font-bold theme-text">{t.dashboard.title}</h2>
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{filteredCollections.length} {t.dashboard.itemsFound}</p>
           </div>
           
           <div className="flex gap-3 w-full md:w-auto items-center">
             <button 
               onClick={() => setIsImportModalOpen(true)}
-              className="px-4 py-2.5 bg-[#161E31] text-slate-400 hover:text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 border border-white/5 whitespace-nowrap"
+              className="px-4 py-2.5 theme-elevated text-slate-400 hover:text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 border theme-border whitespace-nowrap"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               {t.dashboard.import}
@@ -275,7 +275,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t.dashboard.search}
-                className="w-full bg-[#161E31] border border-white/5 text-slate-200 rounded-xl px-4 py-2.5 text-xs placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-[#7C5CFF]/30 transition-all"
+                className="w-full theme-elevated border theme-border theme-text rounded-xl px-4 py-2.5 text-xs placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-[#7C5CFF]/30 transition-all"
               />
             </div>
           </div>
@@ -284,7 +284,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
         {/* Grid de Collections */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCollections.map(col => (
-            <div key={col.id} onClick={() => onSelectRequest(col)} className="bg-[#111827] border border-white/5 rounded-2xl p-5 hover:border-[#7C5CFF]/30 transition-all group relative flex flex-col cursor-pointer hover:shadow-lg hover:shadow-[#7C5CFF]/5">
+            <div key={col.id} onClick={() => onSelectRequest(col)} className="theme-surface border theme-border rounded-2xl p-5 hover:border-[#7C5CFF]/30 transition-all group relative flex flex-col cursor-pointer hover:shadow-lg hover:shadow-[#7C5CFF]/5">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1 min-w-0">
                   <span className="text-[9px] font-black text-[#7C5CFF] uppercase tracking-widest bg-[#7C5CFF]/10 px-2 py-0.5 rounded-md">
@@ -293,7 +293,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                   {renamingColId === col.id ? (
                     <input 
                       autoFocus
-                      className="text-base font-bold text-white mt-2 bg-transparent border-none outline-none focus:ring-2 focus:ring-[#7C5CFF] rounded w-full"
+                      className="text-base font-bold theme-text mt-2 bg-transparent border-none outline-none focus:ring-2 focus:ring-[#7C5CFF] rounded w-full"
                       defaultValue={col.name}
                       onClick={(e) => e.stopPropagation()}
                       onBlur={(e) => {
@@ -305,7 +305,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                       onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
                     />
                   ) : (
-                    <h3 className="text-base font-bold text-white mt-2 truncate pr-6" title={col.name}>{col.name}</h3>
+                    <h3 className="text-base font-bold theme-text mt-2 truncate pr-6" title={col.name}>{col.name}</h3>
                   )}
                 </div>
                 <div className="flex gap-0.5 items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -331,7 +331,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{col.workflows.length} workflows</p>
               )}
 
-              <div className="mt-auto pt-4 border-t border-white/5">
+              <div className="mt-auto pt-4 border-t theme-border">
                 <span className="text-[10px] font-bold text-[#7C5CFF] uppercase tracking-widest group-hover:underline">
                   {t.dashboard.manage} →
                 </span>
@@ -351,10 +351,10 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
       {/* Modal de Opções de Exportação */}
       {exportOptionsModalOpen && exportingCol && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
-          <div className="bg-[#111827] rounded-3xl w-full max-w-lg shadow-2xl border border-white/5 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#161E31]">
+          <div className="theme-surface rounded-3xl w-full max-w-lg shadow-2xl border theme-border flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b theme-border flex justify-between items-center theme-elevated">
               <div>
-                <h3 className="text-xl font-bold text-white">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
+                <h3 className="text-xl font-bold theme-text">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
                 <p className="text-xs text-slate-500 mt-1">{t.dashboard.exportDescription}</p>
               </div>
               <button onClick={() => setExportOptionsModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
@@ -362,20 +362,20 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
 
             <div className="p-6 space-y-6 overflow-y-auto">
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-1">{t.collection.tabs.requests}</h4>
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b theme-border pb-1">{t.collection.tabs.requests}</h4>
                 {exportingCol.requests?.length > 0 ? exportingCol.requests.map(item => renderExportItem(item, 'requests')) : <p className="text-xs text-slate-500 italic">{t.common.empty}</p>}
               </div>
               
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-1">{t.collection.tabs.workflows}</h4>
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b theme-border pb-1">{t.collection.tabs.workflows}</h4>
                 {exportingCol.workflows?.length > 0 ? exportingCol.workflows.map(item => renderExportItem(item, 'workflows')) : <p className="text-xs text-slate-500 italic">{t.common.empty}</p>}
               </div>
             </div>
 
-            <div className="p-6 bg-[#161E31] border-t border-white/5 flex justify-end gap-3">
+            <div className="p-6 theme-elevated border-t theme-border flex justify-end gap-3">
               <button 
                 onClick={() => setExportOptionsModalOpen(false)} 
-                className="px-6 py-2.5 bg-[#0B1020] text-slate-400 rounded-xl font-bold hover:text-white transition-all border border-white/5"
+                className="px-6 py-2.5 theme-base text-slate-400 rounded-xl font-bold hover:text-white transition-all border theme-border"
               >
                 {t.common.cancel}
               </button>
@@ -395,10 +395,10 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
       {/* Modal de Exportação com Seleção de Variáveis */}
       {exportModalOpen && exportingCol && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
-          <div className="bg-[#111827] rounded-3xl w-full max-w-2xl shadow-2xl border border-white/5 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#161E31]">
+          <div className="theme-surface rounded-3xl w-full max-w-2xl shadow-2xl border theme-border flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b theme-border flex justify-between items-center theme-elevated">
               <div>
-                <h3 className="text-xl font-bold text-white">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
+                <h3 className="text-xl font-bold theme-text">{t.dashboard.exportTitle}: {exportingCol.name}</h3>
                 <p className="text-xs text-slate-500 mt-1">{t.dashboard.exportVarsDescription}</p>
               </div>
               <button onClick={() => setExportModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
@@ -410,8 +410,8 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                   {countSelectedVars()} {t.common.selected}
                 </span>
                 <div className="flex gap-2">
-                  <button onClick={() => selectAllVars(true)} className="text-[10px] font-black bg-[#161E31] px-3 py-1.5 rounded-lg border border-white/5 text-[#7C5CFF] hover:bg-[#7C5CFF]/10 transition-all uppercase">{t.header.logoAlt}</button>
-                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black bg-[#161E31] px-3 py-1.5 rounded-lg border border-white/5 text-slate-400 hover:text-white transition-all uppercase">LIMPAR</button>
+                  <button onClick={() => selectAllVars(true)} className="text-[10px] font-black theme-elevated px-3 py-1.5 rounded-lg border theme-border text-[#7C5CFF] hover:bg-[#7C5CFF]/10 transition-all uppercase">{t.header.logoAlt}</button>
+                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black theme-elevated px-3 py-1.5 rounded-lg border theme-border text-slate-400 hover:text-white transition-all uppercase">LIMPAR</button>
                 </div>
               </div>
 
@@ -419,7 +419,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                 {exportingCol.environments?.map(env => (
                   env.variables?.length > 0 && (
                     <div key={env.id} className="space-y-3">
-                      <div className="flex items-center gap-2 border-b border-white/5 pb-2">
+                      <div className="flex items-center gap-2 border-b theme-border pb-2">
                         <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" /></svg>
                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">{env.name}</h4>
                       </div>
@@ -427,16 +427,16 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                         {env.variables.map(v => v.key && (
                           <label 
                             key={v.key} 
-                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedVars[env.id]?.[v.key] ? 'bg-emerald-500/5 border-emerald-500/30 ring-1 ring-emerald-500/20' : 'bg-[#161E31] border-white/5'}`}
+                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${selectedVars[env.id]?.[v.key] ? 'bg-emerald-500/5 border-emerald-500/30 ring-1 ring-emerald-500/20' : 'theme-elevated theme-border'}`}
                           >
                             <input 
                               type="checkbox" 
                               checked={!!selectedVars[env.id]?.[v.key]} 
                               onChange={() => toggleVar(env.id, v.key)}
-                              className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500 bg-[#0B1020]"
+                              className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500 theme-base"
                             />
                             <div className="flex flex-col min-w-0">
-                              <span className={`text-xs font-bold truncate ${selectedVars[env.id]?.[v.key] ? 'text-emerald-400' : 'text-slate-300'}`}>
+                              <span className={`text-xs font-bold truncate ${selectedVars[env.id]?.[v.key] ? 'text-emerald-400' : 'theme-text-secondary'}`}>
                                 {v.key}
                               </span>
                               <span className="text-[10px] text-slate-500 truncate font-mono">{v.value || '(vazio)'}</span>
@@ -450,8 +450,8 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
               </div>
             </div>
 
-            <div className="p-6 bg-[#161E31] border-t border-white/5 flex justify-end gap-3">
-              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 bg-[#0B1020] text-slate-400 rounded-xl font-bold hover:text-white transition-all border border-white/5">{t.common.back}</button>
+            <div className="p-6 theme-elevated border-t theme-border flex justify-end gap-3">
+              <button onClick={() => setExportModalOpen(false)} className="px-6 py-2.5 theme-base text-slate-400 rounded-xl font-bold hover:text-white transition-all border theme-border">{t.common.back}</button>
               <button onClick={() => executeExport(exportingCol, selectedExportOptions, selectedVars)} className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 {t.dashboard.exportNow}
@@ -464,17 +464,17 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
       {/* Modal de Importação */}
       {isImportModalOpen && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[80] animate-in fade-in duration-300">
-          <div className="bg-[#111827] rounded-3xl w-full max-w-md shadow-2xl border border-white/5 flex flex-col animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#161E31]">
+          <div className="theme-surface rounded-3xl w-full max-w-md shadow-2xl border theme-border flex flex-col animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b theme-border flex justify-between items-center theme-elevated">
               <div>
-                <h3 className="text-xl font-bold text-white">{t.dashboard.importTitle}</h3>
+                <h3 className="text-xl font-bold theme-text">{t.dashboard.importTitle}</h3>
                 <p className="text-xs text-slate-500 mt-1">{t.dashboard.importDescription}</p>
               </div>
               <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-rose-500 text-3xl">&times;</button>
             </div>
 
             <div className="p-6 space-y-4">
-              <label htmlFor="import-file-input" className="block text-sm font-bold text-slate-300 mb-2">{t.dashboard.importLabel}</label>
+              <label htmlFor="import-file-input" className="block text-sm font-bold theme-text-secondary mb-2">{t.dashboard.importLabel}</label>
               <input 
                 id="import-file-input"
                 type="file" 
@@ -487,8 +487,8 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
               )}
             </div>
 
-            <div className="p-6 bg-[#161E31] border-t border-white/5 flex justify-end gap-3">
-              <button onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 bg-[#0B1020] text-slate-400 rounded-xl font-bold hover:text-white transition-all border border-white/5">{t.common.cancel}</button>
+            <div className="p-6 theme-elevated border-t theme-border flex justify-end gap-3">
+              <button onClick={() => setIsImportModalOpen(false)} className="px-6 py-2.5 theme-base text-slate-400 rounded-xl font-bold hover:text-white transition-all border theme-border">{t.common.cancel}</button>
               <button onClick={handleImportCollection} className="px-8 py-2.5 bg-[#7C5CFF] text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-[#7C5CFF]/20 transition-all flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 {t.dashboard.import}

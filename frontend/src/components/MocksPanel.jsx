@@ -29,7 +29,7 @@ export default function MocksPanel({
     <div className="flex-1 flex overflow-hidden">
       {/* Coluna 2: Editor de Mock */}
       {rightPanelSize !== 'maximized' && (
-        <div className="flex-1 flex flex-col border-r border-white/5 bg-[#0B1020] overflow-hidden p-6 custom-scrollbar">
+        <div className="flex-1 flex flex-col border-r theme-border theme-base overflow-hidden p-6 custom-scrollbar">
           {(isEditingMock || monitoringMock) && (
             <div className="max-w-[1100px] w-full mx-auto">
               {isEditingMock && (
@@ -68,10 +68,10 @@ export default function MocksPanel({
       )}
 
       {/* Coluna 3: Monitoramento Lateral */}
-      <div className={`flex flex-col bg-[#111827] transition-all duration-500 border-l border-white/5 overflow-hidden ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[500px]'}`}>
-        <div className={`p-6 border-b border-white/5 flex justify-between items-center bg-[#161E31]/50 ${rightPanelSize === 'minimized' ? 'flex-col !p-2 gap-4' : ''}`}>
+      <div className={`flex flex-col theme-surface transition-all duration-500 border-l theme-border overflow-hidden ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[500px]'}`}>
+        <div className={`p-6 border-b theme-border flex justify-between items-center theme-elevated ${rightPanelSize === 'minimized' ? 'flex-col !p-2 gap-4' : ''}`}>
           {rightPanelSize !== 'minimized' && (
-            <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 truncate">
+            <h3 className="text-xs font-black theme-text uppercase tracking-widest flex items-center gap-2 truncate">
               <span className={`w-2 h-2 rounded-full ${monitoringMock ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-500'}`}></span>
               {t.mocks.monitoringLive}
             </h3>
@@ -91,10 +91,10 @@ export default function MocksPanel({
               </button>
             )}
             <div className={`flex gap-1 ${rightPanelSize === 'minimized' ? 'flex-col mt-auto' : ''}`}>
-              <button onClick={() => setRightPanelSize(rightPanelSize === 'maximized' ? 'normal' : 'maximized')} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors">
+              <button onClick={() => setRightPanelSize(rightPanelSize === 'maximized' ? 'normal' : 'maximized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors">
                 {rightPanelSize === 'maximized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 9h6m-6 6h6M4 4h16v16H4V4z"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 8V4h4M4 16v4h4M16 4h4v4M16 20h4v-4"/></svg>}
               </button>
-              <button onClick={() => setRightPanelSize(rightPanelSize === 'minimized' ? 'normal' : 'minimized')} className="p-2 text-slate-500 hover:text-slate-300 hover:bg-white/5 rounded-lg transition-colors">
+              <button onClick={() => setRightPanelSize(rightPanelSize === 'minimized' ? 'normal' : 'minimized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors">
                 {rightPanelSize === 'minimized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>}
               </button>
             </div>
@@ -106,8 +106,8 @@ export default function MocksPanel({
         {monitoringMock && (
           <>
             {/* Campo para copiar Endpoint */}
-            <div className={`px-6 py-3 bg-[#111827] border-b border-white/5 flex items-center justify-between gap-3 ${rightPanelSize === 'minimized' ? 'hidden' : 'flex'}`}>
-              <div className="flex-1 min-w-0 bg-[#0B1020] px-3 py-2 rounded-xl border border-white/5 flex items-center gap-2 overflow-hidden">
+            <div className={`px-6 py-3 theme-surface border-b theme-border flex items-center justify-between gap-3 ${rightPanelSize === 'minimized' ? 'hidden' : 'flex'}`}>
+              <div className="flex-1 min-w-0 theme-base px-3 py-2 rounded-xl border theme-border flex items-center gap-2 overflow-hidden">
                 <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter shrink-0">Endpoint</span>
                 <code className="text-[10px] text-slate-500 truncate font-mono">http://localhost:8080/mock{monitoringMock.path}</code>
               </div>

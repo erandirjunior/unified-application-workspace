@@ -15,7 +15,7 @@ const MiniChart = ({ data, color, label, unit, isRunning, height = 40 }) => {
   const gradientId = `grad-${label.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
   return (
-    <div className="bg-slate-900/40 rounded-2xl p-4 border border-white/5 space-y-3 backdrop-blur-sm hover:bg-slate-900/60 transition-all duration-500 group relative overflow-hidden">
+    <div className="bg-slate-900/40 rounded-2xl p-4 border theme-border space-y-3 backdrop-blur-sm hover:bg-slate-900/60 transition-all duration-500 group relative overflow-hidden">
       {!isEmpty && (
         <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
       )}
@@ -24,7 +24,7 @@ const MiniChart = ({ data, color, label, unit, isRunning, height = 40 }) => {
           <div className={`w-1.5 h-1.5 rounded-full ${isEmpty ? 'bg-slate-700' : ''}`} style={!isEmpty ? { backgroundColor: color, boxShadow: `0 0 8px ${color}` } : {}}></div>
           <span>{label}</span>
         </div>
-        <span className="text-slate-300 bg-white/5 px-1.5 py-0.5 rounded font-mono">
+        <span className="theme-text-secondary bg-white/5 px-1.5 py-0.5 rounded font-mono">
           {isEmpty ? '--' : Math.max(...data).toFixed(data.length > 20 ? 0 : 1)}{unit}
         </span>
       </div>
@@ -360,7 +360,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-4">
-      <div className="flex justify-between items-center border-b border-white/5 pb-4 gap-2 flex-wrap">
+      <div className="flex justify-between items-center border-b theme-border pb-4 gap-2 flex-wrap">
         <div className="flex gap-2">
           {isRunning && (
             <button
@@ -374,7 +374,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
               {t.report.stop}
             </button>
           )}
-          <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 border border-white/5">
+          <div className="flex bg-slate-100 dark:bg-slate-800/50 rounded-lg p-0.5 border theme-border">
             <button
               onClick={exportHTML}
               className="px-2 py-1 text-[9px] font-bold text-slate-500 hover:text-blue-500 transition-colors flex items-center gap-1"
@@ -398,19 +398,19 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-white/5 overflow-hidden">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border theme-border overflow-hidden">
           <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.method}</span>
           <span className={`font-black text-xs method-${(config.method || 'multi').toLowerCase()}`}>{config.method || (config.requests ? 'AUTOMATION' : 'SCENARIO')}</span>
         </div>
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-white/5 overflow-hidden min-w-0">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border theme-border overflow-hidden min-w-0">
           <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.targetUrl}</span>
-          <span className="text-slate-300 font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? "Fluxo Multi-step" : "Múltiplas (Cenário)")}</span>
+          <span className="theme-text-secondary font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? "Fluxo Multi-step" : "Múltiplas (Cenário)")}</span>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.planned}</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold">
+          <span className="text-slate-700 dark:theme-text font-bold">
             {config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : (
               config.duration > 0 ? (
                 config.rampUp > 0 && config.rampUp < config.duration 
@@ -422,7 +422,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.duration}</span>
-          <span className="text-slate-700 dark:text-slate-200 font-bold">{config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : `${config.duration}s`}</span>
+          <span className="text-slate-700 dark:theme-text font-bold">{config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : `${config.duration}s`}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">{t.report.realTime}</span>
@@ -450,7 +450,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
           <div className="grid grid-cols-2 gap-x-4 gap-y-2">
             <div className="flex justify-between border-b border-purple-500/5 pb-0.5">
               <span className="text-[9px] text-slate-500 font-bold uppercase">P50</span>
-              <span className="text-xs font-mono font-black text-slate-200">{stats.p50}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
+              <span className="text-xs font-mono font-black theme-text">{stats.p50}<span className="text-[8px] ml-0.5 opacity-50">ms</span></span>
             </div>
             <div className="flex justify-between border-b border-purple-500/5 pb-0.5">
               <span className="text-[9px] text-slate-500 font-bold uppercase">P90</span>
@@ -536,8 +536,8 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
                   {!log.success && <span className="text-[8px] text-amber-500 font-black leading-none">WARN</span>}
                 </div>
                 <span className="w-[50px] text-blue-400 font-bold flex-shrink-0 uppercase">{log.method}</span>
-                <span className="flex-1 truncate text-slate-400 group-hover:text-slate-200">{log.url}</span>
-                <span className="text-slate-300 font-mono font-bold w-[70px] text-right">{log.responseTime}<span className="text-[9px] opacity-40 ml-0.5">ms</span></span>
+                <span className="flex-1 truncate text-slate-400 group-hover:theme-text">{log.url}</span>
+                <span className="theme-text-secondary font-mono font-bold w-[70px] text-right">{log.responseTime}<span className="text-[9px] opacity-40 ml-0.5">ms</span></span>
               </div>
             ))}
           </div>
@@ -587,7 +587,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div><p className="label-base">Status</p><p className={`text-xl font-black ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{selectedLog.statusCode || 'ERROR'}</p></div>
                 <div><p className="label-base">Time</p><p className="text-xl font-black dark:text-white">{selectedLog.responseTime}ms</p></div>
-                <div className="col-span-2"><p className="label-base">Method & URL</p><p className="dark:text-slate-200 font-bold truncate"><span className="text-blue-500 uppercase mr-2">{selectedLog.method}</span>{selectedLog.url}</p></div>
+                <div className="col-span-2"><p className="label-base">Method & URL</p><p className="dark:theme-text font-bold truncate"><span className="text-blue-500 uppercase mr-2">{selectedLog.method}</span>{selectedLog.url}</p></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -605,7 +605,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
                       {selectedLog.requestBody && (
                         <div>
                           <p className="text-[10px] font-bold text-slate-500 mb-1">BODY</p>
-                          <pre className="text-xs bg-slate-950 p-4 rounded-xl text-slate-300 whitespace-pre-wrap border border-slate-800">{selectedLog.requestBody}</pre>
+                          <pre className="text-xs bg-slate-950 p-4 rounded-xl theme-text-secondary whitespace-pre-wrap border border-slate-800">{selectedLog.requestBody}</pre>
                         </div>
                       )}
                     </div>
@@ -626,7 +626,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
                       {selectedLog.responseBody && (
                         <div>
                           <p className="text-[10px] font-bold text-slate-500 mb-1">BODY</p>
-                          <pre className="text-xs bg-slate-950 p-4 rounded-xl text-slate-300 whitespace-pre-wrap border border-slate-800 max-h-[300px] overflow-y-auto">
+                          <pre className="text-xs bg-slate-950 p-4 rounded-xl theme-text-secondary whitespace-pre-wrap border border-slate-800 max-h-[300px] overflow-y-auto">
                             {selectedLog.responseBody}
                           </pre>
                         </div>
