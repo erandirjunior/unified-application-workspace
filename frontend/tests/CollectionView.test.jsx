@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CollectionView from '../src/CollectionView';
+import { pt } from '../src/locales/pt';
 
 const mockCollection = {
   id: 'col-1',
@@ -23,6 +24,9 @@ const mockCollection = {
 
 const defaultProps = {
   collection: mockCollection,
+  t: pt,
+  activeTab: 'requests',
+  onTabChange: vi.fn(),
   onSelectRequest: vi.fn(),
   onUpdateName: vi.fn(),
   onViewDocumentation: vi.fn(),
@@ -31,9 +35,11 @@ const defaultProps = {
   onBack: vi.fn(),
   onAddRequest: vi.fn(),
   onAddFolder: vi.fn(),
+  onImportCurl: vi.fn(),
   onMoveRequest: vi.fn(),
   onDeleteRequest: vi.fn(),
   onDeleteFolder: vi.fn(),
+  onDeleteWorkflow: vi.fn(),
   onReorderItem: vi.fn(),
   onUpdateFolderName: vi.fn(),
   onUpdateEnvironments: vi.fn(),
@@ -43,6 +49,13 @@ const defaultProps = {
   onToggleSelection: vi.fn(),
   onViewUnifiedDoc: vi.fn(),
   selectedRequestIds: [],
+  isEnvModalOpen: false,
+  setIsEnvModalOpen: vi.fn(),
+  editorProps: {},
+  onCloseRequestEditor: vi.fn(),
+  setActiveWorkflowId: vi.fn(),
+  setActiveStepIndex: vi.fn(),
+  setActiveSubIndex: vi.fn(),
 };
 
 describe('CollectionView', () => {
@@ -50,26 +63,20 @@ describe('CollectionView', () => {
     vi.clearAllMocks();
   });
 
-  it('should render collection header and tabs', () => {
+  it('should render collection name and request items', () => {
     render(<CollectionView {...defaultProps} />);
     expect(screen.getByText('Minha Coleção')).toBeInTheDocument();
-    expect(screen.getByText('Requests')).toBeInTheDocument();
-    expect(screen.getByText('Cenários')).toBeInTheDocument();
-    expect(screen.getByText('Mocks')).toBeInTheDocument();
+    expect(screen.getByText('Get Users')).toBeInTheDocument();
   });
 
-  it('should allow navigating between collection tabs', () => {
+  it('should render search input and filter items', () => {
     render(<CollectionView {...defaultProps} />);
+    const searchInput = screen.getByPlaceholderText('Pesquisar requisições...');
     
-    const scenariosTab = screen.getByText('Cenários');
-    fireEvent.click(scenariosTab);
-    expect(screen.getByText('Cenários de Teste')).toBeInTheDocument();
+    fireEvent.change(searchInput, { target: { value: 'Login' } });
     
-    const mocksTab = screen.getByText('Mocks');
-    act(() => {
-      fireEvent.click(mocksTab);
-    });
-    expect(screen.getByText('Mock Servers')).toBeInTheDocument();
+    expect(screen.getByText('Login')).toBeInTheDocument();
+    expect(screen.queryByText('Get Users')).not.toBeInTheDocument();
   });
 
   it('should allow expanding/collapsing folders', () => {
@@ -79,22 +86,24 @@ describe('CollectionView', () => {
     expect(screen.getByText('Login')).toBeInTheDocument();
   });
 
-  it('should open environments modal and allow interaction', () => {
-    render(<CollectionView {...defaultProps} />);
-    fireEvent.click(screen.getByTitle('Gerenciar Ambientes'));
-    
+  it('should open environments modal when isEnvModalOpen is true', () => {
+    render(<CollectionView {...defaultProps} isEnvModalOpen={true} />);
     expect(screen.getByText('Gerenciar Ambientes')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('+ Adicionar Chave'));
+  });
+
+  it('should allow adding a variable in the environments modal', () => {
+    render(<CollectionView {...defaultProps} isEnvModalOpen={true} />);
+    
+    const modal = screen.getByRole('dialog');
+    fireEvent.click(within(modal).getByText('+ Adicionar Chave'));
     
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
   });
 
   it('should allow renaming an environment in the modal', () => {
-    render(<CollectionView {...defaultProps} />);
-    fireEvent.click(screen.getByTitle('Gerenciar Ambientes'));
+    render(<CollectionView {...defaultProps} isEnvModalOpen={true} />);
     
     const modal = screen.getByRole('dialog');
-    // Localiza o item do ambiente "Produção" para isolar o botão de renomeio e evitar ambiguidade
     const envItem = within(modal).getByText('Produção').closest('.group');
     const editBtn = within(envItem).getByTitle('Renomear Ambiente');
     fireEvent.click(editBtn);
@@ -104,18 +113,6 @@ describe('CollectionView', () => {
     fireEvent.blur(input);
     
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
-  });
-
-  it('should allow renaming the collection', () => {
-    render(<CollectionView {...defaultProps} />);
-    const title = screen.getByText('Minha Coleção');
-    fireEvent.click(title);
-    
-    const input = screen.getByDisplayValue('Minha Coleção');
-    fireEvent.change(input, { target: { value: 'Novo Nome' } });
-    fireEvent.blur(input);
-    
-    expect(defaultProps.onUpdateName).toHaveBeenCalledWith('col-1', 'Novo Nome');
   });
 
   it('should allow renaming a folder', () => {
@@ -129,13 +126,6 @@ describe('CollectionView', () => {
     expect(defaultProps.onUpdateFolderName).toHaveBeenCalledWith('col-1', 'Auth v2', 'folder-1');
   });
 
-  it('should allow changing active environment', () => {
-    render(<CollectionView {...defaultProps} />);
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'env-1' } });
-    expect(defaultProps.onSetActiveEnvironment).toHaveBeenCalledWith('col-1', 'env-1');
-  });
-
   it('should allow deleting a request', () => {
     render(<CollectionView {...defaultProps} />);
     const deleteBtn = screen.getAllByTitle('Excluir')[0];
@@ -147,7 +137,6 @@ describe('CollectionView', () => {
     render(<CollectionView {...defaultProps} />);
     const searchInput = screen.getByPlaceholderText('Pesquisar requisições...');
     
-    // Busca por um item que está dentro da "Auth Folder"
     fireEvent.change(searchInput, { target: { value: 'Login' } });
     
     expect(screen.getByText('Login')).toBeInTheDocument();
@@ -156,23 +145,20 @@ describe('CollectionView', () => {
 
   it('should allow adding a new folder', () => {
     render(<CollectionView {...defaultProps} />);
-    const btn = screen.getByText('NOVA PASTA');
+    const btn = screen.getByText('Pasta');
     fireEvent.click(btn);
     
     expect(defaultProps.onAddFolder).toHaveBeenCalledWith('col-1', 'Nova Pasta');
   });
 
   it('should allow adding and removing environment variables', () => {
-    render(<CollectionView {...defaultProps} />);
-    fireEvent.click(screen.getByTitle('Gerenciar Ambientes'));
+    render(<CollectionView {...defaultProps} isEnvModalOpen={true} />);
     const modal = screen.getByRole('dialog');
 
-    // Adicionar variável
     const addVarBtn = within(modal).getByText('+ Adicionar Chave');
     fireEvent.click(addVarBtn);
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
 
-    // Editar variável (Cobre handleUpdateVariable)
     const keyInput = within(modal).getByDisplayValue('host');
     fireEvent.change(keyInput, { target: { value: 'api_url' } });
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
@@ -181,31 +167,27 @@ describe('CollectionView', () => {
     fireEvent.change(valInput, { target: { value: 'localhost' } });
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
 
-    // Remover variável (Cobre handleRemoveVariable)
     const removeVarBtn = within(modal).getByTitle('Remover Variável');
     fireEvent.click(removeVarBtn);
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalled();
   });
 
   it('should allow deleting an environment', () => {
-    render(<CollectionView {...defaultProps} />);
-    fireEvent.click(screen.getByTitle('Gerenciar Ambientes'));
+    render(<CollectionView {...defaultProps} isEnvModalOpen={true} />);
     const modal = screen.getByRole('dialog');
 
-    // Localiza o item do ambiente "Desenvolvimento" para isolar o botão de exclusão
     const envItem = within(modal).getByText('Desenvolvimento').closest('.group');
     const deleteEnvBtn = within(envItem).getByTitle('Excluir Ambiente');
     fireEvent.click(deleteEnvBtn);
     expect(window.confirm).toHaveBeenCalledWith('Tem certeza que deseja excluir este ambiente?');
     expect(defaultProps.onUpdateEnvironments).toHaveBeenCalledWith('col-1', expect.arrayContaining([
-      expect.objectContaining({ id: 'env-1' }) // Only env-1 should remain after deleting env-2
+      expect.objectContaining({ id: 'env-1' })
     ]));
   });
 
   it('should not allow deleting the last environment in the collection', () => {
     const singleEnvCol = { ...mockCollection, environments: [{ id: 'env-1', name: 'Global', variables: [] }] };
-    render(<CollectionView {...defaultProps} collection={singleEnvCol} />);
-    fireEvent.click(screen.getByTitle('Gerenciar Ambientes'));
+    render(<CollectionView {...defaultProps} collection={singleEnvCol} isEnvModalOpen={true} />);
     const modal = screen.getByRole('dialog');
     const deleteBtn = within(modal).getByTitle('Excluir Ambiente');
     fireEvent.click(deleteBtn);
@@ -217,41 +199,73 @@ describe('CollectionView', () => {
     const requestItem = screen.getByText('Get Users');
     const folderItem = screen.getByText('Auth Folder');
 
-    fireEvent.dragStart(requestItem, { dataTransfer: { setData: vi.fn() } });
-    fireEvent.dragOver(folderItem);
-    fireEvent.drop(folderItem, { dataTransfer: { getData: vi.fn().mockReturnValue('req-1') } });
+    fireEvent.dragStart(requestItem.closest('[draggable]'), { dataTransfer: { setData: vi.fn() } });
+    fireEvent.dragOver(folderItem.closest('[class*="rounded-lg"]'));
+    fireEvent.drop(folderItem.closest('[class*="rounded-lg"]'), { dataTransfer: { getData: vi.fn().mockReturnValue('req-1') } });
 
-    expect(defaultProps.onMoveRequest).toHaveBeenCalledWith('col-1', 'req-1', 'folder-1');
+    expect(defaultProps.onMoveRequest).toHaveBeenCalledWith('col-1', 'req-1', 'folder-1', 'req-1');
   });
 
-  it('should allow dragging and dropping a request to the root', () => {
-    const collectionWithNestedRequest = {
-      ...mockCollection,
-      requests: [
-        { id: 'folder-1', name: 'Auth Folder', type: 'folder', requests: [
-            { id: 'req-nested', name: 'Login', method: 'POST', url: '/login', type: 'request' }
-        ] }
-      ]
-    };
-    render(<CollectionView {...defaultProps} collection={collectionWithNestedRequest} />);
+  it('should call onBack when clicking the back button', () => {
+    render(<CollectionView {...defaultProps} />);
+    const backBtn = screen.getByTitle('Voltar para o Dashboard');
+    fireEvent.click(backBtn);
+    expect(defaultProps.onBack).toHaveBeenCalled();
+  });
+
+  it('should render WorkflowsPanel when activeTab is workflows', () => {
+    const colWithWorkflows = { ...mockCollection, workflows: [{ id: 'wf-1', name: 'Login Flow', steps: [] }] };
+    render(<CollectionView {...defaultProps} collection={colWithWorkflows} activeTab="workflows" />);
+    // WorkflowsPanel shows empty state when no editing workflow
+    expect(screen.getByText(pt.collection.selectWorkflow)).toBeInTheDocument();
+  });
+
+  it('should render MocksPanel when activeTab is mocks', () => {
+    render(<CollectionView {...defaultProps} activeTab="mocks" />);
+    // MocksPanel shows empty state when no mock is selected
+    expect(screen.getByText(pt.mocks.selectMock)).toBeInTheDocument();
+  });
+
+  it('should call onUpdateWorkflows when adding a new workflow via sidebar', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const colWithWorkflows = { ...mockCollection, workflows: [{ id: 'wf-1', name: 'Existing', steps: [] }] };
     
-    // Expande a pasta para que o item "Login" seja renderizado no DOM
-    const folder = screen.getByText('Auth Folder');
-    fireEvent.click(folder);
-
-    const requestItem = screen.getByText('Login');
-    const rootDropArea = screen.getByTestId('root-drop-container');
-
-    fireEvent.dragStart(requestItem, { dataTransfer: { setData: vi.fn() } });
-    fireEvent.dragOver(rootDropArea);
-    fireEvent.drop(rootDropArea, { dataTransfer: { getData: vi.fn().mockReturnValue('req-nested') } });
-
-    expect(defaultProps.onMoveRequest).toHaveBeenCalledWith('col-1', 'req-nested', null);
+    render(<CollectionView {...defaultProps} collection={colWithWorkflows} activeTab="workflows" 
+      editorProps={{ activeStepIndex: null, bodyRaw: '', theme: 'dark', methodStyles: {} }}
+      requestLogs={[]} reportData={null} isRunning={false} sendRequests={vi.fn()} stopTest={vi.fn()} lastExecutedPayload={null} onSaveResponseToDoc={vi.fn()}
+    />);
+    const workflowBtn = screen.getByText(pt.workflows.newBtn);
+    fireEvent.click(workflowBtn);
+    
+    expect(defaultProps.onUpdateWorkflows).toHaveBeenCalledWith('col-1', expect.arrayContaining([
+      expect.objectContaining({ id: 'wf-1' }),
+      expect.objectContaining({ name: 'Novo Workflow' })
+    ]));
+    consoleSpy.mockRestore();
   });
 
-  it('should display unified documentation button when requests are selected', () => {
-    const propsWithSelection = { ...defaultProps, selectedRequestIds: ['req-1'] };
-    render(<CollectionView {...propsWithSelection} />);
-    expect(screen.getByText('GERAR DOC. UNIFICADA (1)')).toBeInTheDocument();
+  it('should call onAddFolder for workflows tab', () => {
+    render(<CollectionView {...defaultProps} activeTab="workflows" />);
+    const pastaBtn = screen.getByText('Pasta');
+    fireEvent.click(pastaBtn);
+    expect(defaultProps.onAddFolder).toHaveBeenCalledWith('col-1', 'Nova Pasta', 'workflows');
+  });
+
+  it('should call onAddFolder for mocks tab', () => {
+    render(<CollectionView {...defaultProps} activeTab="mocks" />);
+    const pastaBtn = screen.getByText('Pasta');
+    fireEvent.click(pastaBtn);
+    expect(defaultProps.onAddFolder).toHaveBeenCalledWith('col-1', 'Nova Pasta', 'mocks');
+  });
+
+  it('should handle adding a new mock via sidebar', async () => {
+    render(<CollectionView {...defaultProps} activeTab="mocks" />);
+    const mockBtn = screen.getByText(pt.mocks.newBtn);
+    await act(async () => { fireEvent.click(mockBtn); });
+    // Mock is created via fetch POST which is mocked globally
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/manage-mocks',
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 });

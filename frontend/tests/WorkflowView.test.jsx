@@ -16,6 +16,10 @@ const defaultProps = {
   onEditWorkflow: vi.fn(),
   onRunWorkflow: vi.fn(),
   onDeleteWorkflow: vi.fn(),
+  t: {
+    workflows: { title: 'Workflows', newBtn: 'New', placeholder: 'Name...', stepsCount: 'Blocos de Execução' },
+    common: { create: 'Create', cancel: 'Cancel' },
+  },
 };
 
 describe('WorkflowView', () => {
@@ -28,11 +32,11 @@ describe('WorkflowView', () => {
   it('should allow opening the form and creating a new workflow', () => {
     render(<WorkflowView {...defaultProps} />);
     
-    fireEvent.click(screen.getByText('+ Novo Workflow'));
-    const input = screen.getByPlaceholderText('Nome do workflow...');
+    fireEvent.click(screen.getByText('New'));
+    const input = screen.getByPlaceholderText('Name...');
     
     fireEvent.change(input, { target: { value: 'Fluxo Novo' } });
-    fireEvent.click(screen.getByText('Criar'));
+    fireEvent.click(screen.getByText('Create'));
     
     expect(defaultProps.onUpdateWorkflows).toHaveBeenCalledWith('col-1', expect.arrayContaining([
       expect.objectContaining({ name: 'Fluxo Novo' })

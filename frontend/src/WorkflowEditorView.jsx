@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack, onRun, onEditStep, collection, t }) {
   const [name, setName] = useState(workflow?.name || '');
   const [description, setDescription] = useState(workflow?.description || '');
-  const [steps, setSteps] = useState(workflow.steps || []);
+  const [steps, setSteps] = useState(workflow?.steps || []);
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
   const [copySearch, setCopySearch] = useState('');
   const [targetGroupId, setTargetGroupId] = useState(null);
@@ -16,7 +16,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   }, [steps]);
 
   useEffect(() => {
-    setSteps(workflow.steps || []);
+    setSteps(workflow?.steps || []);
   }, [workflow?.id]);
 
   // Navegação: resolve o array de steps para o nível atual do navPath
@@ -276,8 +276,10 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
 
           {/* Vista Fluxograma */}
           {viewMode === 'flowchart' && (
-            <div className="theme-surface border theme-border rounded-2xl p-6 overflow-auto max-h-[600px]">
-              <FlowchartView steps={steps} />
+            <div className="theme-surface border theme-border rounded-2xl overflow-hidden">
+              <div className="overflow-auto max-h-[600px] p-4">
+                <FlowchartView steps={steps} />
+              </div>
             </div>
           )}
 
@@ -425,114 +427,261 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   );
 }
 
-// Componente de Fluxograma SVG
+// Componente de Fluxograma SVG com renderização recursiva e drag
 function FlowchartView({ steps }) {
+  const [offsets, setOffsets] = useState({});
+  const [dragging, setDragging] = useState(null);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const svgRef = React.useRef(null);
+
   const NODE_W = 160;
   const NODE_H = 40;
-  const GAP_Y = 50;
-  const GAP_X = 200;
+  const GAP_Y = 56;
+  const BRANCH_GAP_X = 200;
+  const INDENT_X = 35;
 
-  const layoutNodes = (items, startX, startY) => {
-    const nodes = [];
-    const edges = [];
+  const allNodes = [];
+  const allEdges = [];
+
+  const layoutSteps = (items, startX, startY, depth = 0) => {
     let y = startY;
+    let prevId = null;
 
-    items.forEach((step, i) => {
-      const nodeId = step.id;
-      const label = step.type === 'request' ? `${step.method} ${step.name || ''}`.trim() :
-                    step.type === 'wait' ? `⏳ ${step.url || 5}s` :
-                    step.type === 'parallel' ? `⚡ Parallel (${(step.requests || []).length})` :
-                    step.type === 'loop' ? `🔁 Loop (max ${step.loop?.maxIter || 10})` :
-                    step.type === 'condition' ? `🔀 If/Else` : step.type;
-      
-      const color = step.type === 'request' ? '#3B82F6' :
-                    step.type === 'wait' ? '#F59E0B' :
-                    step.type === 'parallel' ? '#6366F1' :
-                    step.type === 'loop' ? '#F43F5E' :
-                    step.type === 'condition' ? '#06B6D4' : '#64748B';
+    items.forEach((step) => {
+      const nodeId = step.id + '-d' + depth;
+      const meta = {
+        request: { color: '#3B82F6', bg: '#1E3A5F', icon: '→', label: `${step.method || 'GET'} ${step.name || 'Request'}` },
+        wait: { color: '#F59E0B', bg: '#3D2E0A', icon: '⏳', label: `Aguardar ${step.url || 5}s` },
+        parallel: { color: '#6366F1', bg: '#1E1B4B', icon: '⚡', label: `Parallel (${(step.requests || []).length})` },
+        loop: { color: '#F43F5E', bg: '#3B0B1A', icon: '🔁', label: `Loop (max ${step.loop?.maxIter || 10})` },
+        condition: { color: '#06B6D4', bg: '#0B2E3D', icon: '◆', label: 'Condição' },
+      }[step.type] || { color: '#64748B', bg: '#1E293B', icon: '?', label: step.type };
 
       const shape = step.type === 'condition' ? 'diamond' : 'rect';
-      nodes.push({ id: nodeId, x: startX, y, w: NODE_W, h: NODE_H, label, color, shape, type: step.type });
+      allNodes.push({ id: nodeId, x: startX, y, w: NODE_W, h: NODE_H, label: meta.label, color: meta.color, bg: meta.bg, shape, icon: meta.icon, depth });
+      if (prevId) allEdges.push({ from: prevId, to: nodeId });
 
-      if (i > 0) edges.push({ from: items[i - 1].id, to: nodeId });
+      let blockEndY = y + NODE_H;
 
-      if (step.type === 'condition') {
-        const thenCount = (step.steps || []).length;
-        const elseCount = (step.elseSteps || []).length;
-        if (thenCount > 0) {
-          nodes.push({ id: `${nodeId}-then`, x: startX - GAP_X / 2, y: y + GAP_Y, w: 100, h: 28, label: `✅ Then (${thenCount})`, color: '#10B981', shape: 'rect', type: 'branch' });
-          edges.push({ from: nodeId, to: `${nodeId}-then`, label: 'true' });
-        }
-        if (elseCount > 0) {
-          nodes.push({ id: `${nodeId}-else`, x: startX + GAP_X / 2, y: y + GAP_Y, w: 100, h: 28, label: `❌ Else (${elseCount})`, color: '#F43F5E', shape: 'rect', type: 'branch' });
-          edges.push({ from: nodeId, to: `${nodeId}-else`, label: 'false' });
-        }
-        if (thenCount > 0 || elseCount > 0) y += GAP_Y;
+      if (step.type === 'parallel' && (step.requests || []).length > 0) {
+        const children = step.requests;
+        const childW = 120;
+        const childGap = 12;
+        const totalW = children.length * (childW + childGap) - childGap;
+        let cx = startX + NODE_W / 2 - totalW / 2;
+        const childY = y + GAP_Y;
+        const joinId = nodeId + '-join';
+
+        children.forEach((child) => {
+          const cid = child.id + '-p' + depth;
+          allNodes.push({ id: cid, x: cx, y: childY, w: childW, h: 32, label: `${child.method || 'GET'} ${child.name || ''}`.trim(), color: '#3B82F6', bg: '#1E3A5F', shape: 'rect', icon: '→', depth: depth + 1 });
+          allEdges.push({ from: nodeId, to: cid });
+          allEdges.push({ from: cid, to: joinId });
+          cx += childW + childGap;
+        });
+
+        allNodes.push({ id: joinId, x: startX + NODE_W / 2 - 15, y: childY + 32 + 16, w: 30, h: 20, label: '●', color: '#6366F1', bg: '#1E1B4B', shape: 'circle', depth });
+        blockEndY = childY + 32 + 16 + 20;
       }
 
       if (step.type === 'loop' && (step.steps || []).length > 0) {
-        nodes.push({ id: `${nodeId}-body`, x: startX + NODE_W + 30, y, w: 110, h: 28, label: `↪ ${(step.steps || []).length} steps`, color: '#F43F5E', shape: 'rect', type: 'branch' });
-        edges.push({ from: nodeId, to: `${nodeId}-body` });
-        edges.push({ from: `${nodeId}-body`, to: nodeId, curved: true });
+        const innerY = y + GAP_Y;
+        const innerEndY = layoutSteps(step.steps, startX + INDENT_X, innerY, depth + 1);
+        allEdges.push({ from: nodeId, to: step.steps[0].id + '-d' + (depth + 1), dashed: false });
+        // Loop back arrow
+        allEdges.push({ fromX: startX + INDENT_X + NODE_W + 10, fromY: innerEndY - GAP_Y / 2, toX: startX + NODE_W / 2, toY: y + NODE_H, curved: true, loopBack: true });
+        blockEndY = innerEndY;
       }
 
-      y += GAP_Y;
-    });
+      if (step.type === 'condition') {
+        const thenSteps = step.steps || [];
+        const elseSteps = step.elseSteps || [];
+        const branchY = y + GAP_Y;
 
-    return { nodes, edges, totalHeight: y };
-  };
-
-  const { nodes, edges, totalHeight } = layoutNodes(steps, 250, 30);
-  const svgWidth = 600;
-  const svgHeight = Math.max(totalHeight + 30, 200);
-
-  const getNodeBottom = (node) => ({ x: node.x + node.w / 2, y: node.y + node.h });
-  const getNodeTop = (node) => ({ x: node.x + node.w / 2, y: node.y });
-
-  return (
-    <svg width={svgWidth} height={svgHeight} className="mx-auto">
-      <defs>
-        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-          <polygon points="0 0, 8 3, 0 6" fill="#475569" />
-        </marker>
-      </defs>
-
-      {edges.map((edge, i) => {
-        const fromNode = nodes.find(n => n.id === edge.from);
-        const toNode = nodes.find(n => n.id === edge.to);
-        if (!fromNode || !toNode) return null;
-        const from = getNodeBottom(fromNode);
-        const to = getNodeTop(toNode);
-
-        if (edge.curved) {
-          const cx = Math.max(from.x, to.x) + 50;
-          return <path key={i} d={`M${from.x},${from.y} C${cx},${from.y} ${cx},${to.y} ${to.x},${to.y}`} fill="none" stroke="#475569" strokeWidth="1.5" strokeDasharray="4 2" markerEnd="url(#arrowhead)" />;
+        if (thenSteps.length > 0) {
+          const thenX = startX - BRANCH_GAP_X / 2;
+          const thenFirstId = thenSteps[0].id + '-d' + (depth + 1);
+          allEdges.push({ from: nodeId, to: thenFirstId, label: '✓' });
+          const thenEndY = layoutSteps(thenSteps, thenX, branchY, depth + 1);
+          blockEndY = Math.max(blockEndY, thenEndY);
+        } else {
+          const emptyThenId = nodeId + '-then-empty';
+          allNodes.push({ id: emptyThenId, x: startX - BRANCH_GAP_X / 2 + 30, y: branchY, w: 80, h: 24, label: '(vazio)', color: '#10B981', bg: '#0B2E1E', shape: 'rect', icon: '✓', depth: depth + 1 });
+          allEdges.push({ from: nodeId, to: emptyThenId, label: '✓' });
+          blockEndY = Math.max(blockEndY, branchY + 24);
         }
 
+        if (elseSteps.length > 0) {
+          const elseX = startX + BRANCH_GAP_X / 2;
+          const elseFirstId = elseSteps[0].id + '-d' + (depth + 1);
+          allEdges.push({ from: nodeId, to: elseFirstId, label: '✗' });
+          const elseEndY = layoutSteps(elseSteps, elseX, branchY, depth + 1);
+          blockEndY = Math.max(blockEndY, elseEndY);
+        } else {
+          const emptyElseId = nodeId + '-else-empty';
+          allNodes.push({ id: emptyElseId, x: startX + BRANCH_GAP_X / 2 + 30, y: branchY, w: 80, h: 24, label: '(vazio)', color: '#F43F5E', bg: '#3B0B1A', shape: 'rect', icon: '✗', depth: depth + 1 });
+          allEdges.push({ from: nodeId, to: emptyElseId, label: '✗' });
+          blockEndY = Math.max(blockEndY, branchY + 24);
+        }
+      }
+
+      y = blockEndY + GAP_Y - NODE_H;
+      prevId = nodeId;
+      y += NODE_H;
+    });
+
+    return y;
+  };
+
+  const totalHeight = layoutSteps(steps, 250, 30);
+  const svgWidth = 750;
+  const svgHeight = Math.max(totalHeight + 30, 200);
+
+  const getNodePos = (node) => ({
+    x: node.x + (offsets[node.id]?.x || 0),
+    y: node.y + (offsets[node.id]?.y || 0),
+  });
+
+  const handleMouseDown = (e, nodeId) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const scale = svgWidth / svgRect.width;
+    setDragging({ id: nodeId, startX: e.clientX * scale, startY: e.clientY * scale, origOffset: offsets[nodeId] || { x: 0, y: 0 } });
+  };
+
+  const handleMouseMove = (e) => {
+    if (dragging) {
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const scale = svgWidth / svgRect.width;
+      const dx = e.clientX * scale - dragging.startX;
+      const dy = e.clientY * scale - dragging.startY;
+      setOffsets(prev => ({ ...prev, [dragging.id]: { x: dragging.origOffset.x + dx, y: dragging.origOffset.y + dy } }));
+    } else if (isPanning) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+    setIsPanning(false);
+  };
+
+  const handleBgMouseDown = (e) => {
+    if (e.target === svgRef.current || e.target.tagName === 'rect' && e.target.dataset.bg) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[9px] font-black theme-text-muted uppercase tracking-widest">Arraste os nodes • Clique no fundo para mover a vista</span>
+        <button onClick={() => { setOffsets({}); setPanOffset({ x: 0, y: 0 }); }} className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors">Reset Layout</button>
+      </div>
+      <svg
+        ref={svgRef}
+        width="100%"
+        height={svgHeight}
+        viewBox={`${-panOffset.x} ${-panOffset.y} ${svgWidth} ${svgHeight}`}
+        className="mx-auto cursor-grab active:cursor-grabbing select-none rounded-xl"
+        onMouseDown={handleBgMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+      <defs>
+        <marker id="flow-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#6366F1" opacity="0.7" />
+        </marker>
+        <marker id="loop-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#F43F5E" opacity="0.7" />
+        </marker>
+        <filter id="node-shadow" x="-10%" y="-10%" width="120%" height="130%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+
+      {/* Edges */}
+      {allEdges.map((edge, i) => {
+        if (edge.loopBack) {
+          const { fromX, fromY, toX, toY } = edge;
+          return <path key={i} d={`M${fromX},${fromY} C${fromX + 40},${fromY} ${toX + NODE_W},${toY} ${toX},${toY}`} fill="none" stroke="#F43F5E" strokeWidth="2" strokeDasharray="6 3" markerEnd="url(#loop-arrow)" opacity="0.5" />;
+        }
+        const fromNode = allNodes.find(n => n.id === edge.from);
+        const toNode = allNodes.find(n => n.id === edge.to);
+        if (!fromNode || !toNode) return null;
+        const fp = getNodePos(fromNode);
+        const tp = getNodePos(toNode);
+        const fx = fp.x + fromNode.w / 2;
+        const fy = fp.y + fromNode.h;
+        const tx = tp.x + toNode.w / 2;
+        const ty = tp.y;
+        const midY = (fy + ty) / 2;
         return (
           <g key={i}>
-            <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#475569" strokeWidth="1.5" markerEnd="url(#arrowhead)" />
-            {edge.label && <text x={(from.x + to.x) / 2 + 8} y={(from.y + to.y) / 2} fill="#64748B" fontSize="9" fontWeight="bold">{edge.label}</text>}
+            <path d={`M${fx},${fy} C${fx},${midY} ${tx},${midY} ${tx},${ty}`} fill="none" stroke="#6366F1" strokeWidth="1.5" markerEnd="url(#flow-arrow)" opacity="0.5" />
+            {edge.label && (
+              <g>
+                <rect x={(fx + tx) / 2 - 8} y={midY - 8} width="16" height="14" rx="3" fill="var(--bg-elevated)" stroke="var(--border-base)" strokeWidth="0.5" />
+                <text x={(fx + tx) / 2} y={midY + 2} textAnchor="middle" fill={edge.label === '✓' ? '#10B981' : edge.label === '✗' ? '#F43F5E' : '#94A3B8'} fontSize="9" fontWeight="bold">{edge.label}</text>
+              </g>
+            )}
           </g>
         );
       })}
 
-      {nodes.map(node => (
-        <g key={node.id}>
-          {node.shape === 'diamond' ? (
-            <polygon points={`${node.x + node.w / 2},${node.y} ${node.x + node.w},${node.y + node.h / 2} ${node.x + node.w / 2},${node.y + node.h} ${node.x},${node.y + node.h / 2}`} fill="#0B1020" stroke={node.color} strokeWidth="2" />
-          ) : (
-            <rect x={node.x} y={node.y} width={node.w} height={node.h} rx="8" fill="#0B1020" stroke={node.color} strokeWidth={node.type === 'branch' ? 1 : 2} />
-          )}
-          <text x={node.x + node.w / 2} y={node.y + node.h / 2 + 4} textAnchor="middle" fill="#E2E8F0" fontSize={node.type === 'branch' ? 9 : 10} fontWeight="bold" fontFamily="monospace">
-            {node.label.length > 22 ? node.label.slice(0, 22) + '…' : node.label}
-          </text>
-        </g>
-      ))}
+      {/* Nodes */}
+      {allNodes.map(node => {
+        const pos = getNodePos(node);
+        const isDraggingThis = dragging?.id === node.id;
+        if (node.shape === 'circle') {
+          return (
+            <g key={node.id} onMouseDown={(e) => handleMouseDown(e, node.id)} style={{ cursor: 'move' }}>
+              <circle cx={pos.x + node.w / 2} cy={pos.y + node.h / 2} r={node.h / 2} fill={node.bg} stroke={node.color} strokeWidth="2" filter="url(#node-shadow)" />
+            </g>
+          );
+        }
+        const isSmall = node.h < 30;
+        return (
+          <g key={node.id} onMouseDown={(e) => handleMouseDown(e, node.id)} style={{ cursor: 'move' }} opacity={isDraggingThis ? 0.8 : 1}>
+            {node.shape === 'diamond' ? (
+              <polygon
+                points={`${pos.x + node.w / 2},${pos.y - 4} ${pos.x + node.w + 4},${pos.y + node.h / 2} ${pos.x + node.w / 2},${pos.y + node.h + 4} ${pos.x - 4},${pos.y + node.h / 2}`}
+                fill="var(--bg-elevated)" stroke={node.color} strokeWidth={isDraggingThis ? 3 : 2} filter="url(#node-shadow)"
+              />
+            ) : (
+              <rect x={pos.x} y={pos.y} width={node.w} height={node.h} rx="10" fill="var(--bg-elevated)" stroke={node.color} strokeWidth={isDraggingThis ? 2.5 : 1.5} filter="url(#node-shadow)" />
+            )}
+            {node.shape === 'rect' && !isSmall && (
+              <rect x={pos.x} y={pos.y} width="4" height={node.h} rx="2" fill={node.color} opacity="0.8" />
+            )}
+            <text
+              x={pos.x + (node.shape === 'rect' && !isSmall ? 14 : node.w / 2)}
+              y={pos.y + node.h / 2 + 4}
+              textAnchor={node.shape === 'rect' && !isSmall ? 'start' : 'middle'}
+              fill="var(--text-primary)"
+              fontSize={isSmall ? 8 : 10}
+              fontWeight="600"
+              fontFamily="system-ui, -apple-system, sans-serif"
+              style={{ pointerEvents: 'none' }}
+            >
+              {node.label.length > 22 ? node.label.slice(0, 22) + '…' : node.label}
+            </text>
+          </g>
+        );
+      })}
 
       {steps.length === 0 && (
-        <text x={svgWidth / 2} y={svgHeight / 2} textAnchor="middle" fill="#475569" fontSize="12">Nenhum step no workflow</text>
+        <text x={svgWidth / 2} y={svgHeight / 2} textAnchor="middle" fill="var(--text-muted)" fontSize="13" fontFamily="system-ui">Adicione steps para visualizar o fluxograma</text>
       )}
     </svg>
+    </div>
   );
 }

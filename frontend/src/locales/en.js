@@ -2,7 +2,7 @@ export const en = {
   header: {
     myCollections: "My Collections",
     quickTest: "Quick Test",
-    logoAlt: "API Test Suite Logo"
+    logoAlt: "UAW"
   },
   common: {
     cancel: "CANCEL",

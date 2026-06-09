@@ -94,4 +94,80 @@ describe('useTestRunner', () => {
     const apiKeyBody = JSON.parse(global.fetch.mock.calls[2][1].body);
     expect(apiKeyBody.headers).toMatchObject({ 'X-API-Key': 'myapikey' });
   });
+
+  it('deve tratar erros de conexão (não AbortError)', async () => {
+    global.fetch.mockRejectedValue(new Error('Network failure'));
+
+    const { result } = renderHook(() => useTestRunner(mockCol, mockGetPayload, mockToast));
+    await act(async () => { await result.current.sendRequests(); });
+
+    expect(result.current.isRunning).toBe(false);
+    expect(mockToast).toHaveBeenCalledWith('Erro na conexão com o backend.', 'error');
+  });
+
+  it('deve processar payload com requests (workflow/scenario mode)', async () => {
+    const workflowPayload = {
+      requests: [
+        { type: 'request', url: 'http://test.com/step1', method: 'POST', authType: 'bearer', authToken: 'tk' },
+        { type: 'parallel', requests: [{ url: 'http://test.com/p1', method: 'GET' }] },
+        { type: 'loop', steps: [{ url: 'http://test.com/loop', method: 'GET' }] },
+        { type: 'condition', steps: [{ url: 'http://test.com/then', method: 'GET' }], elseSteps: [{ url: 'http://test.com/else', method: 'GET' }] }
+      ],
+      totalRequests: '5',
+      duration: '10'
+    };
+
+    const createEmptyStream = () => new ReadableStream({ start(c) { c.close(); } });
+    global.fetch.mockResolvedValue({ ok: true, body: createEmptyStream() });
+
+    const { result } = renderHook(() => useTestRunner(mockCol, mockGetPayload, mockToast));
+    await act(async () => { await result.current.sendRequests(workflowPayload); });
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.requests[0].headers).toMatchObject({ 'Authorization': 'Bearer tk' });
+    expect(sentBody.requests[1].requests[0]).toBeDefined();
+    expect(sentBody.totalRequests).toBe(5);
+    expect(sentBody.duration).toBe(10);
+  });
+
+  it('deve resolver variáveis de ambiente na requisição', async () => {
+    const colWithVars = {
+      id: '1',
+      activeEnvironmentId: 'env-1',
+      environments: [{ id: 'env-1', name: 'Test', variables: [{ key: 'host', value: 'api.com' }] }]
+    };
+
+    const createEmptyStream = () => new ReadableStream({ start(c) { c.close(); } });
+    global.fetch.mockResolvedValue({ ok: true, body: createEmptyStream() });
+
+    const { result } = renderHook(() => useTestRunner(colWithVars, mockGetPayload, mockToast));
+    await act(async () => { await result.current.sendRequests(); });
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.variables).toMatchObject({ host: 'api.com' });
+  });
+
+  it('deve aceitar um array como override payload', async () => {
+    const createEmptyStream = () => new ReadableStream({ start(c) { c.close(); } });
+    global.fetch.mockResolvedValue({ ok: true, body: createEmptyStream() });
+
+    const steps = [{ url: 'http://test.com/s1', method: 'GET' }];
+    const { result } = renderHook(() => useTestRunner(mockCol, mockGetPayload, mockToast));
+    await act(async () => { await result.current.sendRequests(steps); });
+
+    const sentBody = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(sentBody.requests).toBeDefined();
+    expect(sentBody.requests[0].url).toBe('http://test.com/s1');
+  });
+
+  it('deve armazenar lastExecutedPayload para reexecução', async () => {
+    const createEmptyStream = () => new ReadableStream({ start(c) { c.close(); } });
+    global.fetch.mockResolvedValue({ ok: true, body: createEmptyStream() });
+
+    const payload = { url: 'http://rerun.com', method: 'POST' };
+    const { result } = renderHook(() => useTestRunner(mockCol, mockGetPayload, mockToast));
+    await act(async () => { await result.current.sendRequests(payload); });
+
+    expect(result.current.lastExecutedPayload).toMatchObject({ url: 'http://rerun.com' });
+  });
 });

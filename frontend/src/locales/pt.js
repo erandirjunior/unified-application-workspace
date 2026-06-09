@@ -2,7 +2,7 @@ export const pt = {
   header: {
     myCollections: "Minhas Coleções",
     quickTest: "Teste Rápido",
-    logoAlt: "API Test Suite Logo"
+    logoAlt: "UAW"
   },
   common: {
     cancel: "CANCELAR",

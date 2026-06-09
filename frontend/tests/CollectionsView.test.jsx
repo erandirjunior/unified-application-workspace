@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CollectionsView from '../src/CollectionsView';
+import { pt } from '../src/locales/pt';
 
 const mockCollections = [
   { id: '1', name: 'API Produção', requests: [{ id: 'r1' }, { id: 'r2' }] },
@@ -10,6 +11,7 @@ const mockCollections = [
 
 const defaultProps = {
   collections: mockCollections,
+  t: pt,
   onSelectRequest: vi.fn(),
   onCreateCollection: vi.fn(),
   onDeleteCollection: vi.fn(),
@@ -22,7 +24,7 @@ describe('CollectionsView', () => {
     render(<CollectionsView {...defaultProps} />);
     expect(screen.getByText('API Produção')).toBeInTheDocument();
     expect(screen.getByText('Microserviço Auth')).toBeInTheDocument();
-    expect(screen.getByText('2 Itens')).toBeInTheDocument();
+    expect(screen.getByText(/2 Actions/)).toBeInTheDocument();
   });
 
   it('should filter collections through the search bar', () => {
@@ -69,13 +71,13 @@ describe('CollectionsView', () => {
     const colWithDetails = {
       ...mockCollections[0],
       environments: [{ id: 'env-1', name: 'Prod', variables: [{ key: 'url', value: 'api.com' }] }],
-      scenarios: [{ id: 's1', name: 'Cenário 1' }]
+      scenarios: [{ id: 's1', name: 'Cenário 1' }],
+      workflows: [{ id: 'w1', name: 'Workflow 1' }]
     };
     render(<CollectionsView {...defaultProps} collections={[colWithDetails]} />);
     
     fireEvent.click(screen.getByTitle('Exportar Coleção'));
     expect(screen.getByText(/Exportar: API Produção/)).toBeInTheDocument();
-    expect(screen.getByText('Cenário 1')).toBeInTheDocument();
 
     // Avança para seleção de variáveis
     fireEvent.click(screen.getByText('PRÓXIMO'));

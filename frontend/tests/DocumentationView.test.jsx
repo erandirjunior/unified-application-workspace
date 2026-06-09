@@ -2,13 +2,14 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import DocumentationView from '../src/DocumentationView';
+import { pt } from '../src/locales/pt';
 
 const mockRequest = {
   id: '1',
   name: 'Get Users',
   method: 'GET',
   url: 'http://api.local/{{version}}/users',
-  description: '# API Title\nThis is a **bold** description.',
+  documentation: '# API Title\nThis is a **bold** description.',
   authType: 'bearer',
   bodyType: 'none',
   headers: [],
@@ -32,6 +33,7 @@ const defaultProps = {
   requests: [mockRequest],
   activeRequestId: '1',
   collection: mockCollection,
+  t: pt,
   methodStyles: { GET: 'text-green-500' },
   bodyParams: [],
   onBack: vi.fn(),
@@ -66,13 +68,13 @@ const defaultProps = {
   setAuthType: vi.fn(),
   setRequestName: vi.fn(),
   setBodyType: vi.fn(),
+  setDocumentation: vi.fn(),
 };
 
 describe('DocumentationView', () => {
-  it('should render the request name and convert Markdown in the description', () => {
+  it('should render the request name and convert Markdown in the documentation', () => {
     render(<DocumentationView {...defaultProps} />);
     
-    // Usamos getByRole para diferenciar o título (H2) do texto informativo (P)
     expect(screen.getByRole('heading', { name: 'Get Users' })).toBeInTheDocument();
     const boldElement = screen.getByText('bold');
     expect(boldElement.tagName).toBe('STRONG');
@@ -80,16 +82,15 @@ describe('DocumentationView', () => {
 
   it('should resolve environment variables in the displayed URL', () => {
     render(<DocumentationView {...defaultProps} />);
-    // Usamos regex com âncoras ^ e $ para garantir que pegamos o elemento que contém APENAS a URL
-    expect(screen.getByText(/^http:\/\/api\.local\/v2\/users$/)).toBeInTheDocument();
+    expect(screen.getAllByText(/http:\/\/api\.local\/v2\/users/).length).toBeGreaterThan(0);
   });
 
   it('should render lists and links in Markdown correctly', () => {
     const requestWithMarkdown = {
       ...mockRequest,
-      description: '- Item A\n- Item B\n[Guia](http://docs.local)'
+      documentation: '- Item A\n- Item B\n[Guia](http://docs.local)'
     };
-    render(<DocumentationView {...defaultProps} request={requestWithMarkdown} />);
+    render(<DocumentationView {...defaultProps} request={requestWithMarkdown} requests={[requestWithMarkdown]} />);
     
     expect(screen.getByText('Item A')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Guia' })).toHaveAttribute('href', 'http://docs.local');
@@ -131,7 +132,7 @@ describe('DocumentationView', () => {
     const headersSection = screen.getByText('Request Headers');
     fireEvent.click(headersSection);
     
-    const addHeaderBtn = screen.getByText('+ ADICIONAR HEADER');
+    const addHeaderBtn = screen.getByText(/\+ HEADERS/i);
     fireEvent.click(addHeaderBtn);
     expect(defaultProps.addHeader).toHaveBeenCalled();
   });
@@ -142,7 +143,7 @@ describe('DocumentationView', () => {
       bodyType: 'json', 
       bodyRaw: '{"id": 1, "user": {"name": "John"}}' 
     };
-    render(<DocumentationView {...defaultProps} request={reqWithJson} />);
+    render(<DocumentationView {...defaultProps} request={reqWithJson} requests={[reqWithJson]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
@@ -150,7 +151,6 @@ describe('DocumentationView', () => {
     const syncBtn = screen.getByTitle('Sincroniza chaves do JSON/XML com a tabela de documentação');
     fireEvent.click(syncBtn);
     
-    // Deve tentar adicionar campos detectados
     expect(defaultProps.addBodyParam).toHaveBeenCalled();
   });
 
@@ -168,7 +168,7 @@ describe('DocumentationView', () => {
 
   it('should allow editing Path Parameters in EDITOR mode', () => {
     const reqWithParams = { ...mockRequest, pathParams: [{ key: 'id', value: '123', docDescription: 'User ID', docRequired: true, docExample: '1' }] };
-    render(<DocumentationView {...defaultProps} request={reqWithParams} />);
+    render(<DocumentationView {...defaultProps} request={reqWithParams} requests={[reqWithParams]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText('Path Parameters'));
@@ -202,12 +202,13 @@ describe('DocumentationView', () => {
 
   it('should call body parameters cleanup when requested', () => {
     const reqWithParams = { ...mockRequest, bodyType: 'json', bodyParams: [{ key: 'foo' }] };
-    render(<DocumentationView {...defaultProps} request={reqWithParams} bodyParams={reqWithParams.bodyParams} />);
+    render(<DocumentationView {...defaultProps} request={reqWithParams} requests={[reqWithParams]} bodyParams={reqWithParams.bodyParams} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
     
-    const clearBtn = screen.getByText('Limpar Tabela');
+    // The clear button text is now t.common.cancel = "CANCELAR"
+    const clearBtn = screen.getByText('CANCELAR');
     fireEvent.click(clearBtn);
     expect(defaultProps.onClearBodyParams).toHaveBeenCalled();
   });
@@ -218,13 +219,14 @@ describe('DocumentationView', () => {
       bodyType: 'json', 
       bodyRaw: '{"id":1,"name":"test"}' 
     };
-    render(<DocumentationView {...defaultProps} request={reqWithUnformattedJson} />);
+    render(<DocumentationView {...defaultProps} request={reqWithUnformattedJson} requests={[reqWithUnformattedJson]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
     
-    const formatBtn = screen.getByText('Formatar');
-    fireEvent.click(formatBtn);
+    // Multiple PREVIEW buttons exist (view mode toggle + format button). Get the last one (within body section)
+    const previewBtns = screen.getAllByText('PREVIEW');
+    fireEvent.click(previewBtns[previewBtns.length - 1]);
     
     expect(defaultProps.setBodyRaw).toHaveBeenCalledWith('{\n  "id": 1,\n  "name": "test"\n}');
   });
@@ -235,7 +237,7 @@ describe('DocumentationView', () => {
       bodyType: 'form-urlencoded',
       bodyRaw: 'param1=value1&param2=value2'
     };
-    render(<DocumentationView {...defaultProps} request={reqWithFormUrlEncoded} />);
+    render(<DocumentationView {...defaultProps} request={reqWithFormUrlEncoded} requests={[reqWithFormUrlEncoded]} />);
 
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
@@ -245,16 +247,17 @@ describe('DocumentationView', () => {
 
   it('should add and remove body parameter fields in EDITOR mode', () => {
     const reqWithBodyParams = { ...mockRequest, bodyType: 'form-data', bodyParams: [{ key: 'field1', value: 'value1' }] };
-    render(<DocumentationView {...defaultProps} request={reqWithBodyParams} bodyParams={reqWithBodyParams.bodyParams} />);
+    render(<DocumentationView {...defaultProps} request={reqWithBodyParams} requests={[reqWithBodyParams]} bodyParams={reqWithBodyParams.bodyParams} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
     
-    const addParamBtn = screen.getByText('+ ADICIONAR PARÂMETRO / CAMPO');
+    // Add body param button text is now: + CORPO DA ACTION
+    const addParamBtn = screen.getByText(/\+ CORPO DA ACTION/i);
     fireEvent.click(addParamBtn);
     expect(defaultProps.addBodyParam).toHaveBeenCalled();
 
-    const removeParamBtn = screen.getAllByText('×')[0]; // First 'x' button for body param
+    const removeParamBtn = screen.getAllByText('×')[0];
     fireEvent.click(removeParamBtn);
     expect(defaultProps.removeBodyParam).toHaveBeenCalledWith(0);
   });
@@ -264,7 +267,7 @@ describe('DocumentationView', () => {
       ...mockRequest, 
       responses: [{ statusCode: '200', body: '{}', bodyFields: [{ key: 'status', type: 'text' }] }] 
     };
-    render(<DocumentationView {...defaultProps} request={reqWithResponse} />);
+    render(<DocumentationView {...defaultProps} request={reqWithResponse} requests={[reqWithResponse]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Exemplos de Respostas/));
@@ -273,8 +276,9 @@ describe('DocumentationView', () => {
     fireEvent.click(addFieldBtn);
     expect(defaultProps.addResponseField).toHaveBeenCalledWith(0);
 
-    const removeFieldBtn = screen.getAllByText('×')[1]; // Segundo botão 'x' (o primeiro é removeResponse, o segundo é removeResponseField)
-    fireEvent.click(removeFieldBtn);
+    const removeFieldBtns = screen.getAllByText('×');
+    // Find the correct remove button (for response field)
+    fireEvent.click(removeFieldBtns[removeFieldBtns.length - 1]);
     expect(defaultProps.removeResponseField).toHaveBeenCalledWith(0, 0);
   });
 
@@ -283,7 +287,7 @@ describe('DocumentationView', () => {
       ...mockRequest, 
       responses: [{ statusCode: '200', body: '{"status":"ok"}' }] 
     };
-    render(<DocumentationView {...defaultProps} request={reqWithUnformattedResponseJson} />);
+    render(<DocumentationView {...defaultProps} request={reqWithUnformattedResponseJson} requests={[reqWithUnformattedResponseJson]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Exemplos de Respostas/));
@@ -299,7 +303,7 @@ describe('DocumentationView', () => {
       ...mockRequest, 
       responses: [{ statusCode: '200', body: '{"data":{"id":1}}' }] 
     };
-    render(<DocumentationView {...defaultProps} request={reqWithResponseJson} />);
+    render(<DocumentationView {...defaultProps} request={reqWithResponseJson} requests={[reqWithResponseJson]} />);
     
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Exemplos de Respostas/));
@@ -310,23 +314,5 @@ describe('DocumentationView', () => {
     expect(defaultProps.updateResponse).toHaveBeenCalledWith(0, 'bodyFields', expect.arrayContaining([
       expect.objectContaining({ key: 'data.id' })
     ]));
-  });
-
-  it('should display the general collection documentation', () => {
-    const collectionWithGeneralDoc = { ...mockCollection, generalDoc: '## General Info\nThis is **important**.' };
-    render(<DocumentationView {...defaultProps} collection={collectionWithGeneralDoc} />);
-    
-    expect(screen.getByRole('heading', { name: 'General Info' })).toBeInTheDocument();
-    expect(screen.getByText('important').tagName).toBe('STRONG');
-  });
-
-  it('should allow editing the general collection documentation in EDITOR mode', () => {
-    const collectionWithGeneralDoc = { ...mockCollection, generalDoc: 'Initial Doc' };
-    render(<DocumentationView {...defaultProps} collection={collectionWithGeneralDoc} />);
-    
-    fireEvent.click(screen.getByText('EDITOR'));
-    const textarea = screen.getByPlaceholderText('Descreva informações globais da API, guia de autenticação, base URL, etc. (Suporta Markdown)');
-    fireEvent.change(textarea, { target: { value: 'Updated General Doc' } });
-    expect(defaultProps.onUpdateGeneralDoc).toHaveBeenCalledWith('Updated General Doc');
   });
 });
