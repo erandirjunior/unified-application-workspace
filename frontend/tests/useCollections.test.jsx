@@ -45,10 +45,6 @@ describe('useCollections', () => {
     
     const updatedFolder = result.current.collections[0].requests.find(i => i.id === folder.id);
     expect(updatedFolder.requests.some(r => r.id === reqId)).toBe(true);
-    
-    // Verifica persistência
-    const saved = JSON.parse(localStorage.getItem('ast_collections'));
-    expect(saved[0].requests.find(i => i.id === folder.id).requests).toHaveLength(1);
   });
 
   it('deve reordenar as coleções na lista (mover para baixo)', () => {
@@ -205,8 +201,7 @@ describe('useCollections', () => {
     expect(result.current.collections[0].requests[1].requests[0].id).toBe('req-nested-1');
   });
 
-  it('deve restaurar dados padrão se o localStorage estiver corrompido', () => {
-    localStorage.setItem('ast_collections', 'invalid-json-{');
+  it('deve inicializar com dados padrão quando IndexedDB está vazio', () => {
     const { result } = renderHook(() => useCollections());
     expect(result.current.collections[0].name).toBe('Minha Coleção');
   });

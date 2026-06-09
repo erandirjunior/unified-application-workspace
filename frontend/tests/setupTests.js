@@ -32,3 +32,15 @@ global.EventSource = vi.fn().mockImplementation(function() {
   this.onerror = null;
   this.onopen = null;
 });
+
+// Mock do módulo IndexedDB usado pelo useCollections
+vi.mock('../src/utils/indexedDB', () => {
+  let store = [];
+  return {
+    getAllCollections: vi.fn(async () => store),
+    saveAllCollections: vi.fn(async (collections) => { store = [...collections]; }),
+    migrateFromLocalStorage: vi.fn(async () => null),
+    __getStore: () => store,
+    __resetStore: () => { store = []; },
+  };
+});
