@@ -366,6 +366,7 @@ export default function CollectionView({
           ) : (
             <MocksPanel
               t={t}
+              collection={collection}
               selectedMock={selectedMock}
               setSelectedMock={setSelectedMock}
               isEditingMock={isEditingMock}
@@ -375,6 +376,8 @@ export default function CollectionView({
               handleSaveMock={handleSaveMock}
               rightPanelSize={rightPanelSize}
               setRightPanelSize={setRightPanelSize}
+              mocks={mocks}
+              fetchMocksList={fetchMocksList}
             />
           )}
         </div>

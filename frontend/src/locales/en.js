@@ -269,7 +269,6 @@ export const en = {
     preview: "PREVIEW",
     editor: "EDITOR",
     generalDoc: "General Documentation",
-    noGeneralDoc: "No general documentation provided for this collection.",
     requestName: "Request Name",
     urlDoc: "URL Documentation",
     security: "Security & Authentication",

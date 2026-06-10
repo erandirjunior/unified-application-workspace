@@ -268,7 +268,6 @@ export const pt = {
     preview: "PREVIEW",
     editor: "EDITOR",
     generalDoc: "Documentação Geral",
-    noGeneralDoc: "Nenhuma documentação geral fornecida para esta coleção.",
     requestName: "Nome da Action",
     urlDoc: "Documentação da URL",
     security: "Segurança & Autenticação",

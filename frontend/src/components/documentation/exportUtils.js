@@ -103,7 +103,7 @@ export function generateDocHTML(requestList, activeEnv, theme) {
     const resolvedUrl = resolveVariables(request.url, activeEnv);
     return `
       <div style="margin-bottom: 80px; page-break-after: always;">
-        <section><div class="box">${renderStaticMarkdown(request.documentation, colors, isDark) || 'Nenhuma documentação detalhada fornecida para esta action.'}</div></section>
+        <section><div class="box">${renderStaticMarkdown(request.documentation, colors, isDark) || ''}</div></section>
         <header style="border-bottom: 4px solid ${colors.mono}; padding-bottom: 10px;">
           <h1>${request.name}</h1>
           <div style="display: flex; align-items: center;">

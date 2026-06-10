@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ServersView from '../ServersView';
 import SaveRequestForm from '../SaveRequestForm';
+import MocksGlobalMonitor from './MocksGlobalMonitor';
 
 export default function MocksPanel({
   t,
+  collection,
   selectedMock,
   setSelectedMock,
   isEditingMock,
@@ -13,14 +15,40 @@ export default function MocksPanel({
   handleSaveMock,
   rightPanelSize,
   setRightPanelSize,
+  mocks = [],
+  fetchMocksList,
 }) {
+  const [showGlobalMonitor, setShowGlobalMonitor] = useState(false);
+
+  if (showGlobalMonitor) {
+    return (
+      <MocksGlobalMonitor
+        t={t}
+        mocks={mocks}
+        collection={collection}
+        fetchMocksList={fetchMocksList}
+        handleSaveMock={handleSaveMock}
+        onClose={() => setShowGlobalMonitor(false)}
+      />
+    );
+  }
+
   if (!monitoringMock && !isEditingMock) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-slate-500 italic space-y-4">
         <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.99 7.99 0 0120 13a7.98 7.99 0 01-2.343 5.657z"/></svg>
         </div>
-        <p className="text-sm">{t.mocks.selectMock}</p>
+        <p className="text-sm">{t.mocks?.selectMock || 'Selecione um mock para editar'}</p>
+        
+        {/* Botão Monitor Global */}
+        <button
+          onClick={() => setShowGlobalMonitor(true)}
+          className="mt-4 px-6 py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-2xl text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-3 group"
+        >
+          <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <span className="text-xs font-bold uppercase tracking-wider">Mock Server Monitor</span>
+        </button>
       </div>
     );
   }

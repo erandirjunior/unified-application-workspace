@@ -31,7 +31,7 @@ export default function DocPreview({
       <section className="mb-6">
         <SectionHeader title="Documentação Geral" icon={<svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} />
         <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-          {req.documentation ? renderMarkdown(req.documentation) : <p className="text-slate-400 italic">Nenhuma documentação detalhada fornecida para esta action.</p>}
+          {req.documentation ? renderMarkdown(req.documentation) : <p className="text-xs text-slate-400 italic">Nenhuma documentação detalhada adicionada.</p>}
         </div>
       </section>
 
@@ -107,7 +107,7 @@ export default function DocPreview({
         )}
 
         {/* Headers */}
-        {req.headers && req.headers.length > 0 && (
+        {req.headers && req.headers.filter(h => h.key).length > 0 && (
           <section>
             <SectionHeader 
               title="Request Headers" 
@@ -128,7 +128,7 @@ export default function DocPreview({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(Array.isArray(req.headers) ? req.headers : []).map((h, i) => (
+                    {(Array.isArray(req.headers) ? req.headers : []).filter(h => h.key).map((h, i) => (
                       <tr key={i} className="dark:text-slate-300">
                         <td className="px-4 py-3 align-top"><span className="font-mono text-blue-500 break-all">{h.key || '-'}</span></td>
                         <td className="px-4 py-3 align-top"><span className="font-mono text-slate-400 break-all">{resolve(h.value) || '-'}</span></td>
