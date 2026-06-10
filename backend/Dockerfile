@@ -4,7 +4,8 @@ FROM golang:1.22-alpine
 WORKDIR /app
 
 # Copia o arquivo de código fonte para o container
-COPY main.go .
+COPY . .
 
-# Expõe a porta 8080 que o servidor utiliza
-EXPOSE 8080
+# Expõe a porta configurável do servidor
+ARG BACKEND_PORT=8080
+EXPOSE ${BACKEND_PORT}

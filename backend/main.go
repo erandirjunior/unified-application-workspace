@@ -4,6 +4,7 @@ import (
     "encoding/json"
     "fmt"
     "net/http"
+    "os"
     "time"
 )
 
@@ -78,11 +79,22 @@ func runHandler(w http.ResponseWriter, r *http.Request) {
     flusher.Flush()
 }
 
+func getEnv(key, fallback string) string {
+    if value := os.Getenv(key); value != "" {
+        return value
+    }
+    return fallback
+}
+
 func main() {
+    port := getEnv("PORT", "8080")
+    tz := getEnv("TZ", "UTC")
+    os.Setenv("TZ", tz)
+
     // Rota para teste de conectividade
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Content-Type", "application/json")
-        fmt.Fprintf(w, `{"status": "Backend is running", "endpoints": ["/run"]}`)
+        fmt.Fprintf(w, `{"status": "Backend is running", "endpoints": ["/run"], "timezone": "%s"}`, tz)
     })
 
     http.HandleFunc("/run", runHandler)
@@ -90,9 +102,10 @@ func main() {
 	http.HandleFunc("/mock/", mockServerHandler)
 	http.HandleFunc("/mock-stream", mockStreamHandler)
 
-    fmt.Println("🚀 Unified API Workspace Backend rodando em http://localhost:8080")
-    fmt.Println("👉 Rota de execução: POST http://localhost:8080/run")
-    if err := http.ListenAndServe(":8080", nil); err != nil {
+    fmt.Printf("🚀 Unified API Workspace Backend rodando em http://localhost:%s\n", port)
+    fmt.Printf("⏰ Timezone: %s\n", tz)
+    fmt.Printf("👉 Rota de execução: POST http://localhost:%s/run\n", port)
+    if err := http.ListenAndServe(":"+port, nil); err != nil {
         fmt.Println(err)
     }
 }
