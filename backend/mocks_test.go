@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestManageMocksHandler(t *testing.T) {
@@ -241,4 +242,345 @@ func TestMockServerHandler_TemplateHeaders(t *testing.T) {
 	if len(rr.Header().Get("X-Req-ID")) != 36 {
 		t.Errorf("Expected UUID in header, got %s", rr.Header().Get("X-Req-ID"))
 	}
+}
+
+
+func TestMockServerHandler_Options(t *testing.T) {
+	req := httptest.NewRequest("OPTIONS", "/mock/any-path", nil)
+	rr := httptest.NewRecorder()
+	mockServerHandler(rr, req)
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("Expected 204 for OPTIONS, got %d", rr.Code)
+	}
+}
+
+func TestMockServerHandler_Delay(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["delay-mock"] = MockDefinition{
+		ID:     "delay-mock",
+		Path:   "/delayed",
+		Method: "GET",
+		Active: true,
+		Delay:  50, // 50ms delay
+		Response: MockResponse{
+			Status: 200,
+			Body:   "delayed response",
+		},
+	}
+	mocksMu.Unlock()
+
+	req := httptest.NewRequest("GET", "/mock/delayed", nil)
+	rr := httptest.NewRecorder()
+
+	start := time.Now()
+	mockServerHandler(rr, req)
+	elapsed := time.Since(start)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rr.Code)
+	}
+	if elapsed < 50*time.Millisecond {
+		t.Errorf("Expected at least 50ms delay, got %v", elapsed)
+	}
+}
+
+func TestMockServerHandler_InactiveNotMatched(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["inactive"] = MockDefinition{
+		ID:     "inactive",
+		Path:   "/active-only",
+		Method: "GET",
+		Active: false, // inactive
+		Response: MockResponse{Status: 200, Body: "should not match"},
+	}
+	mocksMu.Unlock()
+
+	req := httptest.NewRequest("GET", "/mock/active-only", nil)
+	rr := httptest.NewRecorder()
+	mockServerHandler(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("Expected 404 for inactive mock, got %d", rr.Code)
+	}
+}
+
+func TestMockServerHandler_MethodALL(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["all-method"] = MockDefinition{
+		ID:     "all-method",
+		Path:   "/any-method",
+		Method: "ALL",
+		Active: true,
+		Response: MockResponse{Status: 200, Body: "matched"},
+	}
+	mocksMu.Unlock()
+
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
+		req := httptest.NewRequest(method, "/mock/any-method", nil)
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200 for method %s with ALL matcher, got %d", method, rr.Code)
+		}
+	}
+}
+
+func TestMockServerHandler_DefaultStatus(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["no-status"] = MockDefinition{
+		ID:     "no-status",
+		Path:   "/no-status",
+		Method: "GET",
+		Active: true,
+		Response: MockResponse{Status: 0, Body: "default status"},
+	}
+	mocksMu.Unlock()
+
+	req := httptest.NewRequest("GET", "/mock/no-status", nil)
+	rr := httptest.NewRecorder()
+	mockServerHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected 200 as default status, got %d", rr.Code)
+	}
+}
+
+func TestMockServerHandler_AssertionExistsNotExists(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["assert-exists"] = MockDefinition{
+		ID:     "assert-exists",
+		Path:   "/check-header",
+		Method: "GET",
+		Active: true,
+		Assertions: []Assertion{
+			{Source: "header", Property: "X-Required", Operator: "exists"},
+		},
+		Response: MockResponse{Status: 200, Body: "ok"},
+	}
+	mocks["assert-not-exists"] = MockDefinition{
+		ID:     "assert-not-exists",
+		Path:   "/check-no-header",
+		Method: "GET",
+		Active: true,
+		Assertions: []Assertion{
+			{Source: "header", Property: "X-Forbidden", Operator: "not_exists"},
+		},
+		Response: MockResponse{Status: 200, Body: "ok"},
+	}
+	mocksMu.Unlock()
+
+	t.Run("Exists passes", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/mock/check-header", nil)
+		req.Header.Set("X-Required", "value")
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Exists fails", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/mock/check-header", nil)
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Not exists passes", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/mock/check-no-header", nil)
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Not exists fails", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/mock/check-no-header", nil)
+		req.Header.Set("X-Forbidden", "bad")
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", rr.Code)
+		}
+	})
+}
+
+func TestMockServerHandler_AssertionContainsNotEqual(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["assert-contains"] = MockDefinition{
+		ID:     "assert-contains",
+		Path:   "/check-contains",
+		Method: "POST",
+		Active: true,
+		Assertions: []Assertion{
+			{Source: "body", Property: "", Operator: "contains", Target: "hello"},
+		},
+		Response: MockResponse{Status: 200, Body: "ok"},
+	}
+	mocks["assert-neq"] = MockDefinition{
+		ID:     "assert-neq",
+		Path:   "/check-neq",
+		Method: "POST",
+		Active: true,
+		Assertions: []Assertion{
+			{Source: "header", Property: "X-Mode", Operator: "!=", Target: "debug"},
+		},
+		Response: MockResponse{Status: 200, Body: "ok"},
+	}
+	mocksMu.Unlock()
+
+	t.Run("Contains passes", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/check-contains", strings.NewReader("hello world"))
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Contains fails", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/check-contains", strings.NewReader("goodbye"))
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", rr.Code)
+		}
+	})
+
+	t.Run("NotEqual passes", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/check-neq", nil)
+		req.Header.Set("X-Mode", "production")
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("NotEqual fails", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/check-neq", nil)
+		req.Header.Set("X-Mode", "debug")
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", rr.Code)
+		}
+	})
+}
+
+func TestMockStreamHandler_WithLog(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest("GET", "/mock-stream", nil)
+	req = req.WithContext(ctx)
+	rr := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		mockStreamHandler(rr, req)
+		close(done)
+	}()
+
+	// Give time for the handler to register the listener
+	time.Sleep(50 * time.Millisecond)
+
+	// Broadcast a log entry
+	broadcastMockLog(MockLogEntry{MockID: "stream-test", Method: "POST", URL: "/test"})
+
+	// Give time for the event to be written
+	time.Sleep(50 * time.Millisecond)
+
+	cancel()
+	<-done
+
+	body := rr.Body.String()
+	if !strings.Contains(body, "stream-test") {
+		t.Errorf("Expected streamed log to contain mock ID, got: %s", body)
+	}
+}
+
+func TestManageMocksHandler_PostWithID(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocksMu.Unlock()
+
+	mockData := MockDefinition{
+		ID:     "custom-id",
+		Name:   "Custom Mock",
+		Path:   "/custom",
+		Method: "POST",
+		Active: true,
+		Response: MockResponse{Status: 201, Body: "created"},
+	}
+	body, _ := json.Marshal(mockData)
+	req := httptest.NewRequest("POST", "/manage-mocks", bytes.NewBuffer(body))
+	rr := httptest.NewRecorder()
+
+	manageMocksHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected 200, got %d", rr.Code)
+	}
+
+	mocksMu.RLock()
+	stored, ok := mocks["custom-id"]
+	mocksMu.RUnlock()
+
+	if !ok {
+		t.Error("Mock with custom-id not stored")
+	}
+	if stored.Name != "Custom Mock" {
+		t.Errorf("Expected name 'Custom Mock', got %s", stored.Name)
+	}
+}
+
+func TestMockServerHandler_BodyAssertionWithProperty(t *testing.T) {
+	mocksMu.Lock()
+	mocks = make(map[string]MockDefinition)
+	mocks["body-prop"] = MockDefinition{
+		ID:     "body-prop",
+		Path:   "/body-check",
+		Method: "POST",
+		Active: true,
+		Assertions: []Assertion{
+			{Source: "body", Property: "action", Operator: "==", Target: "create"},
+		},
+		Response: MockResponse{Status: 200, Body: "ok"},
+	}
+	mocksMu.Unlock()
+
+	t.Run("Body property assertion passes", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/body-check", strings.NewReader(`{"action":"create"}`))
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Errorf("Expected 200, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Body property assertion fails", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/body-check", strings.NewReader(`{"action":"delete"}`))
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400, got %d", rr.Code)
+		}
+	})
+
+	t.Run("Body property assertion invalid JSON", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/mock/body-check", strings.NewReader(`not json`))
+		rr := httptest.NewRecorder()
+		mockServerHandler(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("Expected 400 for invalid json, got %d", rr.Code)
+		}
+	})
 }
