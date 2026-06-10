@@ -1,0 +1,15 @@
+# Ambiente local
+.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Go
+backend/coverage.out
+
+# IDE
+.vscode/
+.idea/
+.kiro
