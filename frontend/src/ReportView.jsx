@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const MiniChart = ({ data, color, label, unit, isRunning, height = 40 }) => {
+const MiniChart = ({ data, color, label, unit, isRunning, height = 40, loadingText = "...", emptyText = "--" }) => {
   const isEmpty = !data || data.length < 2;
   const max = Math.max(...data, 1);
   const width = 300;
@@ -30,7 +30,7 @@ const MiniChart = ({ data, color, label, unit, isRunning, height = 40 }) => {
       </div>
       <div className="flex items-end justify-center" style={{ height: `${height}px` }}>
         {isEmpty ? (
-          <span className="text-[10px] text-slate-700 italic">{isRunning ? 'Capturando...' : 'Sem dados'}</span>
+          <span className="text-[10px] text-slate-700 italic">{isRunning ? loadingText : emptyText}</span>
         ) : (
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
             <defs>
@@ -107,10 +107,10 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
     return `
       <!DOCTYPE html>
-      <html lang="pt-br">
+      <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>Relatório UAW Unified API Workspace - ${resolvedUrl}</title>
+        <title>${t.report.htmlTitle} - ${resolvedUrl}</title>
         <style>
           html, body { background-color: ${colors.bg} !important; color: ${colors.text} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0; }
           body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; padding: 40px; max-width: 1000px; margin: 0 auto; }
@@ -133,28 +133,28 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       </head>
       <body>
         <div class="header">
-          <h1 class="title">Relatório de Performance</h1>
-          <div class="meta">Alvo: <strong>${config.method}</strong> ${resolvedUrl}</div>
-          <div class="meta">Executado em: ${reportDate}</div>
+          <h1 class="title">${t.report.htmlHeading}</h1>
+          <div class="meta">${t.report.htmlTarget}: <strong>${config.method}</strong> ${resolvedUrl}</div>
+          <div class="meta">${t.report.htmlExecutedAt}: ${reportDate}</div>
         </div>
         <div class="stats-grid">
           <div class="card"><div class="card-label">Total Requests</div><div class="card-value">${reportData?.totalRequests || 0}</div></div>
-          <div class="card"><div class="card-label">RPS Médio</div><div class="card-value">${stats.rps}</div></div>
-          <div className="card"><div class="card-label">Tempo de Execução</div><div class="card-value">${reportData?.totalDuration?.toFixed(2) || 0}s</div></div>
-          <div class="card"><div class="card-label">Tempo Médio</div><div class="card-value">${stats.avg}ms</div></div>
-          <div class="card"><div class="card-label">Sucesso / Falhas</div><div class="card-value">${reportData?.successCount || 0} / ${reportData?.errorCount || 0}</div></div>
+          <div class="card"><div class="card-label">${t.report.htmlAvgRps}</div><div class="card-value">${stats.rps}</div></div>
+          <div className="card"><div class="card-label">${t.report.htmlExecTime}</div><div class="card-value">${reportData?.totalDuration?.toFixed(2) || 0}s</div></div>
+          <div class="card"><div class="card-label">${t.report.htmlAvgTime}</div><div class="card-value">${stats.avg}ms</div></div>
+          <div class="card"><div class="card-label">${t.report.htmlSuccessFailures}</div><div class="card-value">${reportData?.successCount || 0} / ${reportData?.errorCount || 0}</div></div>
           <div class="card">
-            <div class="card-label">Percentis</div>
+            <div class="card-label">${t.report.htmlPercentiles}</div>
             <div class="percentiles">
               <span>P50: ${stats.p50}ms</span><span>P90: ${stats.p90}ms</span>
               <span>P95: ${stats.p95}ms</span><span>P99: ${stats.p99}ms</span>
             </div>
           </div>
         </div>
-        <h2>Logs de Execução (Últimas ${requestLogs.length})</h2>
+        <h2>${t.report.htmlExecutionLogs} ${requestLogs.length})</h2>
         <table>
           <thead>
-            <tr><th>Hora</th><th>Status</th><th>Validação</th><th>Método</th><th>URL</th><th>Latência</th></tr>
+            <tr><th>${t.report.htmlColTime}</th><th>${t.report.htmlColStatus}</th><th>${t.report.htmlColValidation}</th><th>${t.report.htmlColMethod}</th><th>${t.report.htmlColUrl}</th><th>${t.report.htmlColLatency}</th></tr>
           </thead>
           <tbody>
             ${requestLogs.map(log => {
@@ -182,7 +182,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-teste-${Date.now()}.html`;
+    a.download = `report-${Date.now()}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -265,7 +265,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
     if (!headers || includeAuth) return headers;
     const redacted = {};
     Object.keys(headers).forEach(key => {
-      redacted[key] = sensitiveHeaders.includes(key.toLowerCase()) ? "[OMITIDO]" : headers[key];
+      redacted[key] = sensitiveHeaders.includes(key.toLowerCase()) ? "[REDACTED]" : headers[key];
     });
     return redacted;
   };
@@ -288,10 +288,10 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
     return `
       <!DOCTYPE html>
-      <html lang="pt-br">
+      <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>Inspeção - ${log.method} ${log.url}</title>
+        <title>${t.report.inspectionTitle} - ${log.method} ${log.url}</title>
         <style>
           body { font-family: system-ui, sans-serif; background: ${colors.bg}; color: ${colors.text}; padding: 40px; line-height: 1.6; max-width: 1100px; margin: 0 auto; }
           .header { border-bottom: 3px solid ${colors.border}; padding-bottom: 20px; margin-bottom: 30px; }
@@ -314,10 +314,10 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
           <div class="url-box"><span style="color: ${colors.accent}; margin-right: 10px;">${log.method}</span>${log.url}</div>
           <div style="color: ${colors.meta}; font-size: 11px; margin-top: 10px; font-weight: bold; text-transform: uppercase;">TIMESTAMP: ${log.timestamp}</div>
         </div>
-        ${!log.success ? `<div style="background: #f43f5e11; border: 1px solid #f43f5e33; padding: 15px; border-radius: 12px; color: #f43f5e; margin-bottom: 20px;"><strong>FALHA NA VALIDAÇÃO:</strong> ${log.errorMessage}</div>` : ''}
+        ${!log.success ? `<div style="background: #f43f5e11; border: 1px solid #f43f5e33; padding: 15px; border-radius: 12px; color: #f43f5e; margin-bottom: 20px;"><strong>${t.report.validationFailed}:</strong> ${log.errorMessage}</div>` : ''}
         <div class="grid">
-          <div><h2 style="color: ${colors.req}">Request Headers</h2><pre>${JSON.stringify(reqHeaders, null, 2)}</pre><h2>Request Body</h2><pre>${log.requestBody || "(Vazio)"}</pre></div>
-          <div><h2 style="color: ${colors.res}">Response Headers</h2><pre>${JSON.stringify(resHeaders, null, 2)}</pre><h2>Response Body</h2><pre>${log.responseBody || "(Vazio)"}</pre></div>
+          <div><h2 style="color: ${colors.req}">Request Headers</h2><pre>${JSON.stringify(reqHeaders, null, 2)}</pre><h2>Request Body</h2><pre>${log.requestBody || "(Empty)"}</pre></div>
+          <div><h2 style="color: ${colors.res}">Response Headers</h2><pre>${JSON.stringify(resHeaders, null, 2)}</pre><h2>Response Body</h2><pre>${log.responseBody || "(Empty)"}</pre></div>
         </div>
       </body>
       </html>`;
@@ -325,7 +325,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
   const handleExportInspectedHTML = () => {
     if (!selectedLog) return;
-    const includeAuth = window.confirm(theme === 'dark' ? "Include auth data?" : "Deseja incluir dados de autenticação?");
+    const includeAuth = window.confirm(t.report.includeAuthPrompt);
     const blob = new Blob([generateInspectedLogHTML(selectedLog, includeAuth)], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -337,7 +337,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
   const handleExportInspectedPDF = () => {
     if (!selectedLog) return;
-    const includeAuth = window.confirm(theme === 'dark' ? "Include auth data?" : "Deseja incluir dados de autenticação?");
+    const includeAuth = window.confirm(t.report.includeAuthPrompt);
     const win = window.open('', '_blank');
     win.document.write(generateInspectedLogHTML(selectedLog, includeAuth));
     win.document.close();
@@ -404,14 +404,14 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
         </div>
         <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border theme-border overflow-hidden min-w-0">
           <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.targetUrl}</span>
-          <span className="theme-text-secondary font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? "Fluxo Multi-step" : "Múltiplas (Cenário)")}</span>
+          <span className="theme-text-secondary font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? t.report.multiStep : t.report.multiScenario)}</span>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.planned}</span>
           <span className="text-slate-700 dark:theme-text font-bold">
-            {config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : (
+            {config.method === '' ? t.report.variesByStep : (
               config.duration > 0 ? (
                 config.rampUp > 0 && config.rampUp < config.duration 
                   ? (config.totalRequests * (config.duration - (config.rampUp / 2)))
@@ -422,7 +422,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.duration}</span>
-          <span className="text-slate-700 dark:theme-text font-bold">{config.method === '' ? (theme === 'dark' ? 'Varies by step' : 'Varia por passo') : `${config.duration}s`}</span>
+          <span className="text-slate-700 dark:theme-text font-bold">{config.method === '' ? t.report.variesByStep : `${config.duration}s`}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">{t.report.realTime}</span>
@@ -471,10 +471,10 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       {/* Gráficos de Tendência */}
       <div className="grid grid-cols-1 gap-4">
          <div className="grid grid-cols-2 gap-4">
-            <MiniChart data={trendData.reqTrend} color="#3b82f6" label="Vazão (Req/s)" unit=" reqs" isRunning={isRunning} />
-            <MiniChart data={trendData.errTrend} color="#ef4444" label="Erros detectados" unit=" errs" isRunning={isRunning} />
+            <MiniChart data={trendData.reqTrend} color="#3b82f6" label={t.report.chartThroughput} unit=" reqs" isRunning={isRunning} loadingText={t.report.capturing} emptyText={t.report.noData} />
+            <MiniChart data={trendData.errTrend} color="#ef4444" label={t.report.chartErrors} unit=" errs" isRunning={isRunning} loadingText={t.report.capturing} emptyText={t.report.noData} />
          </div>
-         <MiniChart data={trendData.timeTrend} color="#10b981" label="Latência por Action (Ms x Requests)" unit="ms" isRunning={isRunning} height={120} />
+         <MiniChart data={trendData.timeTrend} color="#10b981" label={t.report.chartLatency} unit="ms" isRunning={isRunning} height={120} loadingText={t.report.capturing} emptyText={t.report.noData} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -499,7 +499,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
             onClick={() => setLogFilter('all')}
             className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${logFilter === 'all' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            TODOS ({counts.all})
+            {t.report.filterAll} ({counts.all})
           </button>
           <button 
             onClick={() => setLogFilter('success')}
@@ -550,14 +550,14 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col border border-slate-200 dark:border-slate-800">
             <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div className="flex items-center gap-4">
-                <h3 className="text-xl font-bold dark:text-white">Inspeção da Requisição</h3>
+                <h3 className="text-xl font-bold dark:text-white">{t.report.inspectionTitle}</h3>
                 <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 gap-1">
                   {activeCollectionId && config.activeRequestId && (
                     <>
                       <button 
                         onClick={() => onSaveResponseToDoc(activeCollectionId, config.activeRequestId, selectedLog)} 
                         className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-[9px] font-black text-amber-600 dark:text-amber-400 transition-all uppercase flex items-center gap-1" 
-                        title="Adicionar esta resposta à documentação da requisição"
+                        title={t.report.saveToDocTooltip}
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         DOC
@@ -578,8 +578,8 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
                 <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2">
                   <svg className="w-5 h-5 text-rose-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                   <div>
-                    <p className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Falha na Validação</p>
-                    <p className="text-xs text-rose-500 dark:text-rose-500 font-mono mt-1">{selectedLog.errorMessage || "A resposta não atende aos critérios das asserções definidas."}</p>
+                    <p className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">{t.report.validationFailed}</p>
+                    <p className="text-xs text-rose-500 dark:text-rose-500 font-mono mt-1">{selectedLog.errorMessage || t.report.validationDefaultMsg}</p>
                   </div>
                 </div>
               )}

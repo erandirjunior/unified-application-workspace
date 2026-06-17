@@ -102,9 +102,7 @@ func main() {
 	http.HandleFunc("/mock/", mockServerHandler)
 	http.HandleFunc("/mock-stream", mockStreamHandler)
 
-    fmt.Printf("🚀 Unified API Workspace Backend rodando em http://localhost:%s\n", port)
-    fmt.Printf("⏰ Timezone: %s\n", tz)
-    fmt.Printf("👉 Rota de execução: POST http://localhost:%s/run\n", port)
+    fmt.Println("🚀 Unified Application Workspace Backend is running.")
     if err := http.ListenAndServe(":"+port, nil); err != nil {
         fmt.Println(err)
     }
