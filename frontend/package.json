@@ -1,7 +1,7 @@
 {
   "name": "unified-api-workspace-frontend",
   "version": "1.0.0",
-  "description": "Frontend service for Unified API Workspace project",
+  "description": "Frontend service for Unified Application Workspace project",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
