@@ -71,7 +71,7 @@ export default function CollectionView({
   };
 
   const handleAddEnvironment = () => {
-    const newEnv = { id: Date.now().toString(), name: 'Novo Ambiente', variables: [] };
+    const newEnv = { id: Date.now().toString(), name: t.collection.envModal.newEnvName, variables: [] };
     onUpdateEnvironments(collection.id, [...(collection.environments || []), newEnv]);
     setEditingEnvId(newEnv.id);
   };
@@ -80,7 +80,7 @@ export default function CollectionView({
     const envs = collection.environments || [];
     if (envs.length <= 1) return;
 
-    if (!window.confirm('Tem certeza que deseja excluir este ambiente?')) return;
+    if (!window.confirm(t.collection.envModal.confirmDelete)) return;
 
     const newEnvs = envs.filter(e => e.id !== envId);
     onUpdateEnvironments(collection.id, newEnvs);
@@ -151,7 +151,7 @@ export default function CollectionView({
     const newId = Date.now().toString();
     const newReq = { 
       id: newId, 
-      name: 'Nova Action', 
+      name: 'Action', 
       method: 'GET', 
       url: '', 
       responses: [], 
@@ -167,7 +167,7 @@ export default function CollectionView({
 
   const handleAddNewWorkflow = () => {
     const newId = Date.now().toString();
-    const newWorkflow = { id: newId, name: 'Novo Workflow', description: '', steps: [] };
+    const newWorkflow = { id: newId, name: 'Workflow', description: '', steps: [] };
     onUpdateWorkflows(collection.id, [...(collection.workflows || []), newWorkflow]);
     setEditingWorkflowId(newId);
     if (setActiveWorkflowId) setActiveWorkflowId(newId);
@@ -176,7 +176,7 @@ export default function CollectionView({
   const handleAddNewMock = async () => {
     const newMock = { 
       id: Date.now().toString(), 
-      name: 'Novo Mock', 
+      name: 'Mock', 
       path: '/api/v1/resource', 
       method: 'GET', 
       response: { status: 200, body: '{}', headers: { 'Content-Type': 'application/json' } }, 
