@@ -150,27 +150,27 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
       <div className="p-4 border-b theme-border theme-elevated flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`}></span>
-          <h2 className="text-xs font-black text-white uppercase tracking-widest">Mock Server Monitor</h2>
-          <span className="text-[9px] text-slate-500 font-mono">{activeMocks.length} ativo{activeMocks.length !== 1 ? 's' : ''}</span>
+          <h2 className="text-xs font-black text-white uppercase tracking-widest">{t.mocks.monitorTitle}</h2>
+          <span className="text-[9px] text-slate-500 font-mono">{activeMocks.length} {activeMocks.length !== 1 ? t.mocks.activeCountPlural : t.mocks.activeCount}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={activateAll}
             className="px-3 py-1.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500 hover:text-white transition-all uppercase tracking-wider"
           >
-            Ativar Todos
+            {t.mocks.activateAll}
           </button>
           <button
             onClick={deactivateAll}
             className="px-3 py-1.5 text-[9px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500 hover:text-white transition-all uppercase tracking-wider"
           >
-            Parar Todos
+            {t.mocks.deactivateAll}
           </button>
           <button
             onClick={() => setLogs([])}
             className="px-3 py-1.5 text-[9px] font-bold text-slate-400 bg-white/5 border theme-border rounded-lg hover:text-white transition-all uppercase tracking-wider"
           >
-            Limpar
+            {t.mocks.clearLogs}
           </button>
           <button onClick={onClose} className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -183,9 +183,9 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
         <div className="w-80 border-r theme-border flex flex-col shrink-0">
           {/* Lista de mocks com toggles */}
           <div className="p-3 border-b theme-border space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-            <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Endpoints Registrados</h3>
+            <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">{t.mocks.registeredEndpoints}</h3>
             {mocks.length === 0 ? (
-              <p className="text-[10px] text-slate-600 italic">Nenhum mock registrado</p>
+              <p className="text-[10px] text-slate-600 italic">{t.mocks.noMocksRegistered}</p>
             ) : mocks.map(mock => (
               <div key={mock.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors">
                 <button
@@ -209,7 +209,7 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
               onChange={(e) => setFilterMockId(e.target.value)}
               className="input-base !py-1.5 text-[10px] font-bold"
             >
-              <option value="all">Todos os Mocks</option>
+              <option value="all">{t.mocks.allMocksFilter}</option>
               {mocks.map(m => (
                 <option key={m.id} value={m.id}>[{m.method}] {m.name}</option>
               ))}
@@ -221,7 +221,7 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
             {filteredLogs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-3 py-12">
                 <svg className="w-8 h-8 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <p className="text-[10px] italic">Aguardando requests...</p>
+                <p className="text-[10px] italic">{t.mocks.waitingRequests}</p>
               </div>
             ) : filteredLogs.map((log, i) => (
               <div
@@ -261,7 +261,7 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Request */}
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest border-b border-blue-500/20 pb-1">Request Recebido</h4>
+                  <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest border-b border-blue-500/20 pb-1">{t.mocks.requestReceivedLabel}</h4>
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${methodColors[selectedLog.method] || ''}`}>{selectedLog.method}</span>
@@ -286,7 +286,7 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
 
                 {/* Response */}
                 <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest border-b border-emerald-500/20 pb-1">Response Enviado</h4>
+                  <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest border-b border-emerald-500/20 pb-1">{t.mocks.responseSentLabel}</h4>
                   <div>
                     <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Status</p>
                     <span className={`text-lg font-black ${selectedLog.statusCode >= 400 ? 'text-rose-400' : 'text-emerald-400'}`}>{selectedLog.statusCode}</span>
@@ -309,7 +309,7 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
                   ) : (
                     <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                       <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                      <span className="text-[10px] font-bold text-blue-400">Arquivo binário enviado</span>
+                      <span className="text-[10px] font-bold text-blue-400">{t.mocks.fileBinarySent}</span>
                     </div>
                   )}
                 </div>
@@ -318,8 +318,8 @@ export default function MocksGlobalMonitor({ t, mocks: mocksProp, collection, fe
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
               <svg className="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c3.55 0 6.715 1.85 8.711 4.673l.036.052a2 2 0 010 2.274l-.036.052C18.715 17.15 15.55 19 12 19c-4.477 0-8.268-2.943-9.542-7z"/></svg>
-              <p className="text-sm font-medium">Selecione um log para inspecionar</p>
-              <p className="text-xs text-slate-600">Clique em uma requisição à esquerda para ver detalhes</p>
+              <p className="text-sm font-medium">{t.mocks.selectLogToInspect}</p>
+              <p className="text-xs text-slate-600">{t.mocks.selectLogHint}</p>
             </div>
           )}
         </div>

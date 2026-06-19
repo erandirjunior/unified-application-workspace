@@ -200,7 +200,7 @@ export default function CollectionSidebar({
             onClick={(e) => { 
               e.stopPropagation(); 
               if (rightPanelSize === 'maximized') setRightPanelSize('normal');
-              onAddRequest(collection.id, 'Nova Action', folder.id); 
+              onAddRequest(collection.id, 'Action', folder.id); 
             }} 
             className="p-1 text-slate-400 hover:text-blue-500"
             title={t.collection.actions.newRequest}
@@ -458,11 +458,11 @@ export default function CollectionSidebar({
                 Action
               </button>
               <button 
-                onClick={() => onAddFolder(collection.id, 'Nova Pasta')}
+                onClick={() => onAddFolder(collection.id, t.collection.newFolderPlaceholder)}
                 className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-slate-800 border theme-border rounded-lg text-[8px] font-black text-slate-400 hover:bg-slate-700 hover:text-white transition-all uppercase tracking-tight"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                Pasta
+                {t.collection.folderLabel}
               </button>
               <button 
                 onClick={() => onImportCurl(collection.id)}
@@ -482,11 +482,11 @@ export default function CollectionSidebar({
                 {t.workflows.newBtn}
               </button>
               <button 
-                onClick={() => onAddFolder(collection.id, 'Nova Pasta', 'workflows')}
+                onClick={() => onAddFolder(collection.id, t.collection.newFolderPlaceholder, 'workflows')}
                 className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-slate-800 border theme-border rounded-lg text-[8px] font-black text-slate-400 hover:bg-slate-700 hover:text-white transition-all uppercase tracking-tight"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                Pasta
+                {t.collection.folderLabel}
               </button>
             </>
           ) : (
@@ -499,11 +499,11 @@ export default function CollectionSidebar({
                 {t.mocks.newBtn}
               </button>
               <button 
-                onClick={() => onAddFolder(collection.id, 'Nova Pasta', 'mocks')}
+                onClick={() => onAddFolder(collection.id, t.collection.newFolderPlaceholder, 'mocks')}
                 className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-slate-800 border theme-border rounded-lg text-[8px] font-black text-slate-400 hover:bg-slate-700 hover:text-white transition-all uppercase tracking-tight"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                Pasta
+                {t.collection.folderLabel}
               </button>
             </>
           )}

@@ -239,7 +239,7 @@ describe('CollectionView', () => {
     
     expect(defaultProps.onUpdateWorkflows).toHaveBeenCalledWith('col-1', expect.arrayContaining([
       expect.objectContaining({ id: 'wf-1' }),
-      expect.objectContaining({ name: 'Novo Workflow' })
+      expect.objectContaining({ name: 'Workflow' })
     ]));
     consoleSpy.mockRestore();
   });

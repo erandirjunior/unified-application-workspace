@@ -105,7 +105,7 @@ describe('ServersView', () => {
 
     it('should call setCurrentMock when changing the HTTP status', () => {
       render(<ServersView {...defaultProps} isEditing={true} currentMock={defaultMock} />);
-      const statusSelect = screen.getByLabelText('HTTP Status');
+      const statusSelect = screen.getByLabelText(pt.mocks.statusLabel);
       fireEvent.change(statusSelect, { target: { value: '404' } });
       expect(defaultProps.setCurrentMock).toHaveBeenCalledWith({
         ...defaultMock,
@@ -148,7 +148,7 @@ describe('ServersView', () => {
 
     it('should switch to FILE mode when clicking ARQUIVO button', () => {
       render(<ServersView {...defaultProps} isEditing={true} currentMock={defaultMock} />);
-      const fileBtn = screen.getByText('ARQUIVO');
+      const fileBtn = screen.getByText(pt.mocks.typeFile);
       fireEvent.click(fileBtn);
       expect(defaultProps.setCurrentMock).toHaveBeenCalledWith({
         ...defaultMock,
@@ -159,7 +159,7 @@ describe('ServersView', () => {
     it('should show file upload input when in file mode', () => {
       const fileMock = { ...defaultMock, response: { ...defaultMock.response, isFile: true } };
       render(<ServersView {...defaultProps} isEditing={true} currentMock={fileMock} />);
-      expect(screen.getByLabelText('Upload do Arquivo')).toBeInTheDocument();
+      expect(screen.getByLabelText(pt.mocks.uploadLabel)).toBeInTheDocument();
     });
 
     it('should handle file upload and update currentMock', async () => {
@@ -201,7 +201,7 @@ describe('ServersView', () => {
         response: { ...defaultMock.response, isFile: true, fileName: 'document.pdf' }
       };
       render(<ServersView {...defaultProps} isEditing={true} currentMock={fileMock} />);
-      expect(screen.getByText(/document\.pdf \(Pronto para servir\)/)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`document\\.pdf \\(${pt.mocks.readyToServe}\\)`))).toBeInTheDocument();
     });
 
     it('should allow adding assertions', () => {
@@ -222,7 +222,7 @@ describe('ServersView', () => {
       };
       render(<ServersView {...defaultProps} isEditing={true} currentMock={mockWithAssertions} />);
 
-      const removeBtn = screen.getByTitle('Remover Asserção');
+      const removeBtn = screen.getByTitle(pt.collection.tooltips.delete);
       fireEvent.click(removeBtn);
 
       expect(defaultProps.setCurrentMock).toHaveBeenCalledWith({
@@ -270,7 +270,7 @@ describe('ServersView', () => {
       };
       render(<ServersView {...defaultProps} isEditing={true} currentMock={mockWithAssertions} />);
 
-      const targetInput = screen.getByPlaceholderText('Valor Esperado');
+      const targetInput = screen.getByPlaceholderText(pt.config.assertionExpectedPlaceholder);
       fireEvent.change(targetInput, { target: { value: 'Bearer abc123' } });
 
       expect(defaultProps.setCurrentMock).toHaveBeenCalledWith({

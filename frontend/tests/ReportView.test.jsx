@@ -129,7 +129,7 @@ describe('ReportView', () => {
     
     const modal = screen.getByRole('dialog');
     // The headers are rendered in a <pre> as JSON.stringify, so look for OMITIDO in the pre text
-    expect(within(modal).getByText(/OMITIDO/)).toBeInTheDocument();
+    expect(within(modal).getByText(/REDACTED/)).toBeInTheDocument();
     expect(within(modal).getByText(/"Content-Type"/)).toBeInTheDocument();
   });
 

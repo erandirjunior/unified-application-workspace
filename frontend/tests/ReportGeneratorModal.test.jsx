@@ -235,6 +235,6 @@ describe('ReportGeneratorModal', () => {
   it('should use default title when collection has no name', () => {
     const noNameCollection = { ...collection, name: '' };
     render(<ReportGeneratorModal {...defaultProps} collection={noNameCollection} />);
-    expect(screen.getByDisplayValue('Documentação da API')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Documentação Unificada')).toBeInTheDocument();
   });
 });

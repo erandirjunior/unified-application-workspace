@@ -257,7 +257,7 @@ describe('CollectionSidebar', () => {
     fireEvent.click(screen.getByText('Auth'));
     const addBtn = screen.getByTitle(pt.collection.actions.newRequest);
     fireEvent.click(addBtn);
-    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'Nova Action', 'folder-1');
+    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'Action', 'folder-1');
   });
 
   // Workflows tab tests

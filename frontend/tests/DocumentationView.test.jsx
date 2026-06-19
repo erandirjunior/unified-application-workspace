@@ -194,7 +194,7 @@ describe('DocumentationView', () => {
     fireEvent.click(screen.getByTitle('Exportar HTML'));
     expect(createObjectURLMock).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTitle('Imprimir ou Salvar PDF'));
+    fireEvent.click(screen.getByTitle('Exportar PDF'));
     expect(window.open).toHaveBeenCalled();
 
     clickSpy.mockRestore();

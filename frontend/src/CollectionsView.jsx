@@ -193,7 +193,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
   };
 
   const handleImportCollection = () => {
-    if (!importFile) return alert('Por favor, selecione um arquivo para importar.');
+    if (!importFile) return alert(t.toasts.importSelectFile);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -201,22 +201,22 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
         const importedData = JSON.parse(event.target.result);
         // Validação básica da estrutura
         if (!importedData.collection || !importedData.collection.id || !importedData.collection.name) {
-          alert('Arquivo JSON inválido. Certifique-se de que é um arquivo de coleção UAW.');
+          alert(t.toasts.importInvalidJson);
           return;
         }
         
         // Garante que o ID da coleção importada seja único
         const newCol = { ...importedData.collection, id: Date.now().toString() };
         onCreateCollection(newCol.name, newCol); // Passa a coleção completa para onCreateCollection
-        alert(`Coleção "${newCol.name}" importada com sucesso!`);
+        alert(t.toasts.importSuccess.replace('{name}', newCol.name));
         setIsImportModalOpen(false);
         setImportFile(null);
       } catch (e) {
-        alert('Erro ao processar o arquivo JSON: ' + e.message);
+        alert(t.toasts.importError + e.message);
       }
     };
     reader.onerror = () => {
-      alert('Erro ao ler o arquivo.');
+      alert(t.toasts.importReadError);
     };
     reader.readAsText(importFile);
   };
@@ -411,7 +411,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                 </span>
                 <div className="flex gap-2">
                   <button onClick={() => selectAllVars(true)} className="text-[10px] font-black theme-elevated px-3 py-1.5 rounded-lg border theme-border text-[#7C5CFF] hover:bg-[#7C5CFF]/10 transition-all uppercase">{t.header.logoAlt}</button>
-                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black theme-elevated px-3 py-1.5 rounded-lg border theme-border text-slate-400 hover:text-white transition-all uppercase">LIMPAR</button>
+                  <button onClick={() => selectAllVars(false)} className="text-[10px] font-black theme-elevated px-3 py-1.5 rounded-lg border theme-border text-slate-400 hover:text-white transition-all uppercase">{t.dashboard.clear}</button>
                 </div>
               </div>
 
@@ -439,7 +439,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
                               <span className={`text-xs font-bold truncate ${selectedVars[env.id]?.[v.key] ? 'text-emerald-400' : 'theme-text-secondary'}`}>
                                 {v.key}
                               </span>
-                              <span className="text-[10px] text-slate-500 truncate font-mono">{v.value || '(vazio)'}</span>
+                              <span className="text-[10px] text-slate-500 truncate font-mono">{v.value || t.dashboard.emptyValue}</span>
                             </div>
                           </label>
                         ))}

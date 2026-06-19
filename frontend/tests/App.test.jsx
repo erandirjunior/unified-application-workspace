@@ -939,7 +939,7 @@ describe('App', () => {
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
-  test('saveCurrentRequest uses default name "Nova Action" when name is empty', () => {
+  test('saveCurrentRequest uses default name "Action" when name is empty', () => {
     mockFormState.activeRequestId = 'req-1';
     mockFormState.requestName = '';
     render(<App />);

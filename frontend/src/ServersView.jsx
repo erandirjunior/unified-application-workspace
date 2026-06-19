@@ -257,16 +257,16 @@ export default function ServersView({
                   <button 
                     onClick={() => setCurrentMock({...currentMock, response: {...currentMock.response, isFile: false}})}
                     className={`text-[10px] px-2 py-0.5 rounded ${!currentMock.response.isFile ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}
-                  >TEXTO/JSON</button>
+                  >{t.mocks.typeText}</button>
                   <button 
                     onClick={() => setCurrentMock({...currentMock, response: {...currentMock.response, isFile: true}})}
                     className={`text-[10px] px-2 py-0.5 rounded ${currentMock.response.isFile ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}
-                  >ARQUIVO</button>
+                  >{t.mocks.typeFile}</button>
                 </div>
               </div>
               
               <div>
-                <label htmlFor="mock-status" className="label-base">HTTP Status</label>
+                <label htmlFor="mock-status" className="label-base">{t.mocks.statusLabel}</label>
                 <select id="mock-status" className="input-base" value={currentMock.response.status} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, status: parseInt(e.target.value)}})}>
                   <optgroup label="1xx - Informational">
                     <option value="100">100 - Continue</option>
@@ -329,21 +329,21 @@ export default function ServersView({
               </div>
 
               <div>
-                <label htmlFor="mock-payload" className="label-base">{currentMock.response.isFile ? 'Upload do Arquivo' : 'Response Body (JSON/XML/Text)'}</label>
+                <label htmlFor="mock-payload" className="label-base">{currentMock.response.isFile ? t.mocks.uploadLabel : t.mocks.bodyLabel}</label>
                 {currentMock.response.isFile ? (
                   <div className="space-y-2">
                     <input id="mock-payload" type="file" onChange={handleFileChange} className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
                     {currentMock.response.fileName && (
                       <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-100">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        {currentMock.response.fileName} (Pronto para servir)
+                        {currentMock.response.fileName} ({t.mocks.readyToServe})
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="relative">
                     <textarea id="mock-payload" className="input-base font-mono text-xs min-h-[150px]" value={currentMock.response.body} onChange={e => setCurrentMock({...currentMock, response: {...currentMock.response, body: e.target.value}})} />
-                    <p className="absolute bottom-2 right-2 text-[9px] text-slate-400 font-mono">Suporta {'{{variáveis}}'}</p>
+                    <p className="absolute bottom-2 right-2 text-[9px] text-slate-400 font-mono">{t.mocks.supportsVars}</p>
                   </div>
                 )}
               </div>
@@ -363,10 +363,10 @@ export default function ServersView({
                     const newA = [...currentMock.assertions]; newA[i].property = e.target.value; setCurrentMock({...currentMock, assertions: newA});
                   }} />
                   <span className="text-slate-400 font-bold text-[10px]">==</span>
-                  <input className="input-base !py-1 text-[10px]" placeholder="Valor Esperado" value={a.target} onChange={e => {
+                  <input className="input-base !py-1 text-[10px]" placeholder={t.config?.assertionExpectedPlaceholder || "Valor Esperado"} value={a.target} onChange={e => {
                     const newA = [...currentMock.assertions]; newA[i].target = e.target.value; setCurrentMock({...currentMock, assertions: newA});
                   }} />
-                  <button onClick={() => setCurrentMock({...currentMock, assertions: currentMock.assertions.filter((_, idx) => idx !== i)})} className="text-rose-500" title="Remover Asserção">×</button>
+                  <button onClick={() => setCurrentMock({...currentMock, assertions: currentMock.assertions.filter((_, idx) => idx !== i)})} className="text-rose-500" title={t.collection?.tooltips?.delete || "Remover"}>×</button>
                 </div>
               ))}
               <button 

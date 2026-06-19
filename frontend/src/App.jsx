@@ -20,7 +20,7 @@ function App() {
   const [view, setView] = useState('collections');
   const [activeTab, setActiveTab] = useState('requests');
   const t = lang === 'pt' ? pt : en;
-  const [results, setResults] = useState('Aguardando comando...');
+  const [results, setResults] = useState('');
   const [isVarsModalOpen, setIsVarsModalOpen] = useState(false);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState(null);
@@ -57,7 +57,7 @@ function App() {
     });
   }, [form?.activeRequestId, view, updateField]);
 
-  const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast);
+  const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast, t);
 
   const sendRequests = async (payload = null) => {
     if (view !== 'collection-detail') setView('report');
@@ -82,7 +82,7 @@ function App() {
     }
   }, [showToast]);
   const saveCurrentRequest = (name, colId) => {
-    const finalName = name || form.requestName || 'Nova Action';
+    const finalName = name || form.requestName || 'Action';
     const newRequest = {
       ...form,
       id: Date.now().toString(),
@@ -159,7 +159,7 @@ function App() {
     if (Array.isArray(form.responses)) {
       const hasEmptyStatus = form.responses.some(r => !r.statusCode || String(r.statusCode).trim() === '');
       if (hasEmptyStatus) {
-        showCustomToast('Erro: Todas as respostas na documentação devem possuir um Status Code.', 'error');
+        showCustomToast(t.toasts.responseStatusError, 'error');
         return;
       }
     }
@@ -224,7 +224,7 @@ function App() {
         });
         return { ...col, workflows: newWorkflows };
       }));
-      if (!silent) showCustomToast('Passo do workflow atualizado!', 'success');
+      if (!silent) showCustomToast(t.toasts.workflowStepUpdated, 'success');
       return;
     }
 
@@ -558,9 +558,9 @@ function App() {
 };
 
   const deleteCollection = (id) => {
-    showCustomConfirm('Tem certeza que deseja excluir esta coleção? Todas as requisições dentro dela serão perdidas.', () => {
+    showCustomConfirm(t.toasts.confirmDeleteCollection, () => {
       setCollections(prev => prev.filter(c => c.id !== id));
-      showCustomToast('Coleção excluída com sucesso!', 'success');
+      showCustomToast(t.toasts.collectionDeleted, 'success');
     });
   };
 
@@ -579,7 +579,7 @@ function App() {
     }
   }; // Não mostra toast aqui, pois é uma ação de criação visível
   const deleteRequest = (colId, reqId) => {
-    showCustomConfirm('Tem certeza que deseja excluir esta requisição?', () => {
+    showCustomConfirm(t.toasts.confirmDeleteRequest, () => {
       setCollections(prev => prev.map(collection => {
         if (collection.id !== colId) return collection;
         const recursiveFilter = (items) => {
@@ -588,12 +588,12 @@ function App() {
         };
         return { ...collection, requests: recursiveFilter(collection.requests) };
       }));
-      showCustomToast('Requisição excluída com sucesso!', 'success');
+      showCustomToast(t.toasts.requestDeleted, 'success');
     });
   };
 
   const deleteFolder = (colId, folderId, section = 'requests') => {
-    showCustomConfirm('Tem certeza que deseja excluir esta pasta e todas as requisições dentro dela?', () => {
+    showCustomConfirm(t.toasts.confirmDeleteFolder, () => {
       setCollections(prev => prev.map(collection => {
         if (collection.id !== colId) return collection;
         const recursiveFilter = (items) => {
@@ -611,17 +611,17 @@ function App() {
         }
         return { ...collection, requests: recursiveFilter(collection.requests) };
       }));
-      showCustomToast('Pasta excluída com sucesso!', 'success');
+      showCustomToast(t.toasts.folderDeleted, 'success');
     });
   };
 
   const deleteWorkflow = (colId, workflowId) => {
-    showCustomConfirm('Tem certeza que deseja excluir este workflow?', () => {
+    showCustomConfirm(t.toasts.confirmDeleteWorkflow, () => {
       setCollections(prev => prev.map(collection => {
         if (collection.id !== colId) return collection;
         return { ...collection, workflows: (collection.workflows || []).filter(w => w.id !== workflowId) };
       }));
-      showCustomToast('Workflow excluído com sucesso!', 'success');
+      showCustomToast(t.toasts.workflowDeleted, 'success');
     });
   };
 
@@ -1004,7 +1004,7 @@ function App() {
                   loadRequest(sanitizedReq, scenId, stepIdx, workflowId, subIdx);
                   
                   // Sincroniza todos os campos de UI e Documentação de uma vez
-                  updateField('requestName', req.name || 'Nova Action');
+                  updateField('requestName', req.name || 'Action');
                   updateField('documentation', req.documentation || '');
                   updateField('description', req.documentation || ''); // Mantém compatibilidade se algum componente ainda ler 'description'
                   updateField('authDoc', req.authDoc || '');
@@ -1049,7 +1049,9 @@ function App() {
                   setAuthToken: (v) => updateField('authToken', v),
                   setAuthUsername: (v) => updateField('authUsername', v),
                   setAuthPassword: (v) => updateField('authPassword', v),
+                  setApiKeyName: (v) => updateField('apiKeyName', v),
                   setApiKeyValue: (v) => updateField('apiKeyValue', v),
+                  setAuthDoc: (v) => updateField('authDoc', v),
                   setRequestName: (v) => updateField('requestName', v),
                   sendRequests: () => sendRequests(form),
                   setDescription: (v) => updateField('description', v),
@@ -1243,6 +1245,7 @@ function App() {
                   setAuthToken={(v) => updateField('authToken', v)}
                   setAuthUsername={(v) => updateField('authUsername', v)}
                   setAuthPassword={(v) => updateField('authPassword', v)}
+                  setApiKeyName={(v) => updateField('apiKeyName', v)}
                   setApiKeyValue={(v) => updateField('apiKeyValue', v)}
                   setBodyRawDoc={(v) => updateField('bodyRawDoc', v)} 
                   setAuthDoc={(v) => updateField('authDoc', v)}

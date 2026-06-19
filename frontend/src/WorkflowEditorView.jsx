@@ -116,7 +116,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
   };
 
   // Fábricas de steps
-  const makeRequest = () => ({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), type: 'request', name: 'Nova Action', method: 'GET', url: 'https://api.example.com', totalRequests: 1, duration: 0, headers: [], bodyType: 'none' });
+  const makeRequest = () => ({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), type: 'request', name: 'Action', method: 'GET', url: 'https://api.example.com', totalRequests: 1, duration: 0, headers: [], bodyType: 'none' });
   const makeParallel = () => ({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), type: 'parallel', requests: [] });
   const makeLoop = () => ({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), type: 'loop', loop: { source: 'status', property: '', operator: '==', target: '200', maxIter: 10, logic: 'and', conditions: [] }, steps: [] });
   const makeCondition = () => ({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), type: 'condition', condition: { source: 'status', property: '', operator: '==', target: '200', logic: 'and', conditions: [] }, steps: [], elseSteps: [] });
@@ -238,7 +238,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                 { fn: () => addStep(makeLoop()), icon: '🔁', label: 'Loop', color: 'rose' },
                 { fn: () => addStep(makeCondition()), icon: '🔀', label: 'If/Else', color: 'cyan' },
                 { fn: () => addStep(makeWait()), icon: '⏳', label: 'Wait', color: 'amber' },
-                { fn: () => setIsCopyModalOpen(true), icon: '📋', label: 'Copiar', color: 'emerald' },
+                { fn: () => setIsCopyModalOpen(true), icon: '📋', label: t.workflows?.editor?.copyLabel || 'Copy', color: 'emerald' },
               ].map((item, i) => (
                 <button key={i} onClick={item.fn} className={`flex items-center gap-2 p-2.5 theme-elevated border theme-border rounded-xl hover:border-${item.color}-500/30 transition-all text-left`}>
                   <span className="text-sm">{item.icon}</span>
@@ -256,7 +256,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             <div className="flex items-center gap-1 text-xs flex-wrap flex-1">
               {navPath.length > 0 ? (
                 <>
-                  <button onClick={() => navigateBack(-1)} className="text-slate-500 hover:text-white font-bold transition-colors">Workflow</button>
+                  <button onClick={() => navigateBack(-1)} className="text-slate-500 hover:text-white font-bold transition-colors">{t.workflows?.title ? 'Workflow' : 'Workflow'}</button>
                   {navPath.map((nav, i) => (
                     <span key={i} className="flex items-center gap-1">
                       <span className="text-slate-600">/</span>
@@ -265,12 +265,12 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                   ))}
                 </>
               ) : (
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Steps do Workflow</span>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t.workflows?.editor?.stepsTitle || 'Steps do Workflow'}</span>
               )}
             </div>
             <div className="flex theme-elevated border theme-border rounded-lg p-0.5 shrink-0">
-              <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'list' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>Lista</button>
-              <button onClick={() => setViewMode('flowchart')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'flowchart' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>Fluxograma</button>
+              <button onClick={() => setViewMode('list')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'list' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>{t.workflows?.editor?.listView || 'Lista'}</button>
+              <button onClick={() => setViewMode('flowchart')} className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-md transition-all ${viewMode === 'flowchart' ? 'bg-[#7C5CFF] text-white shadow' : 'text-slate-400 hover:text-white'}`}>{t.workflows?.editor?.flowchartView || 'Fluxograma'}</button>
             </div>
           </div>
 
@@ -313,15 +313,15 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" strokeWidth="2.5"/></svg>
                           </button>
                           {step.type === 'parallel' && (
-                            <button onClick={() => navigateInto(step, 'requests', 'Parallel')} className="px-2 py-1 text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 rounded-lg">Editar →</button>
+                            <button onClick={() => navigateInto(step, 'requests', 'Parallel')} className="px-2 py-1 text-[9px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 rounded-lg">{t.workflows?.editor?.editBtn || 'Editar →'}</button>
                           )}
                           {step.type === 'loop' && (
-                            <button onClick={() => navigateInto(step, 'steps', 'Loop')} className="px-2 py-1 text-[9px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-lg">Editar →</button>
+                            <button onClick={() => navigateInto(step, 'steps', 'Loop')} className="px-2 py-1 text-[9px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-lg">{t.workflows?.editor?.editBtn || 'Editar →'}</button>
                           )}
                           {step.type === 'condition' && (
                             <>
-                              <button onClick={() => navigateInto(step, 'steps', 'Then ✅')} className="px-2 py-1 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 rounded-lg">Then →</button>
-                              <button onClick={() => navigateInto(step, 'elseSteps', 'Else ❌')} className="px-2 py-1 text-[9px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-lg">Else →</button>
+                              <button onClick={() => navigateInto(step, 'steps', 'Then ✅')} className="px-2 py-1 text-[9px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 rounded-lg">{t.workflows?.editor?.thenBtn || 'Then →'}</button>
+                              <button onClick={() => navigateInto(step, 'elseSteps', 'Else ❌')} className="px-2 py-1 text-[9px] font-bold text-rose-400 hover:text-rose-300 bg-rose-500/10 rounded-lg">{t.workflows?.editor?.elseBtn || 'Else →'}</button>
                             </>
                           )}
                           <button onClick={() => removeStep(step.id)} className="p-1 text-rose-500 hover:text-rose-400">
@@ -346,9 +346,9 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                       <div className="flex-1 min-w-0">
                         {step.type === 'wait' ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold theme-text-secondary">Aguardar</span>
+                            <span className="text-xs font-bold theme-text-secondary">{t.workflows?.editor?.waitLabel || 'Aguardar'}</span>
                             <input type="number" min="1" className="w-14 text-xs theme-elevated border theme-border rounded-lg px-2 py-1 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500/50" value={step.url || '5'} onChange={(e) => { updateStepField(step.id, 'url', e.target.value); updateStepField(step.id, 'name', `Pausa (${e.target.value}s)`); }} onClick={(e) => e.stopPropagation()} />
-                            <span className="text-xs text-slate-500">segundos</span>
+                            <span className="text-xs text-slate-500">{t.workflows?.editor?.waitSeconds || 'segundos'}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 overflow-hidden">
@@ -382,7 +382,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
             {currentSteps.length === 0 && (
               <div className="py-16 flex flex-col items-center justify-center text-slate-500">
                 <svg className="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" strokeWidth="1.5"/></svg>
-                <p className="text-sm font-medium">{navPath.length > 0 ? 'Vazio — adicione steps acima' : (t.workflows?.editor?.empty || 'Comece a montar seu workflow')}</p>
+                <p className="text-sm font-medium">{navPath.length > 0 ? (t.workflows?.editor?.emptyNav || 'Vazio — adicione steps acima') : (t.workflows?.editor?.empty || 'Comece a montar seu workflow')}</p>
               </div>
             )}
           </div>

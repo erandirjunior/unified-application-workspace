@@ -22,7 +22,7 @@ export default function SaveRequestForm({ onSaveRequest, requestName, setRequest
            className="w-full bg-transparent text-sm font-mono theme-text outline-none placeholder:text-slate-600" 
            value={requestName} 
            onChange={(e) => setRequestName(e.target.value)}
-           placeholder="Nome da Action..."
+           placeholder={t?.config?.actionNamePlaceholder || "Nome da Action..."}
          />
        </div>
 
@@ -33,13 +33,13 @@ export default function SaveRequestForm({ onSaveRequest, requestName, setRequest
              onClick={onRun}
              className="w-full h-10 bg-[#7C5CFF] hover:brightness-110 text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest shadow-lg shadow-[#7C5CFF]/20"
            >
-             Run
+             {t?.config?.actions?.runBtn || "Run"}
            </button>
          </div>
        )}
        <div className="col-span-2">
          <button onClick={handleSave} className="w-full h-10 theme-surface border theme-border text-slate-400 hover:text-white font-bold rounded-[10px] text-xs transition-all uppercase tracking-widest">
-           Save
+           {t?.common?.save || "Save"}
          </button>
        </div>
         {onClose && (
@@ -47,7 +47,7 @@ export default function SaveRequestForm({ onSaveRequest, requestName, setRequest
             <button
               onClick={onClose}
               className="p-2 text-slate-500 hover:text-rose-500 transition-colors rounded-lg"
-              title="Fechar Action"
+              title={t?.config?.closeAction || "Fechar Action"}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />

@@ -160,8 +160,8 @@ export default function ConfigView({
                             key={i}
                             className="flex gap-3 p-3 theme-elevated rounded-xl border theme-border shadow-inner animate-in slide-in-from-left-2 duration-200"
                           >
-                            <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder="Header Key" value={h.key} onChange={(e) => updateHeader(i, 'key', e.target.value)} />
-                            <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder="Value" value={h.value} onChange={(e) => updateHeader(i, 'value', e.target.value)} />
+                            <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder={t.config.headerKeyPlaceholder} value={h.key} onChange={(e) => updateHeader(i, 'key', e.target.value)} />
+                            <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder={t.config.valuePlaceholder} value={h.value} onChange={(e) => updateHeader(i, 'value', e.target.value)} />
                             <button className="text-slate-500 hover:text-rose-500 p-2 transition-colors" onClick={() => removeHeader(i)}>
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -171,7 +171,7 @@ export default function ConfigView({
                           className="text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors uppercase tracking-wider mt-3"
                           onClick={addHeader}
                         >
-                          + ADICIONAR HEADER
+                          {t.config.addHeader}
                         </button>
                       </div>
                     )}
@@ -179,19 +179,19 @@ export default function ConfigView({
                   {sec.id === 'body' && (
                     <div className="space-y-4">
                       <select className="input-base !py-3.5 !px-5 text-base font-semibold shadow-md rounded-xl theme-elevated" value={bodyType} onChange={(e) => setBodyType(e.target.value)}>
-                        <option value="none">Sem Corpo (None)</option>
-                        <option value="json">JSON</option>
-                        <option value="form-data">Form Data</option>
-                        <option value="xml">XML</option>
-                        <option value="text">Texto Simples</option>
-                        <option value="form-urlencoded">Form URL Encoded</option>
-                        <option value="file">Arquivo Binário</option>
+                        <option value="none">{t.config.bodyTypeNone}</option>
+                        <option value="json">{t.config.bodyTypeJson}</option>
+                        <option value="form-data">{t.config.bodyTypeFormData}</option>
+                        <option value="xml">{t.config.bodyTypeXml}</option>
+                        <option value="text">{t.config.bodyTypeText}</option>
+                        <option value="form-urlencoded">{t.config.bodyTypeFormUrlEncoded}</option>
+                        <option value="file">{t.config.bodyTypeFile}</option>
                       </select>
 
                       {bodyType !== 'none' && !['form-data', 'form-urlencoded'].includes(bodyType) && (
                         <textarea // Simula um editor de código
                           className="input-base font-mono text-sm min-h-[300px] !theme-base !text-emerald-300 border-none shadow-xl p-6 rounded-2xl"
-                          placeholder={`Insira o corpo da requisição (${bodyType.toUpperCase()})...`}
+                          placeholder={t.config.bodyPlaceholder.replace('{type}', bodyType.toUpperCase())}
                           value={bodyRaw}
                           onChange={(e) => setBodyRaw(e.target.value)}
                         />
@@ -207,9 +207,9 @@ export default function ConfigView({
                                   <button onClick={() => updateBodyParam(i, 'type', 'file')} className={`flex-1 text-xs font-black rounded-lg transition-all ${p.type === 'file' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-700'}`}>FILE</button>
                                 </div>
                               )} 
-                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder="Key" value={p.key} onChange={(e) => updateBodyParam(i, 'key', e.target.value)} />
+                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={t.config.keyPlaceholder} value={p.key} onChange={(e) => updateBodyParam(i, 'key', e.target.value)} />
                               <div className="flex-1 flex gap-2">
-                                <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={p.type === 'file' ? "@caminho/do/arquivo" : "Value"} value={p.value} onChange={(e) => updateBodyParam(i, 'value', e.target.value)} />
+                                <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={p.type === 'file' ? t.config.filePathPlaceholder : t.config.valuePlaceholder} value={p.value} onChange={(e) => updateBodyParam(i, 'value', e.target.value)} />
                                 {p.type === 'file' && ( // Botão de seleção de arquivo
                                   <button onClick={() => handleFileButtonClick(i)} className="px-4 theme-surface border theme-border rounded-lg hover:bg-blue-900/20 text-blue-500 transition-colors shadow-sm" title="Selecionar arquivo">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
@@ -235,7 +235,7 @@ export default function ConfigView({
                             className="text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors uppercase tracking-wider mt-3"
                             onClick={addBodyParam}
                           >
-                            + ADICIONAR PARÂMETRO
+                            {t.config.addParam}
                           </button>
                         </div>
                       )}
@@ -248,30 +248,30 @@ export default function ConfigView({
                           <div key={i} className="flex flex-col">
                             <div className="flex gap-1">
                               <select className="input-base !py-2.5 !px-4 !w-36 text-sm font-bold rounded-lg theme-surface" value={a.source} onChange={(e) => { const newA = [...assertions]; newA[i].source = e.target.value; setAssertions(newA); }}>
-                                <option value="status">Status Code</option>
-                                <option value="body">Body Content</option>
-                                <option value="header">Header</option>
+                                <option value="status">{t.config.assertionStatus}</option>
+                                <option value="body">{t.config.assertionBody}</option>
+                                <option value="header">{t.config.assertionHeader}</option>
                               </select>
                               <select className="input-base !py-2.5 !px-4 !w-32 text-sm font-bold rounded-lg theme-surface" value={a.operator} onChange={(e) => { const newA = [...assertions]; newA[i].operator = e.target.value; setAssertions(newA); }}>
-                                <option value="==">Equals</option>
-                                <option value="!=">Not Equals</option>
-                                <option value="contains">Contains</option>
-                                <option value="exists">Exists</option>
-                                <option value="not_exists">Not Exists</option>
+                                <option value="==">{t.config.assertionEquals}</option>
+                                <option value="!=">{t.config.assertionNotEquals}</option>
+                                <option value="contains">{t.config.assertionContains}</option>
+                                <option value="exists">{t.config.assertionExists}</option>
+                                <option value="not_exists">{t.config.assertionNotExists}</option>
                                 <option value=">">&gt;</option>
                                 <option value=">=">&gt;=</option>
                                 <option value="<">&lt;</option>
                                 <option value="<=">&lt;=</option>
                               </select> 
-                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={a.source === 'body' ? 'Path (ex: data.id)' : 'Header'} value={a.property} onChange={(e) => { const newA = [...assertions]; newA[i].property = e.target.value; setAssertions(newA); }} />
-                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={a.operator === 'exists' || a.operator === 'not_exists' ? "N/A" : "Expected"} value={a.target} disabled={a.operator === 'exists' || a.operator === 'not_exists'} onChange={(e) => { const newA = [...assertions]; newA[i].target = e.target.value; setAssertions(newA); }} />
+                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={a.source === 'body' ? t.config.assertionPathPlaceholder : t.config.assertionHeaderPlaceholder} value={a.property} onChange={(e) => { const newA = [...assertions]; newA[i].property = e.target.value; setAssertions(newA); }} />
+                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface shadow-inner" placeholder={a.operator === 'exists' || a.operator === 'not_exists' ? t.config.assertionNa : t.config.assertionExpectedPlaceholder} value={a.target} disabled={a.operator === 'exists' || a.operator === 'not_exists'} onChange={(e) => { const newA = [...assertions]; newA[i].target = e.target.value; setAssertions(newA); }} />
                               <button onClick={() => setAssertions(assertions.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-rose-500 p-2 ml-auto">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                               </button>
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => setAssertions([...assertions, { source: 'status', property: '', operator: '==', target: '200' }])} className="text-sm font-bold text-indigo-500 hover:text-indigo-400 transition-colors uppercase tracking-wider">+ ADICIONAR ASSERÇÃO</button>
+                        <button onClick={() => setAssertions([...assertions, { source: 'status', property: '', operator: '==', target: '200' }])} className="text-sm font-bold text-indigo-500 hover:text-indigo-400 transition-colors uppercase tracking-wider">{t.config.addAssertion}</button>
                       </div>
                     )}
 
@@ -281,47 +281,47 @@ export default function ConfigView({
                           <div key={i} className="flex flex-col gap-3 p-3 theme-elevated rounded-xl border theme-border shadow-inner">
                             <div className="flex gap-3">
                               <select className="input-base !py-2.5 !px-4 !w-36 text-sm font-bold rounded-lg theme-surface" value={ex.source} onChange={(e) => { const newE = [...extractions]; newE[i].source = e.target.value; setExtractions(newE); }}>
-                                <option value="body">Body</option>
-                                <option value="header">Header</option>
+                                <option value="body">{t.config.extractionBody}</option>
+                                <option value="header">{t.config.extractionHeader}</option>
                               </select>
-                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder={ex.source === 'body' ? 'Path (ex: token)' : 'Header'} value={ex.property} onChange={(e) => { const newE = [...extractions]; newE[i].property = e.target.value; setExtractions(newE); }} />
+                              <input className="input-base !py-2.5 !px-4 flex-1 text-sm font-mono rounded-lg theme-surface" placeholder={ex.source === 'body' ? t.config.extractionPathPlaceholder : t.config.extractionHeader} value={ex.property} onChange={(e) => { const newE = [...extractions]; newE[i].property = e.target.value; setExtractions(newE); }} />
                               <button onClick={() => setExtractions(extractions.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-rose-500 p-2 ml-auto">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                               </button>
                             </div>
                             <div className="flex gap-3 items-center">
-                              <span className="text-xs font-bold text-slate-400 uppercase">Salvar em:</span>
-                              <input className="input-base !py-2.5 !px-4 font-mono text-emerald-400 text-sm flex-1 rounded-lg theme-surface" placeholder="Nome da Variável" value={ex.varName} onChange={(e) => { const newE = [...extractions]; newE[i].varName = e.target.value; setExtractions(newE); }} />
+                              <span className="text-xs font-bold text-slate-400 uppercase">{t.config.extractionSaveIn}</span>
+                              <input className="input-base !py-2.5 !px-4 font-mono text-emerald-400 text-sm flex-1 rounded-lg theme-surface" placeholder={t.config.extractionVarPlaceholder} value={ex.varName} onChange={(e) => { const newE = [...extractions]; newE[i].varName = e.target.value; setExtractions(newE); }} />
                             </div>
                           </div>
                         ))}
-                        <button onClick={() => setExtractions([...extractions, { source: 'body', property: '', varName: 'my_var' }])} className="text-sm font-bold text-emerald-500 hover:text-emerald-400 transition-colors uppercase tracking-wider">+ ADICIONAR EXTRAÇÃO</button>
+                        <button onClick={() => setExtractions([...extractions, { source: 'body', property: '', varName: 'my_var' }])} className="text-sm font-bold text-emerald-500 hover:text-emerald-400 transition-colors uppercase tracking-wider">{t.config.addExtraction}</button>
                       </div>
                     )}
 
                     {sec.id === 'auth' && (
                       <div className="space-y-4">
                         <select className="input-base !py-3.5 !px-5 text-base font-bold rounded-xl shadow-md theme-elevated" value={authType} onChange={(e) => setAuthType(e.target.value)}>
-                          <option value="none">No Authentication</option>
-                          <option value="bearer">Bearer Token</option>
-                          <option value="basic">Basic Auth</option>
-                          <option value="apikey">API Key</option>
+                          <option value="none">{t.config.authNone}</option>
+                          <option value="bearer">{t.config.authBearer}</option>
+                          <option value="basic">{t.config.authBasic}</option>
+                          <option value="apikey">{t.config.authApiKey}</option>
                         </select>
-                        <textarea className="input-base text-sm min-h-[80px] mt-2 rounded-xl shadow-inner theme-surface" placeholder="Auth Description (optional)" value={authDoc} onChange={(e) => setAuthDoc(e.target.value)} />
+                        <textarea className="input-base text-sm min-h-[80px] mt-2 rounded-xl shadow-inner theme-surface" placeholder={t.config.authDescPlaceholder} value={authDoc} onChange={(e) => setAuthDoc(e.target.value)} />
                         
                         {authType === 'bearer' && (
-                          <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl shadow-inner theme-surface" placeholder="Token (suporta {{vars}})" value={authToken || ''} onChange={(e) => setAuthToken(e.target.value)} />
+                          <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl shadow-inner theme-surface" placeholder={t.config.authTokenPlaceholder} value={authToken || ''} onChange={(e) => setAuthToken(e.target.value)} />
                         )}
                         {authType === 'basic' && (
                           <div className="grid grid-cols-2 gap-3">
-                            <input className="input-base !py-3.5 !px-5 text-base rounded-xl shadow-inner theme-surface" placeholder="Username" value={authUsername || ''} onChange={(e) => setAuthUsername(e.target.value)} />
-                            <input className="input-base !py-3.5 !px-5 text-base rounded-xl shadow-inner theme-surface" type="password" placeholder="Password" value={authPassword || ''} onChange={(e) => setAuthPassword(e.target.value)} />
+                            <input className="input-base !py-3.5 !px-5 text-base rounded-xl shadow-inner theme-surface" placeholder={t.config.authUsernamePlaceholder} value={authUsername || ''} onChange={(e) => setAuthUsername(e.target.value)} />
+                            <input className="input-base !py-3.5 !px-5 text-base rounded-xl shadow-inner theme-surface" type="password" placeholder={t.config.authPasswordPlaceholder} value={authPassword || ''} onChange={(e) => setAuthPassword(e.target.value)} />
                           </div>
                         )}
                         {authType === 'apikey' && (
                           <div className="grid grid-cols-2 gap-2">
-                            <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl theme-surface" placeholder="Key (ex: X-API-Key)" value={apiKeyName || ''} onChange={(e) => setApiKeyName(e.target.value)} />
-                            <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl theme-surface" placeholder="Value" value={apiKeyValue || ''} onChange={(e) => setApiKeyValue(e.target.value)} />
+                            <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl theme-surface" placeholder={t.config.authApiKeyPlaceholder} value={apiKeyName || ''} onChange={(e) => setApiKeyName(e.target.value)} />
+                            <input className="input-base !py-3.5 !px-5 text-base font-mono rounded-xl theme-surface" placeholder={t.config.valuePlaceholder} value={apiKeyValue || ''} onChange={(e) => setApiKeyValue(e.target.value)} />
                           </div>
                         )}
                       </div>

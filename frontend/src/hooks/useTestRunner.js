@@ -64,7 +64,7 @@ const processPayloadAuth = (payload) => {
   return prepareRequest(payload);
 };
 
-export function useTestRunner(activeCollection, getRequestFormPayload, showCustomToast) {
+export function useTestRunner(activeCollection, getRequestFormPayload, showCustomToast, t) {
   const [isRunning, setIsRunning] = useState(false);
   const abortControllerRef = useRef(null);
   const [lastExecutedPayload, setLastExecutedPayload] = useState(null);
@@ -111,7 +111,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
     setIsRunning(true);
 
     try {
-      showCustomToast('Teste de carga iniciado!', 'info');
+      showCustomToast(t?.toasts?.loadTestStarted || 'Teste de carga iniciado!', 'info');
       setLastExecutedPayload(payload); // Armazena o payload para reexecução
 
       const response = await fetch('http://localhost:8080/run', {
@@ -154,11 +154,11 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Teste interrompido pelo usuário');
-        showCustomToast('Teste interrompido!', 'warning');
+        showCustomToast(t?.toasts?.loadTestStopped || 'Teste interrompido!', 'warning');
         setReportData({ totalRequests: localSuccess + localErrors, successCount: localSuccess, errorCount: localErrors, totalDuration: (Date.now() - testStartTime) / 1000 });
       } else {
         console.error(error);
-        showCustomToast('Erro na conexão com o backend.', 'error');
+        showCustomToast(t?.toasts?.backendError || 'Erro na conexão com o backend.', 'error');
       }
     } finally {
       setIsRunning(false);

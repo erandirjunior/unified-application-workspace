@@ -5,7 +5,7 @@ import { generateDocHTML } from './documentation/exportUtils';
 export default function ReportGeneratorModal({ collection, t, theme, onClose }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [orderedRequests, setOrderedRequests] = useState([]);
-  const [reportTitle, setReportTitle] = useState(collection?.name || 'Documentação da API');
+  const [reportTitle, setReportTitle] = useState(collection?.name || t?.documentation?.title || 'Documentação da API');
   const [draggedIdx, setDraggedIdx] = useState(null);
 
   // Extrai todas as requests (incluindo dentro de pastas) recursivamente
@@ -128,7 +128,7 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
               className="bg-transparent border-none outline-none text-lg font-black text-white placeholder:text-slate-600 w-64"
               value={reportTitle}
               onChange={(e) => setReportTitle(e.target.value)}
-              placeholder="Título do Relatório..."
+              placeholder={t.documentation.reportTitlePlaceholder}
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
             className="px-4 py-2 text-[10px] font-bold text-slate-300 hover:text-blue-400 transition-colors flex items-center gap-2 bg-white/5 rounded-lg border theme-border disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            EXPORTAR HTML
+            {t.documentation.exportHtml}
           </button>
           <button
             onClick={exportPDF}
@@ -148,7 +148,7 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
             className="px-4 py-2 text-[10px] font-bold text-slate-300 hover:text-rose-400 transition-colors flex items-center gap-2 bg-white/5 rounded-lg border theme-border disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-            EXPORTAR PDF
+            {t.documentation.exportPdf}
           </button>
         </div>
       </header>
@@ -159,14 +159,14 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
         <div className="w-96 border-r theme-border flex flex-col theme-base">
           <div className="p-4 border-b theme-border">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Selecionar Actions</h3>
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.documentation.selectActions}</h3>
               <div className="flex gap-2">
-                <button onClick={selectAll} className="text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors">Todas</button>
+                <button onClick={selectAll} className="text-[9px] font-bold text-blue-400 hover:text-blue-300 transition-colors">{t.documentation.selectAll}</button>
                 <span className="text-slate-700">|</span>
-                <button onClick={deselectAll} className="text-[9px] font-bold text-slate-500 hover:text-slate-300 transition-colors">Nenhuma</button>
+                <button onClick={deselectAll} className="text-[9px] font-bold text-slate-500 hover:text-slate-300 transition-colors">{t.documentation.selectNone}</button>
               </div>
             </div>
-            <p className="text-[10px] text-slate-600">{selectedIds.length} de {allRequests.length} selecionadas</p>
+            <p className="text-[10px] text-slate-600">{selectedIds.length} {t.documentation.selectedOf} {allRequests.length} {t.documentation.selectedLabel}</p>
           </div>
 
           {/* Lista de todas as requests (para seleção) */}
@@ -200,7 +200,7 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
           {orderedRequests.length > 0 && (
             <div className="border-t theme-border">
               <div className="p-3 border-b theme-border">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ordem no Relatório</h3>
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t.documentation.reportOrder}</h3>
               </div>
               <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                 {orderedRequests.map((req, index) => (
@@ -238,14 +238,14 @@ export default function ReportGeneratorModal({ collection, t, theme, onClose }) 
           {orderedRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
               <svg className="w-16 h-16 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              <p className="text-sm font-medium">Selecione as actions para gerar o relatório</p>
-              <p className="text-xs text-slate-600">As documentações serão exibidas aqui na ordem definida</p>
+              <p className="text-sm font-medium">{t.documentation.emptyReport}</p>
+              <p className="text-xs text-slate-600">{t.documentation.emptyReportHint}</p>
             </div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-8">
               <div className="text-center border-b theme-border pb-6 mb-8">
                 <h1 className="text-2xl font-black text-white">{reportTitle}</h1>
-                <p className="text-xs text-slate-500 mt-2">{orderedRequests.length} endpoint{orderedRequests.length !== 1 ? 's' : ''} documentado{orderedRequests.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-slate-500 mt-2">{orderedRequests.length} {orderedRequests.length !== 1 ? t.documentation.endpointPlural : t.documentation.endpointSingular} {orderedRequests.length !== 1 ? t.documentation.documentedPlural : t.documentation.documentedSingular}</p>
               </div>
               {orderedRequests.map((req, reqIdx) => (
                 <DocPreview
