@@ -1,4 +1,4 @@
-# Unified Application Workspace — User Manual
+# Unified Application Workspace — User Handbook
 
 ## Overview
 
