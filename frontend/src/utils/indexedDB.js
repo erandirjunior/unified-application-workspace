@@ -1,4 +1,4 @@
-const DB_NAME = 'ast_devtools';
+const DB_NAME = 'unified_application_workspace';
 const DB_VERSION = 1;
 const STORE_NAME = 'collections';
 

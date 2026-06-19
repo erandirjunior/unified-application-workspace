@@ -78,7 +78,7 @@ describe('indexedDB utils (real module)', () => {
     const { getAllCollections } = await import('../src/utils/indexedDB');
     const result = await getAllCollections();
     expect(result).toEqual([]);
-    expect(mockIDB.open).toHaveBeenCalledWith('ast_devtools', 1);
+    expect(mockIDB.open).toHaveBeenCalledWith('unified_application_workspace', 1);
   });
 
   it('should save collections', async () => {
