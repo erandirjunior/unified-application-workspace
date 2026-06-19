@@ -106,10 +106,10 @@ export default function RequestsPanel({
           )}
 
           <div className={`flex gap-1 ${rightPanelSize === 'minimized' ? 'flex-col mt-auto' : ''}`}>
-            <button onClick={() => setRightPanelSize(rightPanelSize === 'maximized' ? 'normal' : 'maximized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'maximized' ? 'Restaurar' : 'Maximizar'}>
+            <button onClick={() => setRightPanelSize(rightPanelSize === 'maximized' ? 'normal' : 'maximized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'maximized' ? t.config.panels.restore : t.config.panels.maximize}>
               {rightPanelSize === 'maximized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 9h6m-6 6h6M4 4h16v16H4V4z"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 8V4h4M4 16v4h4M16 4h4v4M16 20h4v-4"/></svg>}
             </button>
-            <button onClick={() => setRightPanelSize(rightPanelSize === 'minimized' ? 'normal' : 'minimized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'minimized' ? 'Expandir' : 'Recolher'}>
+            <button onClick={() => setRightPanelSize(rightPanelSize === 'minimized' ? 'normal' : 'minimized')} className="p-2 text-slate-500 hover:theme-text-secondary hover:bg-white/5 rounded-lg transition-colors" title={rightPanelSize === 'minimized' ? t.config.panels.expand : t.config.panels.collapse}>
               {rightPanelSize === 'minimized' ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>}
             </button>
           </div>
