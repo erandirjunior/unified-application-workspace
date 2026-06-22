@@ -1102,6 +1102,7 @@ function App() {
               onSetActiveEnvironment={setActiveEnvironment}
               onUpdateName={updateCollectionName}
               onUpdateWorkflows={colMethods.updateCollectionWorkflows}
+              onUpdateMockFolders={colMethods.updateCollectionMockFolders}
               onAddRequest={colMethods.addRequestToCollection}
               onAddFolder={colMethods.addFolderToCollection}
               onImportCurl={(colId, folderId = null) => {

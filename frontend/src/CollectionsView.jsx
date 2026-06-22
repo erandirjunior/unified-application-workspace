@@ -15,6 +15,7 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
   const [selectedExportOptions, setSelectedExportOptions] = useState({
     requests: {}, // { id: boolean }
     workflows: {},
+    mocks: {},
   });
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -73,15 +74,31 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
     // Inicializa tudo como selecionado
     const requests = {};
     const workflows = {};
+    const mocks = {};
 
     const fillReqs = (items) => items.forEach(i => {
       requests[i.id] = true;
       if (i.type === 'folder') fillReqs(i.requests || []);
     });
     fillReqs(col.requests || []);
-    (col.workflows || []).forEach(w => workflows[w.id] = true);
+    (col.workflows || []).forEach(w => {
+      workflows[w.id] = true;
+      if (w.type === 'folder') {
+        const fillWfChildren = (items) => items.forEach(child => {
+          workflows[child.id] = true;
+          if (child.type === 'folder') fillWfChildren(child.requests || []);
+        });
+        fillWfChildren(w.requests || []);
+      }
+    });
 
-    setSelectedExportOptions({ requests, workflows });
+    const fillMocks = (items) => items.forEach(i => {
+      mocks[i.id] = true;
+      if (i.type === 'folder') fillMocks(i.requests || []);
+    });
+    fillMocks(col.mockFolders || []);
+
+    setSelectedExportOptions({ requests, workflows, mocks });
     setExportOptionsModalOpen(true);
   };
 
@@ -157,6 +174,23 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
 
     exportData.requests = filterRequests(col.requests || []);
     exportData.workflows = (col.workflows || []).filter(w => itemOptions.workflows[w.id]);
+
+    // Filtra mockFolders baseados nas opções de item
+    const filterMocks = (items) => {
+      return items
+        .map(item => {
+          if (item.type === 'folder') {
+            const filteredChildren = filterMocks(item.requests || []);
+            if (itemOptions.mocks[item.id] || filteredChildren.length > 0) {
+              return { ...item, requests: filteredChildren };
+            }
+            return null;
+          }
+          return itemOptions.mocks[item.id] ? item : null;
+        })
+        .filter(Boolean);
+    };
+    exportData.mockFolders = filterMocks(col.mockFolders || []);
 
     // Metadados adicionais de exportação
     const finalPayload = {
@@ -369,6 +403,11 @@ export default function CollectionsView({ collections, t, onSelectRequest, onCre
               <div className="space-y-2">
                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b theme-border pb-1">{t.collection.tabs.workflows}</h4>
                 {exportingCol.workflows?.length > 0 ? exportingCol.workflows.map(item => renderExportItem(item, 'workflows')) : <p className="text-xs text-slate-500 italic">{t.common.empty}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b theme-border pb-1">{t.collection.tabs.mocks}</h4>
+                {exportingCol.mockFolders?.length > 0 ? exportingCol.mockFolders.map(item => renderExportItem(item, 'mocks')) : <p className="text-xs text-slate-500 italic">{t.common.empty}</p>}
               </div>
             </div>
 
