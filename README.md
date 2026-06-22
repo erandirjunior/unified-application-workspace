@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>A unified workspace for testing, documenting, mocking and automating applications.</strong>
+  <strong>A unified workspace for testing, documenting, mocking and validate workflow applications.</strong>
 </p>
 
 <p align="center">
@@ -35,6 +35,33 @@ Unlike traditional API clients, UAW combines:
 allowing teams to build, validate and document their systems from a single place.
 
 ---
+
+### If this project helped you, [please consider supporting its development](https://github.com/sponsors/erandirjunior?frequency=one-time&sponsor=erandirjunior).
+
+--- 
+
+# Run
+
+Clone this repository or download the latest version. Then navigate to the project directory and run the following command:
+```bash
+# Linux
+cp .env.example .env
+
+# Cmd
+copy .env.example .env
+
+# PowerShell
+Copy-Item .env.example .env
+```
+
+Next, run the following command if you have Docker installed:
+```bash
+docker compose up --build
+```
+
+Then, visit http://localhost:YOUR_PORT/ in your browser.
+
+___
 
 # Features
 
@@ -229,96 +256,8 @@ Detailed execution history:
 
 ---
 
-# Project Structure
-
-```text
-Collection
-│
-├── Actions
-│   └── HTTP Requests
-│
-├── Workflows
-│
-└── Mock Servers
-```
+> **For more details about UAW resources, see the [Documentation](https://github.com/erandirjunior/unified-application-workspace/blob/master/docs/handbook.md) (English) or the [Documentação](https://github.com/erandirjunior/unified-application-workspace/blob/master/docs/manual.md) (Português).**
 
 ---
-
-# UI
-
-UAW provides a multi-column workspace:
-
-```text
-┌─────────────┬─────────────────────────┬─────────────────────┐
-│ Explorer    │ Editor                  │ Execution           │
-│             │                         │ Documentation       │
-│ Actions     │ HTTP Request            │ Reports             │
-│ Workflows   │ Workflow                │                     │
-│ Mock Servers│ Mock Server             │                     │
-└─────────────┴─────────────────────────┴─────────────────────┘
-```
-
-The execution panel can be expanded or collapsed for a better editing experience.
-
----
-
-# Technology Stack
-
-### Frontend
-
-- React
-- TypeScript
-- Material UI
-
-### Backend
-
-- Go
-
-### Containerization
-
-- Docker
-
----
-
-# Vision
-
-UAW aims to become a unified platform for application automation and validation.
-
-Future Actions:
-
-- HTTP
-
----
-
-> **To see all resources with more details on UAW resources visit: [Documentaion](https://github.com/erandirjunior/unified-application-workspace/blob/master/docs/handbook.md) or [Documentação](https://github.com/erandirjunior/unified-application-workspace/blob/master/docs/manual.md).**
-
----
-
-# Why UAW?
-
-UAW brings together capabilities usually spread across multiple tools:
-
-| Feature | UAW |
-|-----------|-----|
-| HTTP Client | ✅ |
-| Load Testing | ✅ |
-| Documentation | ✅ |
-| Mock Servers | ✅ |
-| Workflows | ✅ |
-| Assertions | ✅ |
-| Dynamic Variables | ✅ |
-| Reports | ✅ |
-
----
-
-# License
 
 This project is licensed under the **AGPL-3.0** license.
-
----
-
-<p align="center">
-Unified Application Workspace
-
-Build. Test. Mock. Automate.
-</p>
