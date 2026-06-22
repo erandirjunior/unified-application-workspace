@@ -1058,7 +1058,9 @@ function App() {
                   updateRequestInCollection,
                   setAssertions: (v) => updateField('assertions', v),
                   setExtractions: (v) => updateField('extractions', v),
-                  showCustomToast
+                  showCustomToast,
+                  isVarsModalOpen,
+                  setIsVarsModalOpen
                 }}
                 // Props para a Documentação na sidebar
                 docProps={{
