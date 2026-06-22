@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE } from '../utils/config';
 
 export default function CollectionSidebar({
   collection,
@@ -407,7 +408,7 @@ export default function CollectionSidebar({
         <button onClick={(e) => { e.stopPropagation(); onReorderItem(collection.id, mock.id, 'down', 'mocks'); }} className={`p-1 text-slate-500 hover:text-blue-400 transition-colors ${index === parentList.length - 1 ? 'opacity-20 cursor-not-allowed' : ''}`} disabled={index === parentList.length - 1}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/></svg>
         </button>
-        <button onClick={async (e) => { e.stopPropagation(); if (window.confirm(t.mocks.confirmDelete)) { await fetch(`http://localhost:8080/manage-mocks?id=${mock.id}`, { method: 'DELETE' }); fetchMocksList(); if (monitoringMock?.id === mock.id) setMonitoringMock(null); if (selectedMock?.id === mock.id) { setSelectedMock(null); setIsEditingMock(false); } } }} className="p-1 text-slate-500 hover:text-rose-500 transition-colors">
+        <button onClick={async (e) => { e.stopPropagation(); if (window.confirm(t.mocks.confirmDelete)) { await fetch(`${API_BASE}/manage-mocks?id=${mock.id}`, { method: 'DELETE' }); fetchMocksList(); if (monitoringMock?.id === mock.id) setMonitoringMock(null); if (selectedMock?.id === mock.id) { setSelectedMock(null); setIsEditingMock(false); } } }} className="p-1 text-slate-500 hover:text-rose-500 transition-colors">
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth="2.5"/></svg>
         </button>
       </div>

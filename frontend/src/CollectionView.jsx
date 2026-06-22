@@ -4,6 +4,7 @@ import CollectionSidebar from './components/CollectionSidebar';
 import RequestsPanel from './components/RequestsPanel';
 import WorkflowsPanel from './components/WorkflowsPanel';
 import MocksPanel from './components/MocksPanel';
+import { API_BASE } from './utils/config';
 
 export default function CollectionView({ 
   collection, t, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
@@ -34,7 +35,7 @@ export default function CollectionView({
 
   const fetchMocksList = async () => {
     try {
-      const res = await fetch("http://localhost:8080/manage-mocks");
+      const res = await fetch(`${API_BASE}/manage-mocks`);
       const data = await res.json();
       setMocks(data || []);
 
@@ -82,7 +83,7 @@ export default function CollectionView({
   const handleSaveMock = async (mockToSave = selectedMock, shouldClose = true, skipRefresh = false) => {
     if (!mockToSave) return;
     try {
-      await fetch("http://localhost:8080/manage-mocks", {
+      await fetch(`${API_BASE}/manage-mocks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mockToSave)
@@ -233,7 +234,7 @@ export default function CollectionView({
     setMonitoringMock(null);
     // Salva imediatamente no backend para aparecer na listagem lateral
     try {
-      await fetch("http://localhost:8080/manage-mocks", {
+      await fetch(`${API_BASE}/manage-mocks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMock)

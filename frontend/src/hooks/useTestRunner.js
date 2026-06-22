@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { API_BASE } from '../utils/config';
 
 // Prepara a requisição: injeta headers de auth e garante tipos numéricos para o Go
 const prepareRequest = (req) => {
@@ -114,7 +115,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
       showCustomToast(t?.toasts?.loadTestStarted || 'Teste de carga iniciado!', 'info');
       setLastExecutedPayload(payload); // Armazena o payload para reexecução
 
-      const response = await fetch('http://localhost:8080/run', {
+      const response = await fetch(`${API_BASE}/run`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

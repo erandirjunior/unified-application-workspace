@@ -1,32 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getAllCollections, saveAllCollections, migrateFromLocalStorage } from '../utils/indexedDB';
 
-const DEFAULT_COLLECTIONS = [
-  { 
-    id: '1', 
-    name: 'Minha Coleção',
-    requests: [
-      { id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' },
-      { id: 'folder-1', name: 'Pasta Teste', type: 'folder', requests: [
-        { id: 'req-nested-1', name: 'Nested Req 1', method: 'GET', url: 'http://nested.com/1', type: 'request' },
-        { id: 'req-nested-2', name: 'Nested Req 2', method: 'POST', url: 'http://nested.com/2', type: 'request' }
-      ]}
-    ],
-    environments: [{ id: 'default', name: 'Global', variables: [] }],
-    activeEnvironmentId: 'default',
-    scenarios: [],
-    workflows: []
-  },
-  {
-    id: '2',
-    name: 'Segunda Coleção',
-    requests: [], 
-    environments: [{ id: 'default', name: 'Global', variables: [] }],
-    activeEnvironmentId: 'default',
-    scenarios: [],
-    workflows: []
-  }
-];
+const DEFAULT_COLLECTIONS = [];
 
 function normalizeCollections(parsed) {
   if (!Array.isArray(parsed) || parsed.length === 0) return null;

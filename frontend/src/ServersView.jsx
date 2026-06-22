@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from './utils/config';
 
 export default function ServersView({ 
   onBack, onSubViewChange, t, 
@@ -11,8 +12,6 @@ export default function ServersView({
   const [mocks, setMocks] = useState([]);
   const [logs, setLogs] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
-
-  const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     if (isEditing || monitoringMock) {
@@ -109,7 +108,7 @@ export default function ServersView({
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-black text-slate-900 theme-text truncate max-w-md">{t.mocks.monitoring} {monitoringMock.name}</h1>
-                <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] http://localhost:8080/mock{monitoringMock.path}</p>
+                <p className="text-xs font-mono text-blue-500">[{monitoringMock.method}] {API_BASE}/mock{monitoringMock.path}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
