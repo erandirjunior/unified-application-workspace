@@ -9,7 +9,7 @@ export default function CollectionView({
   collection, t, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, onImportCurl,
   onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName,
-  onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows,
+  onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows, onUpdateMockFolders,
   reportData, requestLogs, isRunning, stopTest, sendRequests, lastExecutedPayload, onSaveResponseToDoc,
   docProps,
   selectedRequestIds = [], onToggleSelection, onViewUnifiedDoc,
@@ -37,6 +37,32 @@ export default function CollectionView({
       const res = await fetch("http://localhost:8080/manage-mocks");
       const data = await res.json();
       setMocks(data || []);
+
+      // Sincroniza mocks do backend com mockFolders da coleção
+      if (onUpdateMockFolders) {
+        const backendMocks = data || [];
+        const backendIds = new Set(backendMocks.map(m => m.id));
+        const currentMockFolders = collection.mockFolders || [];
+
+        // Remove de mockFolders os mocks que não existem mais no backend
+        const removeDeleted = (items) => items
+          .filter(i => i.type === 'folder' || backendIds.has(i.id))
+          .map(i => i.type === 'folder' ? { ...i, requests: removeDeleted(i.requests || []) } : i);
+
+        // Adiciona mocks do backend que não estão em mockFolders
+        const existsInFolders = (items, mockId) => items.some(i => 
+          i.id === mockId || (i.type === 'folder' && existsInFolders(i.requests || [], mockId))
+        );
+
+        const cleaned = removeDeleted(currentMockFolders);
+        const newMocks = backendMocks.filter(m => !existsInFolders(cleaned, m.id));
+        const updated = newMocks.length > 0 ? [...cleaned, ...newMocks] : cleaned;
+
+        // Só atualiza se houve diferença
+        if (JSON.stringify(updated) !== JSON.stringify(currentMockFolders)) {
+          onUpdateMockFolders(collection.id, updated);
+        }
+      }
     } catch (e) {}
   };
 
@@ -66,6 +92,25 @@ export default function CollectionView({
         setMocks(prev => prev.map(m => m.id === mockToSave.id ? mockToSave : m));
       } else {
         fetchMocksList();
+      }
+
+      // Sincroniza com mockFolders da coleção para persistência e exportação
+      if (onUpdateMockFolders) {
+        const currentMockFolders = collection.mockFolders || [];
+        const existsInFolders = (items) => items.some(i => 
+          i.id === mockToSave.id || (i.type === 'folder' && existsInFolders(i.requests || []))
+        );
+        if (!existsInFolders(currentMockFolders)) {
+          onUpdateMockFolders(collection.id, [...currentMockFolders, mockToSave]);
+        } else {
+          // Atualiza o mock existente
+          const updateInItems = (items) => items.map(i => {
+            if (i.id === mockToSave.id) return mockToSave;
+            if (i.type === 'folder') return { ...i, requests: updateInItems(i.requests || []) };
+            return i;
+          });
+          onUpdateMockFolders(collection.id, updateInItems(currentMockFolders));
+        }
       }
     } catch (e) {}
   };

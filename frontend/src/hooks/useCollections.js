@@ -154,6 +154,10 @@ export function useCollections() {
     setCollections(prev => prev.map(col => col.id === colId ? { ...col, workflows } : col));
   }, []);
 
+  const updateCollectionMockFolders = useCallback((colId, mockFolders) => {
+    setCollections(prev => prev.map(col => col.id === colId ? { ...col, mockFolders } : col));
+  }, []);
+
   const addRequestToCollection = useCallback((colId, name, folderId = null) => {
     const newReq = {
       id: Date.now().toString(),
@@ -249,7 +253,7 @@ export function useCollections() {
     createCollection, deleteCollection, reorderCollection,
     updateCollectionName,
     updateCollectionEnvironments, setActiveEnvironment,
-    updateCollectionScenarios, updateCollectionWorkflows,
+    updateCollectionScenarios, updateCollectionWorkflows, updateCollectionMockFolders,
     addRequestToCollection, addFolderToCollection,
     moveRequestInCollection, reorderItemInCollection
   };
