@@ -35,12 +35,38 @@ global.EventSource = vi.fn().mockImplementation(function() {
 
 // Mock do módulo IndexedDB usado pelo useCollections
 vi.mock('../src/utils/indexedDB', () => {
-  let store = [];
+  const DEFAULT_TEST_COLLECTIONS = [
+    { 
+      id: '1', 
+      name: 'Minha Coleção',
+      requests: [
+        { id: 'req-1', name: 'Default Request', method: 'GET', url: 'http://example.com', type: 'request' },
+        { id: 'folder-1', name: 'Pasta Teste', type: 'folder', requests: [
+          { id: 'req-nested-1', name: 'Nested Req 1', method: 'GET', url: 'http://nested.com/1', type: 'request' },
+          { id: 'req-nested-2', name: 'Nested Req 2', method: 'POST', url: 'http://nested.com/2', type: 'request' }
+        ]}
+      ],
+      environments: [{ id: 'default', name: 'Global', variables: [] }],
+      activeEnvironmentId: 'default',
+      scenarios: [],
+      workflows: []
+    },
+    {
+      id: '2',
+      name: 'Segunda Coleção',
+      requests: [], 
+      environments: [{ id: 'default', name: 'Global', variables: [] }],
+      activeEnvironmentId: 'default',
+      scenarios: [],
+      workflows: []
+    }
+  ];
+  let store = DEFAULT_TEST_COLLECTIONS;
   return {
     getAllCollections: vi.fn(async () => store),
     saveAllCollections: vi.fn(async (collections) => { store = [...collections]; }),
     migrateFromLocalStorage: vi.fn(async () => null),
     __getStore: () => store,
-    __resetStore: () => { store = []; },
+    __resetStore: () => { store = [...DEFAULT_TEST_COLLECTIONS]; },
   };
 });

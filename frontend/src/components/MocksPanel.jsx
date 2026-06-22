@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ServersView from '../ServersView';
 import SaveRequestForm from '../SaveRequestForm';
+import { API_BASE } from '../utils/config';
 import MocksGlobalMonitor from './MocksGlobalMonitor';
 
 export default function MocksPanel({
@@ -137,11 +138,11 @@ export default function MocksPanel({
             <div className={`px-6 py-3 theme-surface border-b theme-border flex items-center justify-between gap-3 ${rightPanelSize === 'minimized' ? 'hidden' : 'flex'}`}>
               <div className="flex-1 min-w-0 theme-base px-3 py-2 rounded-xl border theme-border flex items-center gap-2 overflow-hidden">
                 <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter shrink-0">Endpoint</span>
-                <code className="text-[10px] text-slate-500 truncate font-mono">http://localhost:8080/mock{monitoringMock.path}</code>
+                <code className="text-[10px] text-slate-500 truncate font-mono">{API_BASE}/mock{monitoringMock.path}</code>
               </div>
               <button 
                 onClick={() => {
-                  navigator.clipboard.writeText(`http://localhost:8080/mock${monitoringMock.path}`);
+                  navigator.clipboard.writeText(`${API_BASE}/mock${monitoringMock.path}`);
                   alert(t.mocks.urlCopied);
                 }}
                 className="p-2.5 text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all border border-transparent hover:border-blue-500/20 shadow-sm"

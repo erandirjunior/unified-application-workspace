@@ -13,8 +13,11 @@ describe('useCollections', () => {
     vi.useRealTimers();
   });
 
-  it('should initialize with default collections', () => {
+  it('should initialize with default collections', async () => {
     const { result } = renderHook(() => useCollections());
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
     expect(result.current.collections).toHaveLength(2);
     expect(result.current.collections[0].name).toBe('Minha Coleção');
   });
