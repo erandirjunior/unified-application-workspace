@@ -67,7 +67,7 @@ export default function RequestsPanel({
               setRequestName={editorProps.setRequestName}
               method={editorProps.method}
               setMethod={editorProps.setMethod}
-              onRun={editorProps.sendRequests}
+              onRun={() => { setRightPanelTab('execution'); if (rightPanelSize === 'minimized') setRightPanelSize('normal'); editorProps.sendRequests(); }}
               onClose={onCloseRequestEditor}
               t={t}
             />
