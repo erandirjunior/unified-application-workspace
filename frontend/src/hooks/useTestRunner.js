@@ -23,9 +23,31 @@ const prepareRequest = (req) => {
     }
   }
 
+  // Converte bodyParams em body string quando bodyType é form-data ou form-urlencoded
+  let body = req.body || req.bodyRaw || '';
+  const bodyType = req.bodyType || 'none';
+  
+  if (bodyType === 'form-urlencoded' && Array.isArray(req.bodyParams) && req.bodyParams.length > 0) {
+    body = req.bodyParams.filter(p => p.key).map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value || '')}`).join('&');
+    if (!headers['Content-Type']) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  } else if (bodyType === 'form-data' && Array.isArray(req.bodyParams) && req.bodyParams.length > 0) {
+    // Para form-data, envia como JSON com os pares key-value (o backend trata como raw body)
+    const formObj = {};
+    req.bodyParams.filter(p => p.key).forEach(p => { formObj[p.key] = p.value || ''; });
+    body = JSON.stringify(formObj);
+    if (!headers['Content-Type']) headers['Content-Type'] = 'multipart/form-data';
+  } else if (bodyType === 'json' && body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  } else if (bodyType === 'xml' && body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/xml';
+  } else if (bodyType === 'text' && body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'text/plain';
+  }
+
   return { 
     ...req, 
     headers,
+    body,
     totalRequests: parseInt(req.totalRequests || req.threads || 0, 10),
     duration: parseInt(req.duration || 0, 10),
     rampUp: parseInt(req.rampUp || 0, 10)

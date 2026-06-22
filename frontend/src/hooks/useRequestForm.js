@@ -88,6 +88,8 @@ export function useRequestForm() {
       rampUp: parseInt(form.rampUp),
       headers: headerMap,
       body: form.bodyRaw,
+      bodyType: form.bodyType,
+      bodyParams: form.bodyParams,
       assertions: form.assertions,
       extractions: form.extractions
     };
