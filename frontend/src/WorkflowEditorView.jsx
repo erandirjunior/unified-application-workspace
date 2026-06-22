@@ -347,7 +347,7 @@ export default function WorkflowEditorView({ workflow, onUpdateWorkflow, onBack,
                         {step.type === 'wait' ? (
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold theme-text-secondary">{t.workflows?.editor?.waitLabel || 'Aguardar'}</span>
-                            <input type="number" min="1" className="w-14 text-xs theme-elevated border theme-border rounded-lg px-2 py-1 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500/50" value={step.url || '5'} onChange={(e) => { updateStepField(step.id, 'url', e.target.value); updateStepField(step.id, 'name', `Pausa (${e.target.value}s)`); }} onClick={(e) => e.stopPropagation()} />
+                            <input type="number" min="1" className="w-14 text-xs theme-elevated border theme-border rounded-lg px-2 py-1 text-center font-bold text-amber-400 focus:outline-none focus:border-amber-500/50" value={step.url || '5'} onChange={(e) => { const val = e.target.value; setCurrentSteps(getCurrentSteps().map(s => s.id === step.id ? { ...s, url: val, name: `Pausa (${val}s)` } : s)); }} onClick={(e) => e.stopPropagation()} />
                             <span className="text-xs text-slate-500">{t.workflows?.editor?.waitSeconds || 'segundos'}</span>
                           </div>
                         ) : (

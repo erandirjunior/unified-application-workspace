@@ -28,6 +28,7 @@ export default function CollectionView({
   const [isRenamingEnv, setIsRenamingEnv] = useState(null);
   const [rightPanelTab, setRightPanelTab] = useState('docs');
   const [rightPanelSize, setRightPanelSize] = useState('normal'); // 'normal' | 'maximized' | 'minimized'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedMock, setSelectedMock] = useState(null);
   const [isEditingMock, setIsEditingMock] = useState(false);
   const [monitoringMock, setMonitoringMock] = useState(null);
@@ -362,6 +363,8 @@ export default function CollectionView({
           filteredItems={filteredItems}
           filteredWorkflows={filteredWorkflows}
           filteredMocks={filteredMocks}
+          sidebarCollapsed={sidebarCollapsed}
+          setSidebarCollapsed={setSidebarCollapsed}
         />
 
         {/* Área Principal (Colunas 2 e 3) */}

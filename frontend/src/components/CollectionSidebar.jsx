@@ -44,6 +44,8 @@ export default function CollectionSidebar({
   filteredItems,
   filteredWorkflows,
   filteredMocks,
+  sidebarCollapsed,
+  setSidebarCollapsed,
 }) {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isDraggingOverRoot, setIsDraggingOverRoot] = useState(false);
@@ -416,7 +418,20 @@ export default function CollectionSidebar({
   );
 
   return (
-    <div className="w-80 border-r theme-border flex flex-col theme-base">
+    <div className={`border-r theme-border flex flex-col theme-base transition-all duration-300 ${sidebarCollapsed ? 'w-12' : 'w-80'}`}>
+      {sidebarCollapsed && (
+        <div className="flex-1 flex flex-col items-center justify-end pb-4">
+          <button 
+            onClick={() => setSidebarCollapsed(false)} 
+            className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            title={t.config.panels.expand}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      )}
+      {!sidebarCollapsed && (
+      <>
       <div className="p-4 border-b theme-border space-y-4">
         <div className="flex items-center gap-2">
           <button 
@@ -552,6 +567,18 @@ export default function CollectionSidebar({
           </>
         )}
       </div>
+      {/* Botão minimizar no final */}
+      <div className="p-2 border-t theme-border flex justify-end">
+        <button 
+          onClick={() => setSidebarCollapsed(true)} 
+          className="p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+          title={t.config.panels.collapse}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+        </button>
+      </div>
+      </>
+      )}
     </div>
   );
 }
