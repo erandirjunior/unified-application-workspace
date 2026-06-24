@@ -1,5 +1,3 @@
-# UAW - Unified Application Workspace
-
 <p align="center">
   <img src="./frontend/src/img/logo.png" width="680" alt="UAW Logo">
 </p>
@@ -9,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blueviolet">
+  <img src="https://img.shields.io/badge/version-1.0.4-blueviolet">
   <img src="https://img.shields.io/badge/license-AGPL--3.0-green">
   <img src="https://img.shields.io/badge/frontend-React-61DAFB">
   <img src="https://img.shields.io/badge/backend-Go-00ADD8">
