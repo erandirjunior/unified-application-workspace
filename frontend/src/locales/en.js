@@ -66,7 +66,8 @@ export const en = {
       requests: "Actions",
       scenarios: "Scenarios",
       workflows: "Workflows",
-      mocks: "Mocks"
+      mocks: "Mocks",
+      environment: "Environment"
     },
     actions: {
       importCurl: "IMPORT CURL",
@@ -253,7 +254,7 @@ export const en = {
     rps: "Requests Per Second (RPS)",
     duration: "Duration",
     rampUp: "Ramp-up",
-    variables: "Environments",
+    variables: "Dynamic Variables",
     done: "I got it",
     sections: {
       auth: "Authentication",

@@ -915,7 +915,7 @@ function App() {
                 }}
                 className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-blue-500 transition-all border-b-2 border-transparent"
               >
-                {t.config.variables}
+                {t.collection.tabs.environment}
               </button>
             </nav>
           )}

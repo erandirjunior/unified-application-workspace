@@ -418,7 +418,7 @@ export default function CollectionSidebar({
   );
 
   return (
-    <div className={`border-r theme-border flex flex-col theme-base transition-all duration-300 ${sidebarCollapsed ? 'w-12' : 'w-80'}`}>
+    <div className={`border-r theme-border flex flex-col theme-base transition-all duration-300 ${sidebarCollapsed ? 'w-12' : 'w-[clamp(240px,22%,320px)]'}`}>
       {sidebarCollapsed && (
         <div className="flex-1 flex flex-col items-center justify-end pb-4">
           <button 

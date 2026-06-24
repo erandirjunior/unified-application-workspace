@@ -44,7 +44,8 @@ export const pt = {
       requests: "Actions",
       scenarios: "Cenários",
       workflows: "Workflow",
-      mocks: "Mocks"
+      mocks: "Mocks",
+      environment: "Ambiente"
     },
     actions: {
       importCurl: "IMPORTAR CURL",
@@ -252,7 +253,7 @@ export const pt = {
     rps: "Requests por Segundo (RPS)",
     duration: "Duração",
     rampUp: "Ramp-up",
-    variables: "Ambiente",
+    variables: "Variáveis Dinâmicas",
     done: "Entendi",
     sections: {
       auth: "Autenticação",
