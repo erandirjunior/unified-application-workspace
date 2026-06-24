@@ -252,7 +252,7 @@ export const pt = {
     rps: "Requests por Segundo (RPS)",
     duration: "Duração",
     rampUp: "Ramp-up",
-    variables: "Ambiente",
+    variables: "Variáveis Dinâmicas",
     done: "Entendi",
     sections: {
       auth: "Autenticação",

@@ -253,7 +253,7 @@ export const en = {
     rps: "Requests Per Second (RPS)",
     duration: "Duration",
     rampUp: "Ramp-up",
-    variables: "Environments",
+    variables: "Dynamic Variables",
     done: "I got it",
     sections: {
       auth: "Authentication",
