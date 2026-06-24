@@ -1088,9 +1088,6 @@ describe('App', () => {
     
     // Click Mocks tab
     fireEvent.click(screen.getByText('Mocks'));
-    
-    // Click Ambiente (env button)
-    fireEvent.click(screen.getByText('Ambiente'));
   });
 
   test('navigates to documentation view from collection-detail and uses onBack', () => {

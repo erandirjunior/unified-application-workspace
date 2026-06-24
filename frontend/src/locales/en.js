@@ -66,7 +66,8 @@ export const en = {
       requests: "Actions",
       scenarios: "Scenarios",
       workflows: "Workflows",
-      mocks: "Mocks"
+      mocks: "Mocks",
+      environment: "Environment"
     },
     actions: {
       importCurl: "IMPORT CURL",

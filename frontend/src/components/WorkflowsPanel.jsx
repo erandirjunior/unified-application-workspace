@@ -124,7 +124,7 @@ export default function WorkflowsPanel({
       )}
 
       {/* Coluna 3: Painel Lateral (Execução) */}
-      <div className={`flex flex-col theme-surface transition-all duration-500 border-l theme-border ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[40%]'}`}>
+      <div className={`flex flex-col theme-surface transition-all duration-500 border-l theme-border ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[clamp(350px,35%,500px)]'}`}>
         <div className={`p-4 border-b theme-border shrink-0 flex items-center gap-3 ${rightPanelSize === 'minimized' ? 'flex-col !p-2' : ''}`}>
           {rightPanelSize !== 'minimized' && (
             <h3 className="flex-1 text-xs font-black theme-text uppercase tracking-widest flex items-center gap-2">

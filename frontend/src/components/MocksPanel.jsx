@@ -97,7 +97,7 @@ export default function MocksPanel({
       )}
 
       {/* Coluna 3: Monitoramento Lateral */}
-      <div className={`flex flex-col theme-surface transition-all duration-500 border-l theme-border overflow-hidden ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[500px]'}`}>
+      <div className={`flex flex-col theme-surface transition-all duration-500 border-l theme-border overflow-hidden ${rightPanelSize === 'maximized' ? 'flex-1' : rightPanelSize === 'minimized' ? 'w-12' : 'w-[clamp(350px,35%,500px)]'}`}>
         <div className={`p-6 border-b theme-border flex justify-between items-center theme-elevated ${rightPanelSize === 'minimized' ? 'flex-col !p-2 gap-4' : ''}`}>
           {rightPanelSize !== 'minimized' && (
             <h3 className="text-xs font-black theme-text uppercase tracking-widest flex items-center gap-2 truncate">
