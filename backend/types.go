@@ -37,6 +37,7 @@ type LoadTestRequest struct {
 	Headers       map[string]string `json:"headers"`
 	Body          string            `json:"body"`
 	Single        bool              `json:"single"`
+	CaptureBody   bool              `json:"captureBody"` // Se true, captura body da resposta nos logs
 	Variables     map[string]string `json:"variables"`
 	Assertions    []Assertion       `json:"assertions"`
 	Extractions   []Extraction      `json:"extractions"`

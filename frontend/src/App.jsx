@@ -1036,6 +1036,7 @@ function App() {
                   setTotalRequests: (v) => updateField('totalRequests', v),
                   setDuration: (v) => updateField('duration', v),
                   setRampUp: (v) => updateField('rampUp', v),
+                  setCaptureBody: (v) => updateField('captureBody', v),
                   methodStyles,
                   addHeader: () => addListItem('headers', { key: '', value: '' }),
                   removeHeader: (i) => removeListItem('headers', i),
@@ -1235,6 +1236,7 @@ function App() {
                   t={t}
                   setUrl={(v) => updateField('url', v)} setMethod={(v) => updateField('method', v)}
                   setTotalRequests={(v) => updateField('totalRequests', v)} setDuration={(v) => updateField('duration', v)} setRampUp={(v) => updateField('rampUp', v)}
+                  setCaptureBody={(v) => updateField('captureBody', v)}
                   methodStyles={methodStyles}
                   addHeader={() => addListItem('headers', { key: '', value: '' })} 
                   removeHeader={(i) => removeListItem('headers', i)} 

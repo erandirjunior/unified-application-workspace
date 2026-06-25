@@ -7,6 +7,7 @@ export default function ConfigView({
   totalRequests, setTotalRequests,
   duration, setDuration,
   rampUp, setRampUp,
+  captureBody, setCaptureBody,
   methodStyles,
   headers, addHeader, removeHeader, updateHeader,
   bodyType, setBodyType,
@@ -81,6 +82,7 @@ export default function ConfigView({
 
       {/* Parâmetros de Carga */}
       {!isScenarioMode && (
+        <>
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rps}</label>
@@ -95,6 +97,16 @@ export default function ConfigView({
             <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setRampUp(v); }} />
           </div>
         </div>
+        {setCaptureBody && (
+          <label className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl cursor-pointer hover:border-blue-500/50 transition-all mt-4">
+            <input type="checkbox" checked={!!captureBody} onChange={(e) => setCaptureBody(e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-blue-500 focus:ring-blue-500" />
+            <div>
+              <span className="text-xs font-bold theme-text">{t.config?.captureBody || 'Capturar body da resposta'}</span>
+              <p className="text-[10px] text-slate-500">{t.config?.captureBodyDesc || 'Inclui o corpo da resposta nos logs (aumenta uso de memória em testes de carga)'}</p>
+            </div>
+          </label>
+        )}
+        </>
       )}
 
       {/* Botão de Variáveis Dinâmicas */}

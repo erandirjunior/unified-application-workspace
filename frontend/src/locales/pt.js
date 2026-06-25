@@ -253,6 +253,8 @@ export const pt = {
     rps: "Requests por Segundo (RPS)",
     duration: "Duração",
     rampUp: "Ramp-up",
+    captureBody: "Capturar body da resposta",
+    captureBodyDesc: "Inclui o corpo da resposta nos logs (aumenta uso de memória em testes de carga)",
     variables: "Variáveis Dinâmicas",
     done: "Entendi",
     sections: {

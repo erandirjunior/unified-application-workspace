@@ -22,6 +22,14 @@ var httpClient = &http.Client{
 	},
 }
 
+// truncateBody limita o tamanho do body nos logs para evitar consumo excessivo de memória
+func truncateBody(body string, maxLen int) string {
+	if len(body) <= maxLen {
+		return body
+	}
+	return body[:maxLen] + "...[truncated]"
+}
+
 func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, sharedVars map[string]string, varsMu *sync.RWMutex, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
 	varsMu.RLock()
 	uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
@@ -60,8 +68,26 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 	elapsed := time.Since(start).Milliseconds()
 
 	if err == nil && resp != nil {
-		b, _ := io.ReadAll(resp.Body)
-		respBody := string(b)
+		// Determina se precisa ler o body da resposta
+		needsBody := currentRd.CaptureBody
+		if !needsBody {
+			for _, a := range currentRd.Assertions {
+				if a.Source == "body" { needsBody = true; break }
+			}
+		}
+		if !needsBody {
+			for _, e := range currentRd.Extractions {
+				if e.Source == "body" { needsBody = true; break }
+			}
+		}
+
+		var respBody string
+		if needsBody {
+			b, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+			respBody = string(b)
+		} else {
+			io.Copy(io.Discard, io.LimitReader(resp.Body, 8*1024)) // Drena até 8KB para reutilizar conexão
+		}
 		resp.Body.Close()
 
 		// Captura os headers da resposta para o log
@@ -87,12 +113,17 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 		}
 		varsMu.Unlock()
 
+		logBody := ""
+		if currentRd.CaptureBody {
+			logBody = truncateBody(respBody, 2048)
+		}
+
 		select {
 		case <-ctx.Done():
 		case logChan <- RequestLogEntry{
 			URL: currentURL, Method: currentRd.Method, StatusCode: resp.StatusCode,
 			Timestamp: time.Now().Format("15:04:05"), ResponseTime: elapsed,
-			ResponseBody: respBody, ResponseHeaders: respHeaders,
+			ResponseBody: logBody, ResponseHeaders: respHeaders,
 			RequestBody: currentBody, RequestHeaders: sentHeaders,
 			Success: valid, ErrorMessage: errMsg,
 			RunningThreads: int(atomic.LoadInt64(activeThreads)),
@@ -198,17 +229,22 @@ func executeSteps(ctx context.Context, steps []WorkflowStep, sharedVars map[stri
 			}
 
 			totalToFire := calculateTotalRequests(rd, targetRPS)
-			var phaseWg sync.WaitGroup
-			firingInterval := time.Duration(0)
-			if targetRPS > 0 {
-				firingInterval = time.Second / time.Duration(targetRPS)
+			durationSec := rd.Duration
+			if durationSec <= 0 {
+				durationSec = 1
 			}
 
 			startTimePhase := time.Now()
 			rampUpDuration := time.Duration(rd.RampUp) * time.Second
-			numRampRequests := (targetRPS * rd.RampUp) / 2
+			totalDuration := time.Duration(durationSec) * time.Second
+			interval := time.Duration(0)
+			if targetRPS > 0 {
+				interval = time.Second / time.Duration(targetRPS)
+			}
 
+			var phaseWg sync.WaitGroup
 			cancelled := false
+
 			for i := 0; i < totalToFire; i++ {
 				select {
 				case <-ctx.Done():
@@ -219,9 +255,31 @@ func executeSteps(ctx context.Context, steps []WorkflowStep, sharedVars map[stri
 					break
 				}
 
-				targetTime := calculateTargetTime(i, rd, targetRPS, numRampRequests, startTimePhase, rampUpDuration, firingInterval)
-				if !targetTime.IsZero() {
-					time.Sleep(time.Until(targetTime))
+				// Calcula o timestamp absoluto em que a request i deve ser disparada
+				var targetTime time.Time
+				if rampUpDuration > 0 && i < (targetRPS*rd.RampUp)/2 {
+					// Durante ramp-up: aceleração quadrática
+					t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
+					targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
+				} else {
+					// Após ramp-up: intervalo constante
+					rampRequests := (targetRPS * rd.RampUp) / 2
+					offsetAfterRamp := i - rampRequests
+					if offsetAfterRamp < 0 {
+						offsetAfterRamp = 0
+					}
+					targetTime = startTimePhase.Add(rampUpDuration + time.Duration(int64(offsetAfterRamp))*interval)
+				}
+
+				// Verifica se excedeu a duração
+				if targetTime.Sub(startTimePhase) >= totalDuration {
+					break
+				}
+
+				// Espera até o momento exato (timestamp absoluto)
+				now := time.Now()
+				if targetTime.After(now) {
+					time.Sleep(targetTime.Sub(now))
 				}
 
 				phaseWg.Add(1)
