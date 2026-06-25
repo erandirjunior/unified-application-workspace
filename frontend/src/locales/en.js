@@ -254,6 +254,8 @@ export const en = {
     rps: "Requests Per Second (RPS)",
     duration: "Duration",
     rampUp: "Ramp-up",
+    captureBody: "Capture response body",
+    captureBodyDesc: "Includes the response body in logs (increases memory usage in load tests)",
     variables: "Dynamic Variables",
     done: "I got it",
     sections: {
