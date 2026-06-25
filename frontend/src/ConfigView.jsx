@@ -7,6 +7,8 @@ export default function ConfigView({
   totalRequests, setTotalRequests,
   duration, setDuration,
   rampUp, setRampUp,
+  mode, setMode,
+  workers, setWorkers,
   captureBody, setCaptureBody,
   methodStyles,
   headers, addHeader, removeHeader, updateHeader,
@@ -83,20 +85,48 @@ export default function ConfigView({
       {/* Parâmetros de Carga */}
       {!isScenarioMode && (
         <>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rps}</label>
-            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={totalRequests} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setTotalRequests(v); }} />
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-2 mb-2">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config?.mode || 'Modo'}</label>
+          <div className="flex theme-surface p-1 rounded-xl h-9 shadow-inner border theme-border">
+            <button type="button" onClick={() => setMode('rps')} className={`px-4 text-xs font-black rounded-lg transition-all ${(!mode || mode === 'rps') ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-700'}`}>RPS</button>
+            <button type="button" onClick={() => setMode('workers')} className={`px-4 text-xs font-black rounded-lg transition-all ${mode === 'workers' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:bg-slate-700'}`}>WORKERS</button>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.duration}</label>
-            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={duration} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setDuration(v); }} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rampUp}</label>
-            <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setRampUp(v); }} />
-          </div>
+          <span className="text-[10px] text-slate-500 ml-2">{mode === 'workers' ? (t.config?.workersDesc || 'Conexões simultâneas disparando continuamente') : (t.config?.rpsDesc || 'Taxa fixa de requisições por segundo')}</span>
         </div>
+
+        {(!mode || mode === 'rps') ? (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rps}</label>
+              <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={totalRequests} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setTotalRequests(v); }} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.duration}</label>
+              <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={duration} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setDuration(v); }} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rampUp}</label>
+              <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setRampUp(v); }} />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config?.workers || 'Workers (Threads)'}</label>
+              <input type="number" min="1" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={workers} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 1) setWorkers && setWorkers(v); }} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.duration}</label>
+              <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={duration} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setDuration(v); }} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-tight ml-1">{t.config.rampUp}</label>
+              <input type="number" min="0" className="input-base !py-3.5 !px-5 text-base font-semibold rounded-xl theme-surface" value={rampUp} onChange={(e) => { const v = e.target.value; if (v === '' || Number(v) >= 0) setRampUp(v); }} />
+            </div>
+          </div>
+        )}
+
         {setCaptureBody && (
           <label className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl cursor-pointer hover:border-blue-500/50 transition-all mt-4">
             <input type="checkbox" checked={!!captureBody} onChange={(e) => setCaptureBody(e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-blue-500 focus:ring-blue-500" />

@@ -50,7 +50,9 @@ const prepareRequest = (req) => {
     body,
     totalRequests: parseInt(req.totalRequests || req.threads || 0, 10),
     duration: parseInt(req.duration || 0, 10),
-    rampUp: parseInt(req.rampUp || 0, 10)
+    rampUp: parseInt(req.rampUp || 0, 10),
+    mode: req.mode || 'rps',
+    workers: parseInt(req.workers || 10, 10)
   };
 };
 

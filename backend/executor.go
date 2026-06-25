@@ -22,6 +22,20 @@ var httpClient = &http.Client{
 	},
 }
 
+// newWorkerClient cria um http.Client dedicado para um worker no modo threads.
+// Cada worker tem seu próprio client para evitar contenção no connection pool.
+func newWorkerClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     90 * time.Second,
+			DisableKeepAlives:   false,
+		},
+	}
+}
+
 // truncateBody limita o tamanho do body nos logs para evitar consumo excessivo de memória
 func truncateBody(body string, maxLen int) string {
 	if len(body) <= maxLen {
@@ -31,6 +45,10 @@ func truncateBody(body string, maxLen int) string {
 }
 
 func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, sharedVars map[string]string, varsMu *sync.RWMutex, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
+	executeSingleRequestWithClient(ctx, httpClient, currentRd, sharedVars, varsMu, logChan, success, errors, activeThreads)
+}
+
+func executeSingleRequestWithClient(ctx context.Context, client *http.Client, currentRd LoadTestRequest, sharedVars map[string]string, varsMu *sync.RWMutex, logChan chan RequestLogEntry, success *int64, errors *int64, activeThreads *int64) {
 	varsMu.RLock()
 	uT, bT := parseTemplate(currentRd.URL), parseTemplate(currentRd.Body)
 	currentURL := executeTemplate(uT, sharedVars)
@@ -64,7 +82,7 @@ func executeSingleRequest(ctx context.Context, currentRd LoadTestRequest, shared
 	varsMu.RUnlock()
 
 	start := time.Now()
-	resp, err := httpClient.Do(req)
+	resp, err := client.Do(req)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err == nil && resp != nil {
@@ -223,79 +241,163 @@ func executeSteps(ctx context.Context, steps []WorkflowStep, sharedVars map[stri
 		}
 
 		if rd.URL != "" {
-			targetRPS := rd.TotalRequests
-			if rd.Single {
-				targetRPS = 1
-			}
+			// Modo Workers: N goroutines disparando continuamente durante a duração
+			if strings.ToLower(rd.Mode) == "workers" {
+				numWorkers := rd.Workers
+				if numWorkers <= 0 {
+					numWorkers = 10
+				}
+				durationSec := rd.Duration
+				if durationSec <= 0 {
+					durationSec = 10
+				}
+				totalDuration := time.Duration(durationSec) * time.Second
+				rampUpSec := rd.RampUp
+				if rampUpSec < 0 {
+					rampUpSec = 0
+				}
 
-			totalToFire := calculateTotalRequests(rd, targetRPS)
-			durationSec := rd.Duration
-			if durationSec <= 0 {
-				durationSec = 1
-			}
+				workerCtx, workerCancel := context.WithTimeout(ctx, totalDuration)
 
-			startTimePhase := time.Now()
-			rampUpDuration := time.Duration(rd.RampUp) * time.Second
-			totalDuration := time.Duration(durationSec) * time.Second
-			interval := time.Duration(0)
-			if targetRPS > 0 {
-				interval = time.Second / time.Duration(targetRPS)
-			}
+				var phaseWg sync.WaitGroup
 
-			var phaseWg sync.WaitGroup
-			cancelled := false
+				if rampUpSec > 0 && rampUpSec < durationSec {
+					// Ramp-up: adiciona workers gradualmente ao longo do período
+					rampInterval := time.Duration(rampUpSec) * time.Second / time.Duration(numWorkers)
+					for w := 0; w < numWorkers; w++ {
+						select {
+						case <-workerCtx.Done():
+							break
+						default:
+						}
+						if w > 0 {
+							time.Sleep(rampInterval)
+						}
+						phaseWg.Add(1)
+						allWorkersWg.Add(1)
+						atomic.AddInt64(activeThreads, 1)
+						go func(currentRd LoadTestRequest) {
+							defer phaseWg.Done()
+							defer allWorkersWg.Done()
+							defer atomic.AddInt64(activeThreads, -1)
+							workerClient := newWorkerClient()
+							for {
+								select {
+								case <-workerCtx.Done():
+									return
+								default:
+									executeSingleRequestWithClient(workerCtx, workerClient, currentRd, sharedVars, varsMu, logChan, success, errors, activeThreads)
+								}
+							}
+						}(rd)
+					}
+				} else {
+					// Sem ramp-up: todos os workers iniciam imediatamente
+					for w := 0; w < numWorkers; w++ {
+						phaseWg.Add(1)
+						allWorkersWg.Add(1)
+						atomic.AddInt64(activeThreads, 1)
+						go func(currentRd LoadTestRequest) {
+							defer phaseWg.Done()
+							defer allWorkersWg.Done()
+							defer atomic.AddInt64(activeThreads, -1)
+							workerClient := newWorkerClient()
+							for {
+								select {
+								case <-workerCtx.Done():
+									return
+								default:
+									executeSingleRequestWithClient(workerCtx, workerClient, currentRd, sharedVars, varsMu, logChan, success, errors, activeThreads)
+								}
+							}
+						}(rd)
+					}
+				}
 
-			for i := 0; i < totalToFire; i++ {
+				phaseWg.Wait()
+				workerCancel()
+
 				select {
 				case <-ctx.Done():
-					cancelled = true
+					return false
 				default:
 				}
-				if cancelled {
-					break
+			} else {
+				// Modo RPS (padrão): disparo controlado por taxa
+				targetRPS := rd.TotalRequests
+				if rd.Single {
+					targetRPS = 1
 				}
 
-				// Calcula o timestamp absoluto em que a request i deve ser disparada
-				var targetTime time.Time
-				if rampUpDuration > 0 && i < (targetRPS*rd.RampUp)/2 {
-					// Durante ramp-up: aceleração quadrática
-					t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
-					targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
-				} else {
-					// Após ramp-up: intervalo constante
-					rampRequests := (targetRPS * rd.RampUp) / 2
-					offsetAfterRamp := i - rampRequests
-					if offsetAfterRamp < 0 {
-						offsetAfterRamp = 0
+				totalToFire := calculateTotalRequests(rd, targetRPS)
+				durationSec := rd.Duration
+				if durationSec <= 0 {
+					durationSec = 1
+				}
+
+				startTimePhase := time.Now()
+				rampUpDuration := time.Duration(rd.RampUp) * time.Second
+				totalDuration := time.Duration(durationSec) * time.Second
+				interval := time.Duration(0)
+				if targetRPS > 0 {
+					interval = time.Second / time.Duration(targetRPS)
+				}
+
+				var phaseWg sync.WaitGroup
+				cancelled := false
+
+				for i := 0; i < totalToFire; i++ {
+					select {
+					case <-ctx.Done():
+						cancelled = true
+					default:
 					}
-					targetTime = startTimePhase.Add(rampUpDuration + time.Duration(int64(offsetAfterRamp))*interval)
+					if cancelled {
+						break
+					}
+
+					// Calcula o timestamp absoluto em que a request i deve ser disparada
+					var targetTime time.Time
+					if rampUpDuration > 0 && i < (targetRPS*rd.RampUp)/2 {
+						// Durante ramp-up: aceleração quadrática
+						t := math.Sqrt(2.0 * float64(rd.RampUp) * float64(i) / float64(targetRPS))
+						targetTime = startTimePhase.Add(time.Duration(t * float64(time.Second)))
+					} else {
+						// Após ramp-up: intervalo constante
+						rampRequests := (targetRPS * rd.RampUp) / 2
+						offsetAfterRamp := i - rampRequests
+						if offsetAfterRamp < 0 {
+							offsetAfterRamp = 0
+						}
+						targetTime = startTimePhase.Add(rampUpDuration + time.Duration(int64(offsetAfterRamp))*interval)
+					}
+
+					// Verifica se excedeu a duração
+					if targetTime.Sub(startTimePhase) >= totalDuration {
+						break
+					}
+
+					// Espera até o momento exato (timestamp absoluto)
+					now := time.Now()
+					if targetTime.After(now) {
+						time.Sleep(targetTime.Sub(now))
+					}
+
+					phaseWg.Add(1)
+					allWorkersWg.Add(1)
+					atomic.AddInt64(activeThreads, 1)
+
+					go func(currentRd LoadTestRequest) {
+						defer phaseWg.Done()
+						defer allWorkersWg.Done()
+						defer atomic.AddInt64(activeThreads, -1)
+						executeSingleRequest(ctx, currentRd, sharedVars, varsMu, logChan, success, errors, activeThreads)
+					}(rd)
 				}
-
-				// Verifica se excedeu a duração
-				if targetTime.Sub(startTimePhase) >= totalDuration {
-					break
+				phaseWg.Wait()
+				if cancelled {
+					return false
 				}
-
-				// Espera até o momento exato (timestamp absoluto)
-				now := time.Now()
-				if targetTime.After(now) {
-					time.Sleep(targetTime.Sub(now))
-				}
-
-				phaseWg.Add(1)
-				allWorkersWg.Add(1)
-				atomic.AddInt64(activeThreads, 1)
-
-				go func(currentRd LoadTestRequest) {
-					defer phaseWg.Done()
-					defer allWorkersWg.Done()
-					defer atomic.AddInt64(activeThreads, -1)
-					executeSingleRequest(ctx, currentRd, sharedVars, varsMu, logChan, success, errors, activeThreads)
-				}(rd)
-			}
-			phaseWg.Wait()
-			if cancelled {
-				return false
 			}
 		}
 	}
