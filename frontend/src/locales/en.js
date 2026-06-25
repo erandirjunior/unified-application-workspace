@@ -251,7 +251,7 @@ export const en = {
     descriptionPlaceholder: "Add a detailed description...",
     method: "Method",
     url: "URL",
-    rps: "Requests Per Second (RPS)",
+    rps: "Requests Per Second",
     duration: "Duration",
     rampUp: "Ramp-up",
     mode: "Load Mode",

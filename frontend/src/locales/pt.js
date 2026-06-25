@@ -250,7 +250,7 @@ export const pt = {
     descriptionPlaceholder: "Adicione uma descrição detalhada...",
     method: "Método",
     url: "URL",
-    rps: "Requests por Segundo (RPS)",
+    rps: "Requests por Segundo",
     duration: "Duração",
     rampUp: "Ramp-up",
     mode: "Modo de Carga",
