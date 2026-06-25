@@ -92,18 +92,50 @@ Extract values from the response and save them as variables for use in subsequen
 
 ## 4. Load Testing
 
-### Configuration
+### Load Mode
+
+The system supports two distinct load modes, selectable via a toggle in the configuration panel:
+
+#### RPS Mode (Load Test)
+
+Fires a fixed number of requests per second regardless of server response time. Use this mode to validate whether your API handles a specific throughput.
 
 - **Requests Per Second (RPS)**: How many requests per second will be fired.
 - **Duration**: Total test time in seconds.
 - **Ramp-up**: Gradual warm-up time (starts slow and increases to target RPS).
+
+#### Workers Mode (Stress Test)
+
+Maintains N simultaneous connections (threads) firing continuously. Each worker sends a request, waits for the response, then immediately sends the next. Use this mode to saturate the target system and force autoscaling.
+
+- **Workers (Threads)**: Number of simultaneous connections kept active.
+- **Duration**: Total test time in seconds.
+- **Ramp-up**: Time to gradually add workers (e.g., 100 workers with 10s ramp-up adds ~10 workers/second).
+
+#### When to use each mode
+
+| Mode | Use Case | Answers |
+|------|----------|---------|
+| RPS | Load testing | "Can my API handle 500 req/s?" |
+| Workers | Stress testing / Autoscaling | "What happens when the system is saturated?" |
+
+**Key difference**: In RPS mode, requests may timeout at the load balancer if the server cannot keep up — the pods may not see the full load. In Workers mode, each connection holds a real active request on the pod, consuming actual CPU/memory and triggering HPA scaling.
+
+### Configuration
+
+Each worker in Workers mode uses its own dedicated HTTP client with a 30-second timeout to avoid connection pool contention.
+
+### Capture Response Body
+
+The **"Capture response body"** option is available in both modes. When enabled, the full response body (up to 64KB) is stored in logs. Disabling it improves throughput in stress tests since workers spend less time per request.
 
 ### Execution
 
 Click **"RUN TEST"** to start. The execution panel (on the right) shows in real time:
 - Log of each request with status, response time, and body.
 - Active threads chart.
-- Success/error counters.
+- Success/error counters (updated in real time).
+- Average RPS calculated from actual throughput.
 
 ### Stop Test
 

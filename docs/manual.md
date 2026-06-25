@@ -92,18 +92,50 @@ Extraia valores da resposta e salve em variáveis para uso em requests subsequen
 
 ## 4. Testes de Carga
 
-### Configuração
+### Modo de Carga
+
+O sistema suporta dois modos de execução distintos, selecionáveis via toggle no painel de configuração:
+
+#### Modo RPS (Teste de Carga)
+
+Dispara um número fixo de requisições por segundo, independente do tempo de resposta do servidor. Use este modo para validar se sua API aguenta um throughput específico.
 
 - **Requests por Segundo (RPS)**: Quantas requisições por segundo serão disparadas.
 - **Duração**: Tempo total do teste em segundos.
 - **Ramp-up**: Tempo de aquecimento gradual (começa lento e aumenta até o RPS alvo).
+
+#### Modo Workers (Teste de Estresse)
+
+Mantém N conexões simultâneas (threads) disparando continuamente. Cada worker envia uma requisição, aguarda a resposta, e imediatamente envia a próxima. Use este modo para saturar o sistema alvo e forçar o autoscaling.
+
+- **Workers (Threads)**: Número de conexões simultâneas mantidas ativas.
+- **Duração**: Tempo total do teste em segundos.
+- **Ramp-up**: Tempo para adicionar workers gradualmente (ex: 100 workers com ramp-up de 10s adiciona ~10 workers/segundo).
+
+#### Quando usar cada modo
+
+| Modo | Caso de Uso | Responde à pergunta |
+|------|-------------|---------------------|
+| RPS | Teste de carga | "Minha API aguenta 500 req/s?" |
+| Workers | Teste de estresse / Autoscaling | "O que acontece quando o sistema é saturado?" |
+
+**Diferença fundamental**: No modo RPS, requisições podem dar timeout no load balancer se o servidor não acompanhar — os pods podem não receber toda a carga. No modo Workers, cada conexão mantém uma requisição real ativa no pod, consumindo CPU/memória de fato e acionando o HPA.
+
+### Configuração Técnica
+
+Cada worker no modo Workers utiliza seu próprio HTTP client dedicado com timeout de 30 segundos, evitando contenção no pool de conexões.
+
+### Capturar Body da Resposta
+
+A opção **"Capturar body da resposta"** está disponível em ambos os modos. Quando habilitada, o body completo da resposta (até 64KB) é armazenado nos logs. Desabilitá-la melhora o throughput em testes de estresse, pois os workers gastam menos tempo por requisição.
 
 ### Execução
 
 Clique em **"EXECUTAR TESTE"** para iniciar. O painel de execução (à direita) mostra em tempo real:
 - Log de cada request com status, tempo de resposta e corpo.
 - Gráfico de threads ativas.
-- Contadores de sucesso/erro.
+- Contadores de sucesso/erro (atualizados em tempo real).
+- RPS médio calculado a partir do throughput real.
 
 ### Parar Teste
 
