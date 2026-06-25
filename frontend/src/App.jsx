@@ -57,7 +57,7 @@ function App() {
     });
   }, [form?.activeRequestId, view, updateField]);
 
-  const { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast, t);
+  const { isRunning, lastExecutedPayload, requestLogs, reportData, liveStats, sendRequests: runRequests, stopTest, setRequestLogs, setReportData } = useTestRunner(activeCollection, getPayload, showCustomToast, t);
 
   const sendRequests = async (payload = null) => {
     if (view !== 'collection-detail') setView('report');
@@ -951,7 +951,8 @@ function App() {
             {view === 'report' ? (
               <ReportView 
                 reportData={reportData} 
-                requestLogs={requestLogs} 
+                requestLogs={requestLogs}
+                liveStats={liveStats}
                 setView={setView}
                 t={t}
                 results={results}
@@ -1020,6 +1021,7 @@ function App() {
                 onRunSingleRequest={handleRunSingleSavedRequest}
                 reportData={reportData}
                 requestLogs={requestLogs}
+                liveStats={liveStats}
                 isRunning={isRunning}
                 stopTest={stopTest}
                 sendRequests={sendRequests}

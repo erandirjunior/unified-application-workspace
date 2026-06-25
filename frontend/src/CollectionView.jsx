@@ -11,7 +11,7 @@ export default function CollectionView({
   onRunSingleRequest, onBack, onAddRequest, onAddFolder, onImportCurl,
   onMoveRequest, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName,
   onUpdateEnvironments, onSetActiveEnvironment, onUpdateScenarios, onUpdateWorkflows, onUpdateMockFolders,
-  reportData, requestLogs, isRunning, stopTest, sendRequests, lastExecutedPayload, onSaveResponseToDoc,
+  reportData, requestLogs, liveStats, isRunning, stopTest, sendRequests, lastExecutedPayload, onSaveResponseToDoc,
   docProps,
   selectedRequestIds = [], onToggleSelection, onViewUnifiedDoc,
   activeWorkflowId,
@@ -382,6 +382,7 @@ export default function CollectionView({
               isRunning={isRunning}
               reportData={reportData}
               requestLogs={requestLogs}
+              liveStats={liveStats}
               sendRequests={sendRequests}
               stopTest={stopTest}
               lastExecutedPayload={lastExecutedPayload}
@@ -407,6 +408,7 @@ export default function CollectionView({
               isRunning={isRunning}
               reportData={reportData}
               requestLogs={requestLogs}
+              liveStats={liveStats}
               sendRequests={sendRequests}
               stopTest={stopTest}
               lastExecutedPayload={lastExecutedPayload}

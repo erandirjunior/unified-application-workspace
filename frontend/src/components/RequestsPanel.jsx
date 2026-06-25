@@ -17,6 +17,7 @@ export default function RequestsPanel({
   isRunning,
   reportData,
   requestLogs,
+  liveStats,
   sendRequests,
   stopTest,
   lastExecutedPayload,
@@ -127,7 +128,7 @@ export default function RequestsPanel({
               methodStyles={editorProps.methodStyles} 
             />
           ) : (
-            <ReportView t={t} reportData={reportData} requestLogs={requestLogs} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
+            <ReportView t={t} reportData={reportData} requestLogs={requestLogs} liveStats={liveStats} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
           )}
         </div>
       </div>

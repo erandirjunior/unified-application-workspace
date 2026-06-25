@@ -95,6 +95,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
   const [lastExecutedPayload, setLastExecutedPayload] = useState(null);
   const [requestLogs, setRequestLogs] = useState([]);
   const [reportData, setReportData] = useState(null);
+  const [liveStats, setLiveStats] = useState({ total: 0, success: 0, errors: 0 });
 
   const stopTest = () => {
     if (abortControllerRef.current) {
@@ -105,6 +106,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
   const sendRequests = async (overridePayload = null) => {
     setRequestLogs([]);
     setReportData(null); // Limpa dados de relatório anteriores
+    setLiveStats({ total: 0, success: 0, errors: 0 });
 
     let payload;
     if (Array.isArray(overridePayload)) {
@@ -129,6 +131,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
     const testStartTime = Date.now();
     let localSuccess = 0;
     let localErrors = 0;
+    let localTotal = 0;
 
     if (abortControllerRef.current) abortControllerRef.current.abort(); // Aborta qualquer teste anterior
     const controller = new AbortController();
@@ -168,7 +171,9 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
             if (data.type === 'summary') {
               setReportData(data);
             } else {
+              localTotal++;
               if (data.success) localSuccess++; else localErrors++;
+              setLiveStats({ total: localTotal, success: localSuccess, errors: localErrors });
               setRequestLogs(prev => [data, ...prev].slice(0, 100)); // Limita o histórico de logs para evitar sobrecarga de memória
             }
           } catch (e) {
@@ -180,7 +185,7 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
       if (error.name === 'AbortError') {
         console.log('Teste interrompido pelo usuário');
         showCustomToast(t?.toasts?.loadTestStopped || 'Teste interrompido!', 'warning');
-        setReportData({ totalRequests: localSuccess + localErrors, successCount: localSuccess, errorCount: localErrors, totalDuration: (Date.now() - testStartTime) / 1000 });
+        setReportData({ totalRequests: localTotal, successCount: localSuccess, errorCount: localErrors, totalDuration: (Date.now() - testStartTime) / 1000 });
       } else {
         console.error(error);
         showCustomToast(t?.toasts?.backendError || 'Erro na conexão com o backend.', 'error');
@@ -191,5 +196,5 @@ export function useTestRunner(activeCollection, getRequestFormPayload, showCusto
     }
   };
 
-  return { isRunning, lastExecutedPayload, requestLogs, reportData, sendRequests, stopTest, setRequestLogs, setReportData };
+  return { isRunning, lastExecutedPayload, requestLogs, reportData, liveStats, sendRequests, stopTest, setRequestLogs, setReportData };
 }
