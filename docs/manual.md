@@ -90,13 +90,11 @@ Extraia valores da resposta e salve em variáveis para uso em requests subsequen
 
 ---
 
-## 4. Testes de Carga
-
-### Modo de Carga
+## 4. Modos de Teste
 
 O sistema suporta dois modos de execução distintos, selecionáveis via toggle no painel de configuração:
 
-#### Modo RPS (Teste de Carga)
+#### Modo RPS
 
 Dispara um número fixo de requisições por segundo, independente do tempo de resposta do servidor. Use este modo para validar se sua API aguenta um throughput específico.
 
@@ -104,7 +102,7 @@ Dispara um número fixo de requisições por segundo, independente do tempo de r
 - **Duração**: Tempo total do teste em segundos.
 - **Ramp-up**: Tempo de aquecimento gradual (começa lento e aumenta até o RPS alvo).
 
-#### Modo Workers (Teste de Estresse)
+#### Modo Workers
 
 Mantém N conexões simultâneas (threads) disparando continuamente. Cada worker envia uma requisição, aguarda a resposta, e imediatamente envia a próxima. Use este modo para saturar o sistema alvo e forçar o autoscaling.
 
@@ -114,10 +112,10 @@ Mantém N conexões simultâneas (threads) disparando continuamente. Cada worker
 
 #### Quando usar cada modo
 
-| Modo | Caso de Uso | Responde à pergunta |
-|------|-------------|---------------------|
-| RPS | Teste de carga | "Minha API aguenta 500 req/s?" |
-| Workers | Teste de estresse / Autoscaling | "O que acontece quando o sistema é saturado?" |
+| Modo      | Responde à pergunta                           |
+|-----------|-----------------------------------------------|
+| RPS       | "Minha API aguenta 500 req/s?"                |
+| Workers   | "O que acontece quando o sistema é saturado?" |
 
 **Diferença fundamental**: No modo RPS, requisições podem dar timeout no load balancer se o servidor não acompanhar — os pods podem não receber toda a carga. No modo Workers, cada conexão mantém uma requisição real ativa no pod, consumindo CPU/memória de fato e acionando o HPA.
 

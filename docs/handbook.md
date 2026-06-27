@@ -90,13 +90,11 @@ Extract values from the response and save them as variables for use in subsequen
 
 ---
 
-## 4. Load Testing
-
-### Load Mode
+## 4. Testing Mode
 
 The system supports two distinct load modes, selectable via a toggle in the configuration panel:
 
-#### RPS Mode (Load Test)
+#### RPS Mode
 
 Fires a fixed number of requests per second regardless of server response time. Use this mode to validate whether your API handles a specific throughput.
 
@@ -104,7 +102,7 @@ Fires a fixed number of requests per second regardless of server response time. 
 - **Duration**: Total test time in seconds.
 - **Ramp-up**: Gradual warm-up time (starts slow and increases to target RPS).
 
-#### Workers Mode (Stress Test)
+#### Workers Mode
 
 Maintains N simultaneous connections (threads) firing continuously. Each worker sends a request, waits for the response, then immediately sends the next. Use this mode to saturate the target system and force autoscaling.
 
@@ -114,10 +112,10 @@ Maintains N simultaneous connections (threads) firing continuously. Each worker 
 
 #### When to use each mode
 
-| Mode | Use Case | Answers |
-|------|----------|---------|
-| RPS | Load testing | "Can my API handle 500 req/s?" |
-| Workers | Stress testing / Autoscaling | "What happens when the system is saturated?" |
+| Mode      | Answers                                       |
+|-----------|-----------------------------------------------|
+| RPS       | "Can my API handle 500 req/s?"                |
+| Workers   | "What happens when the system is saturated?"  |
 
 **Key difference**: In RPS mode, requests may timeout at the load balancer if the server cannot keep up — the pods may not see the full load. In Workers mode, each connection holds a real active request on the pod, consuming actual CPU/memory and triggering HPA scaling.
 
