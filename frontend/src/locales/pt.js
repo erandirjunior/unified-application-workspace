@@ -258,7 +258,7 @@ export const pt = {
     workersDesc: "Conexões simultâneas disparando continuamente — ideal para forçar autoscaling",
     rpsDesc: "Taxa fixa de requisições por segundo",
     captureBody: "Capturar body da resposta",
-    captureBodyDesc: "Inclui o corpo da resposta nos logs (aumenta uso de memória em testes de carga)",
+    captureBodyDesc: "Inclui o corpo da resposta nos logs (aumenta uso de memória)",
     variables: "Variáveis Dinâmicas",
     done: "Entendi",
     sections: {
