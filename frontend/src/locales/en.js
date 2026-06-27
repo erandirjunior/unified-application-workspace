@@ -259,7 +259,7 @@ export const en = {
     workersDesc: "Simultaneous connections firing continuously — ideal for forcing autoscaling",
     rpsDesc: "Fixed rate of requests per second",
     captureBody: "Capture response body",
-    captureBodyDesc: "Includes the response body in logs (increases memory usage in load tests)",
+    captureBodyDesc: "Includes the response body in logs (increases memory usage)",
     variables: "Dynamic Variables",
     done: "I got it",
     sections: {
