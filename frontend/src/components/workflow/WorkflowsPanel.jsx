@@ -1,8 +1,8 @@
 import React from 'react';
-import WorkflowEditorView from '../WorkflowEditorView';
-import SaveRequestForm from '../SaveRequestForm';
-import ConfigView from '../ConfigView';
-import ReportView from '../ReportView';
+import WorkflowEditorView from '../../views/WorkflowEditorView';
+import SaveRequestForm from '../../views/SaveRequestForm';
+import ConfigView from '../../views/ConfigView';
+import ReportView from '../../views/ReportView';
 
 export default function WorkflowsPanel({
   t,
@@ -21,6 +21,7 @@ export default function WorkflowsPanel({
   isRunning,
   reportData,
   requestLogs,
+  liveStats,
   sendRequests,
   stopTest,
   lastExecutedPayload,
@@ -143,7 +144,7 @@ export default function WorkflowsPanel({
           </div>
         </div>
         <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 ${rightPanelSize === 'minimized' ? 'hidden' : 'block'}`}>
-          <ReportView t={t} reportData={reportData} requestLogs={requestLogs} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
+          <ReportView t={t} reportData={reportData} requestLogs={requestLogs} liveStats={liveStats} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
         </div>
       </div>
     </div>

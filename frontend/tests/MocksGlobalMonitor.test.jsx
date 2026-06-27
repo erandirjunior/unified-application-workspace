@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import MocksGlobalMonitor from '../src/components/MocksGlobalMonitor';
+import MocksGlobalMonitor from '../src/components/mocks/MocksGlobalMonitor';
 import { pt } from '../src/locales/pt';
 
 describe('MocksGlobalMonitor', () => {

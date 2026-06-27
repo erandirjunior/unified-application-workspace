@@ -1,12 +1,17 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, beforeEach, test, expect } from 'vitest';
 import App from '../src/App';
+import { ToastProvider } from '../src/contexts/ToastContext';
+import { ThemeProvider } from '../src/contexts/ThemeContext';
+import { CollectionsProvider } from '../src/contexts/CollectionsContext';
+
+const renderApp = () => render(<ToastProvider><ThemeProvider><CollectionsProvider><App /></CollectionsProvider></ThemeProvider></ToastProvider>);
 
 /* ===========================
    MOCK DOS COMPONENTES
 =========================== */
 
-vi.mock('../src/ReportView', () => ({
+vi.mock('../src/views/ReportView', () => ({
   default: ({ onSaveResponseToDoc, onStop }) => (
     <div data-testid="report-view">
       Report View
@@ -42,7 +47,7 @@ vi.mock('../src/ReportView', () => ({
   )
 }));
 
-vi.mock('../src/CollectionView', () => ({
+vi.mock('../src/views/CollectionView', () => ({
   default: ({ onSelectRequest, onViewDocumentation, onToggleSelection, onViewUnifiedDoc, onDeleteRequest, onDeleteFolder, onDeleteWorkflow, onReorderItem, onUpdateFolderName, onRunRequest, onRunSingleRequest, onSetActiveEnvironment, onUpdateEnvironments, onImportCurl, editorProps, onSaveResponseToDoc }) => (
     <div data-testid="collection-view">
       Collection View
@@ -103,7 +108,7 @@ vi.mock('../src/CollectionView', () => ({
   )
 }));
 
-vi.mock('../src/DocumentationView', () => ({
+vi.mock('../src/views/DocumentationView', () => ({
   default: ({ updateRequestInCollection, onBack, onUpdateGeneralDoc, addResponseField, removeResponseField, updateResponseField, removeResponse, onSelectForEdit, addResponse, onEdit }) => (
     <div data-testid="documentation-view">
       Documentation View
@@ -121,7 +126,7 @@ vi.mock('../src/DocumentationView', () => ({
   )
 }));
 
-vi.mock('../src/SaveRequestForm', () => ({
+vi.mock('../src/views/SaveRequestForm', () => ({
   default: ({ onSaveRequest }) => (
     <div data-testid="save-request-form">
       <button onClick={() => onSaveRequest('Request Salva')}>Salvar Nova</button>
@@ -130,7 +135,7 @@ vi.mock('../src/SaveRequestForm', () => ({
   )
 }));
 
-vi.mock('../src/ConfigView', () => ({
+vi.mock('../src/views/ConfigView', () => ({
   default: ({ sendRequests, updateRequestInCollection }) => (
     <div data-testid="config-view">
       <button onClick={() => sendRequests()}>Executar</button>
@@ -143,7 +148,7 @@ vi.mock('../src/ConfigView', () => ({
    MOCK COLLECTIONS VIEW
 =========================== */
 
-vi.mock('../src/CollectionsView', () => ({
+vi.mock('../src/views/CollectionsView', () => ({
   default: ({
     collections,
     onCreateCollection,
@@ -314,49 +319,49 @@ describe('App', () => {
   });
 
   test('renders initial dashboard', () => {
-    render(<App />);
+    renderApp();
     expect(screen.getByTestId('collections-view')).toBeInTheDocument();
   });
 
   test('toggles light/dark theme', () => {
-    render(<App />);
+    renderApp();
     const btnTheme = screen.getByRole('button', { name: /🌙|☀️/ });
     fireEvent.click(btnTheme);
     expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   test('creates a collection', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Criar Collection'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('renames a collection', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Renomear Col'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('reorders collections', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Mover Baixo'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('enters a collection', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     expect(screen.getByTestId('collection-view')).toBeInTheDocument();
   });
 
   test('opens confirmation modal when deleting a collection', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Excluir Minha Collection'));
     expect(screen.getByText('Confirmação')).toBeInTheDocument();
   });
 
   test('confirms collection deletion', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Excluir Minha Collection'));
     fireEvent.click(screen.getByText('Confirmar'));
     await waitFor(() => {
@@ -365,7 +370,7 @@ describe('App', () => {
   });
 
   test('executes test from collection detail', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar'));
     await waitFor(() => {
@@ -374,14 +379,14 @@ describe('App', () => {
   });
 
   test('should enter a collection and select a request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     expect(screen.getByTestId('collection-view')).toBeInTheDocument();
   });
 
   test('should navigate to documentation view', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     expect(screen.getByTestId('documentation-view')).toBeInTheDocument();
@@ -389,7 +394,7 @@ describe('App', () => {
 
   test('should manage notifications lifecycle (Toasts)', () => {
     vi.useFakeTimers();
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar'));
     
@@ -404,14 +409,14 @@ describe('App', () => {
   });
 
   test('should open confirmation modal when trying to delete a request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Req'));
     expect(screen.getByText(/Tem certeza que deseja excluir esta requisição/i)).toBeInTheDocument();
   });
 
   test('should trigger request execution', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Executar'));
@@ -419,7 +424,7 @@ describe('App', () => {
   });
 
   test('should manage save response to documentation logic (saveResponseToDoc)', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar no Doc Col'));
@@ -429,7 +434,7 @@ describe('App', () => {
 
   test('should save scenario step response to documentation', async () => {
     mockFormState.activeRequestId = null; // Start clean to avoid silent save
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Cenário'));
     vi.clearAllMocks(); // Clear calls from navigation
@@ -440,7 +445,7 @@ describe('App', () => {
   });
 
   test('should save workflow step response to documentation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Workflow'));
     fireEvent.click(screen.getByText('Salvar Passo Workflow Col'));
@@ -448,7 +453,7 @@ describe('App', () => {
   });
 
   test('should save parallel step response to documentation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Parallel'));
     fireEvent.click(screen.getByText('Salvar Passo Parallel Col'));
@@ -456,7 +461,7 @@ describe('App', () => {
   });
 
   test('should support updating steps in parallel workflow groups', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Parallel'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
@@ -464,7 +469,7 @@ describe('App', () => {
   });
 
   test('should perform recursive search of selected requests for documentation', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Selecionar Req'));
     fireEvent.click(screen.getByText('Doc Unificada'));
@@ -472,14 +477,14 @@ describe('App', () => {
   });
 
   test('should close confirmation modal on cancel', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Excluir Minha Collection'));
     fireEvent.click(screen.getByText('Cancelar'));
     expect(screen.queryByText('Confirmação')).not.toBeInTheDocument();
   });
 
   test('should manage response fields in documentation', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     
@@ -496,7 +501,7 @@ describe('App', () => {
   });
 
   test('validates empty status code when updating request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
 
@@ -509,7 +514,7 @@ describe('App', () => {
   });
 
   test('saves new request with default name if field is empty', () => {
-    render(<App />);
+    renderApp();
     // SaveRequestForm is rendered in the config branch, but that's no longer directly navigable.
     // Test createCollection directly which also exercises setCollections.
     fireEvent.click(screen.getByText('Criar Collection'));
@@ -519,7 +524,7 @@ describe('App', () => {
   test('updates a request in the collection root', () => {
     mockFormState.activeRequestId = 'req-1';
     mockFormState.responses = [{ statusCode: '200' }];
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
@@ -527,27 +532,27 @@ describe('App', () => {
   });
 
   test('ignores collection reordering if already at the top', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Mover Cima'));
     expect(mockSetCollections).not.toHaveBeenCalled();
   });
 
   test('ignores item reordering if already at the limit', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Subir Item'));
     expect(mockSetCollections).not.toHaveBeenCalled();
   });
 
   test('reorders nested item within a folder', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Subir Nested'));
     expect(mockSetCollections).not.toHaveBeenCalled();
   });
 
   test('flattens nested JSON when saving response to doc to generate data dictionary', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar JSON Complexo Col'));
@@ -559,25 +564,25 @@ describe('App', () => {
 
   test('initializes form arrays if null when loading view', () => {
     mockFormState.headers = null;
-    render(<App />);
+    renderApp();
     expect(mockFormState.headers).toEqual([]);
   });
 
   test('creates collection from imported data', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Importar Collection'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('reorders collection item downwards', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Descer Item'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('deletes a folder and a workflow after confirmation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     
     fireEvent.click(screen.getByText('Excluir Pasta'));
@@ -590,7 +595,7 @@ describe('App', () => {
   });
 
   test('renames a folder in the collection', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Renomear Pasta'));
     
@@ -599,14 +604,14 @@ describe('App', () => {
   });
 
   test('opens documentation without a specific request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc Geral'));
     expect(screen.getByTestId('documentation-view')).toBeInTheDocument();
   });
 
   test('executes a scenario and a workflow (multiple requests flow)', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     
     fireEvent.click(screen.getByText('Executar Cenário'));
@@ -617,7 +622,7 @@ describe('App', () => {
   });
 
   test('ignores update if there is no active request ID', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     
     act(() => {
@@ -631,7 +636,7 @@ describe('App', () => {
   });
 
   test('saves scenario step response searching in collection depth', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Cenário'));
     fireEvent.click(screen.getByText('Salvar Passo Cenário Col'));
@@ -639,21 +644,21 @@ describe('App', () => {
   });
 
   test('deletes a collection after confirmation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Excluir Minha Collection'));
     fireEvent.click(screen.getByText('Confirmar'));
     await waitFor(() => expect(mockSetCollections).toHaveBeenCalled());
   });
 
   test('executes a single saved request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Single'));
     expect(mockRunRequests).toHaveBeenCalled();
   });
 
   test('updates collection environments', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Update Envs'));
     expect(mockSetCollections).toHaveBeenCalled();
@@ -662,7 +667,7 @@ describe('App', () => {
   });
 
   test('deletes a request after confirmation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Req'));
     
@@ -675,7 +680,7 @@ describe('App', () => {
   test('removes a response from documentation and syncs with collection', async () => {
     vi.useFakeTimers();
     mockFormState.responses = [{ statusCode: '200', body: 'ok' }];
-    render(<App />);
+    renderApp();
     
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
@@ -688,14 +693,14 @@ describe('App', () => {
   });
 
   test('executes load test for a single saved request', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Carga Single'));
     expect(mockRunRequests).toHaveBeenCalledWith(expect.objectContaining({ totalRequests: 10 }));
   });
 
   test('updates a request at the root level of a workflow', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Workflow'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
@@ -705,7 +710,7 @@ describe('App', () => {
   });
 
   test('manages nested request in folders (selection, update and response saving)', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     
     fireEvent.click(screen.getByText('Abrir Nested'));
@@ -718,7 +723,7 @@ describe('App', () => {
   });
 
   test('handles parsing error when saving malformed JSON response', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar JSON Inválido Col'));
@@ -728,7 +733,7 @@ describe('App', () => {
   });
 
   test('navigates between requests within documentation saving changes silently', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     fireEvent.click(screen.getByText('Switch Req'));
@@ -737,21 +742,21 @@ describe('App', () => {
   });
 
   test('resets form when opening unified documentation without selection', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Doc Unificada'));
     expect(screen.getByTestId('documentation-view')).toBeInTheDocument();
   });
 
   test('uses threads field as fallback for totalRequests in individual executions', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Carga Legacy'));
     expect(mockRunRequests).toHaveBeenCalledWith(expect.objectContaining({ totalRequests: 5 }));
   });
 
   test('generates unified documentation for multiple requests including folder items', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Selecionar Req'));
     fireEvent.click(screen.getByText('Selecionar Nested'));
@@ -762,7 +767,7 @@ describe('App', () => {
   });
 
   test('deletes nested request in folder using recursive filter', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Nested Req'));
     
@@ -773,7 +778,7 @@ describe('App', () => {
   });
 
   test('updates scenario step settings in the collection', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     // Editar Passo Cenário sets activeStepIndex=0, activeScenarioId='scen-1', activeWorkflowId=null
     fireEvent.click(screen.getByText('Editar Passo Cenário'));
@@ -785,7 +790,7 @@ describe('App', () => {
   });
 
   test('ignores response saving if colId or reqId are null', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Salvar Doc Inválido Col'));
     
@@ -794,7 +799,7 @@ describe('App', () => {
   });
 
   test('deletes a nested subfolder using recursive filter', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Subpasta'));
     
@@ -805,7 +810,7 @@ describe('App', () => {
   });
 
   test('generates error description when saving response with status code 3xx in documentation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar 301 Col'));
@@ -815,7 +820,7 @@ describe('App', () => {
   });
 
   test('correctly formats parallel groups when executing a complex workflow', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Workflow Paralelo'));
     
@@ -832,7 +837,7 @@ describe('App', () => {
   });
 
   test('renames a nested subfolder using recursion', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Renomear Subpasta'));
     expect(mockSetCollections).toHaveBeenCalled();
@@ -841,7 +846,7 @@ describe('App', () => {
 
   test('ignores response saving in workflow if there is an ID mismatch (guard clause)', () => {
     mockFormState.activeRequestId = null; // Start with no active request to avoid silent save
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Workflow')); // Contexto: step-w1
     vi.clearAllMocks(); // Clear calls from navigation
@@ -852,7 +857,7 @@ describe('App', () => {
 
   test('ignores response saving in scenario if there is an ID mismatch', () => {
     mockFormState.activeRequestId = null; // Start with no active request to avoid silent save
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Editar Passo Cenário')); // Contexto: step-1
     vi.clearAllMocks(); // Clear calls from navigation
@@ -863,7 +868,7 @@ describe('App', () => {
 
   test('processes response saving replacing an existing one (update branch)', async () => {
     mockFormState.responses = [{ statusCode: '200', body: 'old' }];
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Abrir Request'));
     fireEvent.click(screen.getByText('Salvar no Doc Col'));
@@ -872,7 +877,7 @@ describe('App', () => {
 
   test('ignores adding field if response index is invalid', () => {
     mockFormState.responses = []; 
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     fireEvent.click(screen.getByText('Add Field'));
@@ -880,7 +885,7 @@ describe('App', () => {
   });
 
   test('imports a request from cURL via the modal and clears input on success', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Importar Curl Raiz'));
     
@@ -896,7 +901,7 @@ describe('App', () => {
   });
 
   test('imports a request from cURL into a specific folder', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Importar Curl'));
     
@@ -909,7 +914,7 @@ describe('App', () => {
   });
 
   test('does not trigger import if cURL input is empty and allows cancelation', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Importar Curl Raiz'));
     
@@ -929,7 +934,7 @@ describe('App', () => {
   test('saveCurrentRequest saves a new request to the active collection', () => {
     mockFormState.activeRequestId = 'req-1';
     mockFormState.requestName = 'Minha Request';
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     // Navigate to the fallback config view via onEdit
@@ -942,7 +947,7 @@ describe('App', () => {
   test('saveCurrentRequest uses default name "Action" when name is empty', () => {
     mockFormState.activeRequestId = 'req-1';
     mockFormState.requestName = '';
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     fireEvent.click(screen.getByText('Editar Request'));
@@ -956,7 +961,7 @@ describe('App', () => {
     mockFormState.activeSubIndex = 0;   // Sub-step inside the loop
     mockFormState.requestName = 'Loop Step Updated';
     mockFormState.responses = [];
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
     expect(screen.getByText(/Passo do workflow atualizado/i)).toBeInTheDocument();
@@ -969,7 +974,7 @@ describe('App', () => {
     mockFormState.activeSubIndex = 0;   // In the "then" branch (index < thenSteps.length)
     mockFormState.requestName = 'Condition Then Step';
     mockFormState.responses = [];
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
     expect(screen.getByText(/Passo do workflow atualizado/i)).toBeInTheDocument();
@@ -982,7 +987,7 @@ describe('App', () => {
     mockFormState.activeSubIndex = 1;   // In the "else" branch (index >= thenSteps.length)
     mockFormState.requestName = 'Condition Else Step';
     mockFormState.responses = [];
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Salvar Alteração'));
     expect(screen.getByText(/Passo do workflow atualizado/i)).toBeInTheDocument();
@@ -990,35 +995,35 @@ describe('App', () => {
   });
 
   test('reorders items in the mocks section', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Reordenar Mock'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('reorders a workflow item', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Reordenar Workflow'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('renames a folder in workflows section', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Renomear Pasta Workflow'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('renames a folder in mocks section', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Renomear Pasta Mock'));
     expect(mockSetCollections).toHaveBeenCalled();
   });
 
   test('deletes a folder in workflows section', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Pasta Workflows'));
     fireEvent.click(screen.getByText('Confirmar'));
@@ -1026,7 +1031,7 @@ describe('App', () => {
   });
 
   test('deletes a folder in mocks section', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Excluir Pasta Mocks'));
     fireEvent.click(screen.getByText('Confirmar'));
@@ -1034,7 +1039,7 @@ describe('App', () => {
   });
 
   test('executes a workflow with loop type steps', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Workflow Loop'));
     await waitFor(() => expect(mockRunRequests).toHaveBeenCalledWith(
@@ -1047,7 +1052,7 @@ describe('App', () => {
   });
 
   test('executes a workflow with condition type steps', async () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Executar Workflow Condition'));
     await waitFor(() => expect(mockRunRequests).toHaveBeenCalledWith(
@@ -1060,7 +1065,7 @@ describe('App', () => {
   });
 
   test('clicks logo to navigate back to collections from collection-detail', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     expect(screen.getByTestId('collection-view')).toBeInTheDocument();
     
@@ -1070,14 +1075,14 @@ describe('App', () => {
   });
 
   test('changes language via the select dropdown', () => {
-    render(<App />);
+    renderApp();
     const langSelect = screen.getByDisplayValue('BR');
     fireEvent.change(langSelect, { target: { value: 'en' } });
     expect(localStorage.getItem('lang')).toBe('en');
   });
 
   test('clicks header tab buttons (workflows, mocks, env) in collection-detail view', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     
     // Click Actions tab (requests)
@@ -1091,7 +1096,7 @@ describe('App', () => {
   });
 
   test('navigates to documentation view from collection-detail and uses onBack', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     expect(screen.getByTestId('documentation-view')).toBeInTheDocument();
@@ -1104,7 +1109,7 @@ describe('App', () => {
   test('handles curl import with invalid curl string (error toast)', () => {
     mockParseCurlShouldThrow = true;
     
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Importar Curl Raiz'));
     
@@ -1117,7 +1122,7 @@ describe('App', () => {
   });
 
   test('updates general documentation from documentation view', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     fireEvent.click(screen.getByText('Ver Doc'));
     fireEvent.click(screen.getByText('Update Geral'));
@@ -1125,7 +1130,7 @@ describe('App', () => {
   });
 
   test('deselects a previously selected request via toggle', () => {
-    render(<App />);
+    renderApp();
     fireEvent.click(screen.getByText('Abrir Collection'));
     // Select
     fireEvent.click(screen.getByText('Selecionar Req'));

@@ -251,9 +251,13 @@ export const en = {
     descriptionPlaceholder: "Add a detailed description...",
     method: "Method",
     url: "URL",
-    rps: "Requests Per Second (RPS)",
+    rps: "Requests Per Second",
     duration: "Duration",
     rampUp: "Ramp-up",
+    mode: "Load Mode",
+    workers: "Workers (Threads)",
+    workersDesc: "Simultaneous connections firing continuously — ideal for forcing autoscaling",
+    rpsDesc: "Fixed rate of requests per second",
     captureBody: "Capture response body",
     captureBodyDesc: "Includes the response body in logs (increases memory usage in load tests)",
     variables: "Dynamic Variables",
@@ -261,7 +265,7 @@ export const en = {
     sections: {
       auth: "Authentication",
       headers: "Headers",
-      body: "Request Body",
+      body: "Body",
       assertions: "Assertions (Validations)",
       extractions: "Extract to Variable"
     },
@@ -335,8 +339,8 @@ export const en = {
     authUsernamePlaceholder: "Username",
     authPasswordPlaceholder: "Password",
     authApiKeyPlaceholder: "Key (e.g. X-API-Key)",
-    actionNamePlaceholder: "Action Name...",
-    closeAction: "Close Action",
+    actionNamePlaceholder: "HTTP Request Name...",
+    closeAction: "Close HTTP Request",
     runBtn: "Run"
   },
   documentation: {

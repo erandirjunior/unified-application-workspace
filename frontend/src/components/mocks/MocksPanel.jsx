@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import ServersView from '../ServersView';
-import SaveRequestForm from '../SaveRequestForm';
-import { API_BASE } from '../utils/config';
+import ServersView from '../../views/ServersView';
+import SaveRequestForm from '../../views/SaveRequestForm';
+import { API_BASE } from '../../utils/config';
 import MocksGlobalMonitor from './MocksGlobalMonitor';
 
 export default function MocksPanel({

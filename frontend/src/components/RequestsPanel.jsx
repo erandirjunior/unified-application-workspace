@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import SaveRequestForm from '../SaveRequestForm';
-import ConfigView from '../ConfigView';
-import DocumentationView from '../DocumentationView';
-import ReportView from '../ReportView';
+import SaveRequestForm from '../views/SaveRequestForm';
+import ConfigView from '../views/ConfigView';
+import DocumentationView from '../views/DocumentationView';
+import ReportView from '../views/ReportView';
 import ReportGeneratorModal from './ReportGeneratorModal';
 
 export default function RequestsPanel({
@@ -17,6 +17,7 @@ export default function RequestsPanel({
   isRunning,
   reportData,
   requestLogs,
+  liveStats,
   sendRequests,
   stopTest,
   lastExecutedPayload,
@@ -127,7 +128,7 @@ export default function RequestsPanel({
               methodStyles={editorProps.methodStyles} 
             />
           ) : (
-            <ReportView t={t} reportData={reportData} requestLogs={requestLogs} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
+            <ReportView t={t} reportData={reportData} requestLogs={requestLogs} liveStats={liveStats} setView={() => {}} config={{ ...editorProps, body: editorProps.bodyRaw }} activeCollectionId={collection.id} activeCollection={collection} sendRequests={sendRequests} isRunning={isRunning} onStop={stopTest} lastExecutedPayload={lastExecutedPayload} onSaveResponseToDoc={onSaveResponseToDoc} theme={editorProps.theme} />
           )}
         </div>
       </div>

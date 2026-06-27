@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import CollectionView from '../src/CollectionView';
+import CollectionView from '../src/views/CollectionView';
 import { pt } from '../src/locales/pt';
 
 const mockCollection = {

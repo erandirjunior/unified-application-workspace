@@ -43,6 +43,8 @@ type LoadTestRequest struct {
 	Extractions   []Extraction      `json:"extractions"`
 	Name          string            `json:"name"`
 	Responses     []ResponseDoc     `json:"responses"`
+	Mode          string            `json:"mode"`    // "rps" (default) ou "workers"
+	Workers       int               `json:"workers"` // Número de workers simultâneos (modo workers)
 }
 
 type WorkflowStep struct {

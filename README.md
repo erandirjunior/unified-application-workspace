@@ -23,6 +23,7 @@ Unlike traditional API clients, UAW combines:
 
 - HTTP testing
 - Load testing
+- Stress testing
 - Documentation
 - Mock servers
 - Workflow orchestration
@@ -114,13 +115,14 @@ Example:
 
 ---
 
-## 🚀 Load Testing
+## 🚀 Load/Stress Testing
 
-Built-in load testing support.
+Built-in load/stress testing support.
 
 Configuration:
 
-- Requests per second
+- Requests per second mode
+- Threads mode
 - Duration
 - Ramp-up
 

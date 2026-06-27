@@ -1,6 +1,13 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// Mock de ResizeObserver (necessário para @xyflow/react)
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
 // Mock de APIs globais que o jsdom não implementa completamente
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -31,6 +38,45 @@ global.EventSource = vi.fn().mockImplementation(function() {
   this.onmessage = null;
   this.onerror = null;
   this.onopen = null;
+});
+
+// Mock de @xyflow/react para jsdom (ReactFlow não renderiza corretamente em jsdom)
+vi.mock('@xyflow/react', () => {
+  const React = require('react');
+  return {
+    ReactFlow: ({ nodes, edges, children }) => React.createElement('div', { className: 'react-flow' }, children),
+    Background: () => null,
+    Controls: () => null,
+    Handle: () => null,
+    Position: { Top: 'top', Bottom: 'bottom', Left: 'left', Right: 'right' },
+    useNodesState: (initialNodes) => {
+      const [nodes, setNodes] = React.useState(initialNodes || []);
+      return [nodes, setNodes, vi.fn()];
+    },
+    useEdgesState: (initialEdges) => {
+      const [edges, setEdges] = React.useState(initialEdges || []);
+      return [edges, setEdges, vi.fn()];
+    },
+    MarkerType: { ArrowClosed: 'arrowclosed' },
+  };
+});
+
+// Mock de dagre para testes
+vi.mock('dagre', () => {
+  const graphlib = {
+    Graph: vi.fn().mockImplementation(() => ({
+      setDefaultEdgeLabel: vi.fn(),
+      setGraph: vi.fn(),
+      setNode: vi.fn(),
+      setEdge: vi.fn(),
+      node: vi.fn((id) => ({ x: 100, y: 100 })),
+    })),
+  };
+  return {
+    default: { graphlib, layout: vi.fn() },
+    graphlib,
+    layout: vi.fn(),
+  };
 });
 
 // Mock do módulo IndexedDB usado pelo useCollections

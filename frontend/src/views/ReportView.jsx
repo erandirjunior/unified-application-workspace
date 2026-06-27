@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 
 const MiniChart = ({ data, color, label, unit, isRunning, height = 40, loadingText = "...", emptyText = "--" }) => {
   const isEmpty = !data || data.length < 2;
-  const max = Math.max(...data, 1);
+  const max = Math.max(...(isEmpty ? [1] : data), 1);
+  const min = isEmpty ? 0 : Math.min(...data);
   const width = 300;
   const padding = 2;
   const step = isEmpty ? 0 : width / (data.length - 1);
@@ -14,6 +15,9 @@ const MiniChart = ({ data, color, label, unit, isRunning, height = 40, loadingTe
   const areaPoints = isEmpty ? "" : `${points} ${getX(data.length - 1)},${height} 0,${height}`;
   const gradientId = `grad-${label.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
+  // Calcula média para exibir no card
+  const avg = isEmpty ? 0 : data.reduce((a, b) => a + b, 0) / data.length;
+
   return (
     <div className="bg-slate-900/40 rounded-2xl p-4 border theme-border space-y-3 backdrop-blur-sm hover:bg-slate-900/60 transition-all duration-500 group relative overflow-hidden">
       {!isEmpty && (
@@ -24,43 +28,58 @@ const MiniChart = ({ data, color, label, unit, isRunning, height = 40, loadingTe
           <div className={`w-1.5 h-1.5 rounded-full ${isEmpty ? 'bg-slate-700' : ''}`} style={!isEmpty ? { backgroundColor: color, boxShadow: `0 0 8px ${color}` } : {}}></div>
           <span>{label}</span>
         </div>
-        <span className="theme-text-secondary bg-white/5 px-1.5 py-0.5 rounded font-mono">
-          {isEmpty ? '--' : Math.max(...data).toFixed(data.length > 20 ? 0 : 1)}{unit}
-        </span>
+        <div className="flex gap-3">
+          {!isEmpty && <span className="text-slate-600 font-mono text-[8px]">min:{min.toFixed(0)}{unit}</span>}
+          <span className="theme-text-secondary bg-white/5 px-1.5 py-0.5 rounded font-mono">
+            {isEmpty ? '--' : `avg:${avg.toFixed(0)}${unit}`}
+          </span>
+          {!isEmpty && <span className="text-slate-600 font-mono text-[8px]">max:{max.toFixed(0)}{unit}</span>}
+        </div>
       </div>
-      <div className="flex items-end justify-center" style={{ height: `${height}px` }}>
+      <div className="flex items-end justify-center relative" style={{ height: `${height}px` }}>
         {isEmpty ? (
           <span className="text-[10px] text-slate-700 italic">{isRunning ? loadingText : emptyText}</span>
         ) : (
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-                <stop offset="100%" stopColor={color} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon points={areaPoints} fill={`url(#${gradientId})`} className="transition-all duration-1000 ease-out" />
-            <polyline
-              fill="none"
-              stroke={color}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={points}
-              className="transition-all duration-1000 ease-out group-hover:stroke-[2.5px]"
-              style={{ filter: `drop-shadow(0 0 3px ${color}66)` }}
-            />
-          </svg>
+          <>
+            {/* Y-axis labels */}
+            <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[7px] text-slate-600 font-mono pointer-events-none" style={{ width: '30px' }}>
+              <span>{max.toFixed(0)}</span>
+              <span>{(max / 2).toFixed(0)}</span>
+              <span>0</span>
+            </div>
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-[calc(100%-35px)] ml-auto h-full overflow-visible" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                  <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon points={areaPoints} fill={`url(#${gradientId})`} className="transition-all duration-1000 ease-out" />
+              <polyline
+                fill="none"
+                stroke={color}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={points}
+                className="transition-all duration-1000 ease-out group-hover:stroke-[2.5px]"
+                style={{ filter: `drop-shadow(0 0 3px ${color}66)` }}
+              />
+            </svg>
+          </>
         )}
       </div>
     </div>
   );
 };
 
-export default function ReportView({ t, reportData, requestLogs, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
+export default function ReportView({ t, reportData, requestLogs, liveStats, setView, config, results, activeCollectionId, activeCollection, sendRequests, isRunning, onStop, theme, activeWorkflowId, lastExecutedPayload, onSaveResponseToDoc }) {
   const [selectedLog, setSelectedLog] = useState(null); 
   const [logFilter, setLogFilter] = useState('all'); // 'all' | 'success' | 'error'
   const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Usa o payload executado para exibir no relatório (não reflete edições live do form)
+  const execConfig = lastExecutedPayload || config;
 
   useEffect(() => {
     let interval;
@@ -89,7 +108,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
   };
 
   const generateReportHTML = () => {
-    const resolvedUrl = resolveVariables(config.url);
+    const resolvedUrl = resolveVariables(execConfig.url);
     const now = new Date();
     const reportDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const isDark = theme === 'dark';
@@ -134,7 +153,7 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       <body>
         <div class="header">
           <h1 class="title">${t.report.htmlHeading}</h1>
-          <div class="meta">${t.report.htmlTarget}: <strong>${config.method}</strong> ${resolvedUrl}</div>
+          <div class="meta">${t.report.htmlTarget}: <strong>${execConfig.method}</strong> ${resolvedUrl}</div>
           <div class="meta">${t.report.htmlExecutedAt}: ${reportDate}</div>
         </div>
         <div class="stats-grid">
@@ -204,8 +223,6 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
     const latencies = [...requestLogs].map(l => l.responseTime || 0).sort((a, b) => a - b);
     const avg = latencies.length > 0 ? latencies.reduce((acc, val) => acc + val, 0) / latencies.length : 0;
 
-    // Ajusta o cálculo do percentil para que o P50 de [10,20,30,40,50,60,70,80,90,100] seja 50, e P90 seja 90.
-    // Isso corresponde a pegar o elemento no índice (length * p) - 1.
     const getP = (p) => (latencies.length > 0 ? latencies[Math.max(0, Math.floor(latencies.length * p) - 1)] : 0);
 
     const p50 = getP(0.5);
@@ -213,12 +230,11 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
     const p95 = getP(0.95);
     const p99 = getP(0.99);
     
-    // RPS Médio (Total de reqs final / duração total)
-    const currentDuration = isRunning ? elapsedTime : (reportData?.totalDuration || elapsedTime || config.duration);
-    const totalReqs = reportData ? reportData.totalRequests : requestLogs.length;
-    const rps = currentDuration > 0 ? (totalReqs / currentDuration).toFixed(2) : "0.00";
+    // RPS Médio: usa liveStats.total (contador real) dividido pelo tempo decorrido
+    const currentDuration = isRunning ? elapsedTime : (reportData?.totalDuration || elapsedTime || execConfig.duration);
+    const totalReqs = liveStats?.total || reportData?.totalRequests || requestLogs.length;
+    const rps = currentDuration > 0.5 ? (totalReqs / currentDuration).toFixed(2) : "0.00";
 
-    // Garantimos que toFixed só seja chamado em números válidos
     return { avg: (avg || 0).toFixed(2), p50: (p50 || 0).toFixed(2), p90: (p90 || 0).toFixed(2), p95: (p95 || 0).toFixed(2), p99: (p99 || 0).toFixed(2), rps };
   })();
 
@@ -226,11 +242,11 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
   const trendData = (() => {
     if (!requestLogs || requestLogs.length < 2) return { reqTrend: [], errTrend: [], timeTrend: [] };
 
-    const groups = {};
-    // Itera por todo o log em ordem cronológica (assumindo que o runner adiciona ao início ou fim)
-    // Se o runner usa logs = [novo, ...antigos], precisamos dar reverse para o gráfico ler esquerda -> direita
+    // Itera em ordem cronológica (logs mais recentes estão no início)
     const chronologicalLogs = [...requestLogs].reverse();
 
+    // Agrupa por timestamp (segundo)
+    const groups = {};
     chronologicalLogs.forEach(log => {
       const time = log.timestamp;
       if (!groups[time]) groups[time] = { reqs: 0, errs: 0 };
@@ -240,8 +256,8 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
 
     const times = Object.keys(groups).sort();
     
-    // Lógica de amostragem (downsampling) para o gráfico de latência (máx 60 pontos)
-    const rawLatencies = chronologicalLogs.map(l => l.responseTime);
+    // Latência: downsampling para no máximo 60 pontos
+    const rawLatencies = chronologicalLogs.map(l => l.responseTime).filter(l => l > 0);
     const maxPoints = 60;
     const sampledLatencies = rawLatencies.length <= maxPoints 
       ? rawLatencies 
@@ -400,29 +416,32 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border theme-border overflow-hidden">
           <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.method}</span>
-          <span className={`font-black text-xs method-${(config.method || 'multi').toLowerCase()}`}>{config.method || (config.requests ? 'AUTOMATION' : 'SCENARIO')}</span>
+          <span className={`font-black text-xs method-${(execConfig.method || 'multi').toLowerCase()}`}>{execConfig.method || (execConfig.requests ? 'AUTOMATION' : 'SCENARIO')}</span>
         </div>
         <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border theme-border overflow-hidden min-w-0">
           <span className="label-base !mb-1 text-[9px] opacity-60">{t.report.targetUrl}</span>
-          <span className="theme-text-secondary font-mono text-[10px] truncate block" title={resolveVariables(config.url)}>{config.url ? resolveVariables(config.url) : (config.requests ? t.report.multiStep : t.report.multiScenario)}</span>
+          <span className="theme-text-secondary font-mono text-[10px] truncate block" title={resolveVariables(execConfig.url)}>{execConfig.url ? resolveVariables(execConfig.url) : (execConfig.requests ? t.report.multiStep : t.report.multiScenario)}</span>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-          <span className="label-base !mb-1">{t.report.planned}</span>
+          <span className="label-base !mb-1">{execConfig.mode === 'workers' ? (t.config?.workers || 'Workers') : t.report.planned}</span>
           <span className="text-slate-700 dark:theme-text font-bold">
-            {config.method === '' ? t.report.variesByStep : (
-              config.duration > 0 ? (
-                config.rampUp > 0 && config.rampUp < config.duration 
-                  ? (config.totalRequests * (config.duration - (config.rampUp / 2)))
-                  : config.totalRequests * config.duration
-              ) : config.totalRequests
-            )}
+            {execConfig.mode === 'workers' 
+              ? (execConfig.workers || 10)
+              : (execConfig.method === '' ? t.report.variesByStep : (
+                execConfig.duration > 0 ? (
+                  execConfig.rampUp > 0 && execConfig.rampUp < execConfig.duration 
+                    ? (execConfig.totalRequests * (execConfig.duration - (execConfig.rampUp / 2)))
+                    : execConfig.totalRequests * execConfig.duration
+                ) : execConfig.totalRequests
+              ))
+            }
           </span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1">{t.report.duration}</span>
-          <span className="text-slate-700 dark:theme-text font-bold">{config.method === '' ? t.report.variesByStep : `${config.duration}s`}</span>
+          <span className="text-slate-700 dark:theme-text font-bold">{execConfig.method === '' ? t.report.variesByStep : `${execConfig.duration}s`}</span>
         </div>
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
           <span className="label-base !mb-1 text-emerald-600 dark:text-emerald-400">{t.report.realTime}</span>
@@ -480,15 +499,15 @@ export default function ReportView({ t, reportData, requestLogs, setView, config
       <div className="grid grid-cols-3 gap-3">
         <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl text-center">
           <span className="text-blue-500 text-[8px] font-black uppercase tracking-widest">{t.dashboard.itemsCount}</span>
-          <div className="text-xl font-black text-blue-500 mt-1">{reportData?.totalRequests ?? '...'}</div>
+          <div className="text-xl font-black text-blue-500 mt-1">{reportData?.totalRequests ?? liveStats?.total ?? 0}</div>
         </div>
         <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl text-center">
           <span className="text-emerald-500 text-[8px] font-black uppercase tracking-widest">{t.report.success}</span>
-          <div className="text-xl font-black text-emerald-500 mt-1">{reportData?.successCount ?? '...'}</div>
+          <div className="text-xl font-black text-emerald-500 mt-1">{reportData?.successCount ?? liveStats?.success ?? 0}</div>
         </div>
         <div className="p-3 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-center">
           <span className="text-rose-500 text-[8px] font-black uppercase tracking-widest">{t.report.failures}</span>
-          <div className="text-xl font-black text-rose-500 mt-1">{reportData?.errorCount ?? '...'}</div>
+          <div className="text-xl font-black text-rose-500 mt-1">{reportData?.errorCount ?? liveStats?.errors ?? 0}</div>
         </div>
       </div>
 

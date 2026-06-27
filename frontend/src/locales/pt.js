@@ -250,9 +250,13 @@ export const pt = {
     descriptionPlaceholder: "Adicione uma descrição detalhada...",
     method: "Método",
     url: "URL",
-    rps: "Requests por Segundo (RPS)",
+    rps: "Requests por Segundo",
     duration: "Duração",
     rampUp: "Ramp-up",
+    mode: "Modo de Carga",
+    workers: "Workers (Threads)",
+    workersDesc: "Conexões simultâneas disparando continuamente — ideal para forçar autoscaling",
+    rpsDesc: "Taxa fixa de requisições por segundo",
     captureBody: "Capturar body da resposta",
     captureBodyDesc: "Inclui o corpo da resposta nos logs (aumenta uso de memória em testes de carga)",
     variables: "Variáveis Dinâmicas",
@@ -260,12 +264,12 @@ export const pt = {
     sections: {
       auth: "Autenticação",
       headers: "Headers",
-      body: "Corpo da Action",
+      body: "Body",
       assertions: "Asserções (Validações)",
       extractions: "Extrair para Variável"
     },
     actions: {
-      updateRequest: "Atualizar Action",
+      updateRequest: "Atualizar HTTP Request",
       updateStep: "Atualizar Passo",
       runRequests: "EXECUTAR TESTE",
       backToCol: "Voltar para Coleção",
@@ -334,8 +338,8 @@ export const pt = {
     authUsernamePlaceholder: "Username",
     authPasswordPlaceholder: "Password",
     authApiKeyPlaceholder: "Key (ex: X-API-Key)",
-    actionNamePlaceholder: "Nome da Action...",
-    closeAction: "Fechar Action",
+    actionNamePlaceholder: "Nome do HTTP Request...",
+    closeAction: "Fechar HTTP Request",
     runBtn: "Run"
   },
   documentation: {

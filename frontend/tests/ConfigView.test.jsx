@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ConfigView from '../src/ConfigView';
+import ConfigView from '../src/views/ConfigView';
 import { pt } from '../src/locales/pt';
 
 const defaultProps = {

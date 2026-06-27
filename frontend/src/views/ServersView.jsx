@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE } from './utils/config';
+import { API_BASE } from '../utils/config';
 
 export default function ServersView({ 
   onBack, onSubViewChange, t, 

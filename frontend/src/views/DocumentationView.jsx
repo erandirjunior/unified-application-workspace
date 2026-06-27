@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import DocPreview from './components/documentation/DocPreview';
-import DocEditor from './components/documentation/DocEditor';
-import { generateDocHTML, resolveVariables } from './components/documentation/exportUtils';
+import DocPreview from '../components/documentation/DocPreview';
+import DocEditor from '../components/documentation/DocEditor';
+import { generateDocHTML, resolveVariables } from '../components/documentation/exportUtils';
 
 export default function DocumentationView({ 
   request: requestProp, requests = [], activeRequestId, onSelectForEdit, t,

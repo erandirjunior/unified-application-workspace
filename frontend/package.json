@@ -14,6 +14,8 @@
   "author": "Seu Nome <seuemail@exemplo.com>",
   "license": "MIT",
   "dependencies": {
+    "@xyflow/react": "^12.11.1",
+    "dagre": "^0.8.5",
     "dotenv": "^16.4.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -26,10 +28,9 @@
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^2.1.8",
     "autoprefixer": "^10.4.18",
-    "tailwindcss": "^3.4.1",
+    "jsdom": "^24.0.0",
     "postcss": "^8.4.35",
-    "vitest": "^2.1.8",
-    "jsdom": "^24.0.0"
+    "tailwindcss": "^3.4.1",
+    "vitest": "^2.1.8"
   }
 }
-    
