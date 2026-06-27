@@ -998,3 +998,452 @@ func TestExecuteSingleRequest_WithHeaders(t *testing.T) {
 		t.Errorf("Expected __last_status=200, got %s", sharedVars["__last_status"])
 	}
 }
+
+func TestTruncateBody(t *testing.T) {
+	t.Run("Body shorter than maxLen returns as-is", func(t *testing.T) {
+		body := "short"
+		got := truncateBody(body, 100)
+		if got != body {
+			t.Errorf("truncateBody() = %q, want %q", got, body)
+		}
+	})
+
+	t.Run("Body equal to maxLen returns as-is", func(t *testing.T) {
+		body := "exact"
+		got := truncateBody(body, 5)
+		if got != body {
+			t.Errorf("truncateBody() = %q, want %q", got, body)
+		}
+	})
+
+	t.Run("Body longer than maxLen returns truncated with suffix", func(t *testing.T) {
+		body := "this is a very long body that should be truncated"
+		got := truncateBody(body, 10)
+		expected := "this is a ...[truncated]"
+		if got != expected {
+			t.Errorf("truncateBody() = %q, want %q", got, expected)
+		}
+	})
+}
+
+func TestNewWorkerClient(t *testing.T) {
+	t.Run("Returns non-nil client with correct timeout", func(t *testing.T) {
+		client := newWorkerClient()
+		if client == nil {
+			t.Fatal("newWorkerClient() returned nil")
+		}
+		if client.Timeout != 30*time.Second {
+			t.Errorf("Expected timeout 30s, got %v", client.Timeout)
+		}
+	})
+}
+
+func TestExecuteSteps_WorkersModeWithoutRampUp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Run("Workers fire continuously during duration without ramp-up", func(t *testing.T) {
+		ctx := context.Background()
+		steps := []WorkflowStep{
+			{
+				Type: "request",
+				LoadTestRequest: LoadTestRequest{
+					URL:      server.URL,
+					Method:   "GET",
+					Mode:     "workers",
+					Workers:  2,
+					Duration: 1,
+					RampUp:   0,
+				},
+			},
+		}
+
+		sharedVars := make(map[string]string)
+		var varsMu sync.RWMutex
+		logChan := make(chan RequestLogEntry, 1000)
+		var success, errors, activeThreads int64
+		var wg sync.WaitGroup
+
+		go func() {
+			for range logChan {
+			}
+		}()
+
+		result := executeSteps(ctx, steps, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads, &wg)
+		wg.Wait()
+		close(logChan)
+
+		if !result {
+			t.Error("Expected true from executeSteps")
+		}
+		if atomic.LoadInt64(&success) == 0 {
+			t.Error("Expected success > 0 for workers mode without ramp-up")
+		}
+	})
+}
+
+func TestExecuteSteps_WorkersModeWithRampUp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Run("Workers ramp up gradually then fire until duration ends", func(t *testing.T) {
+		ctx := context.Background()
+		steps := []WorkflowStep{
+			{
+				Type: "request",
+				LoadTestRequest: LoadTestRequest{
+					URL:      server.URL,
+					Method:   "GET",
+					Mode:     "workers",
+					Workers:  3,
+					Duration: 2,
+					RampUp:   1,
+				},
+			},
+		}
+
+		sharedVars := make(map[string]string)
+		var varsMu sync.RWMutex
+		logChan := make(chan RequestLogEntry, 1000)
+		var success, errors, activeThreads int64
+		var wg sync.WaitGroup
+
+		go func() {
+			for range logChan {
+			}
+		}()
+
+		result := executeSteps(ctx, steps, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads, &wg)
+		wg.Wait()
+		close(logChan)
+
+		if !result {
+			t.Error("Expected true from executeSteps")
+		}
+		if atomic.LoadInt64(&success) == 0 {
+			t.Error("Expected success > 0 for workers mode with ramp-up")
+		}
+	})
+}
+
+func TestExecuteSteps_EmptyTypeAutoDetection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Run("Empty type with non-empty URL auto-detects as request", func(t *testing.T) {
+		ctx := context.Background()
+		steps := []WorkflowStep{
+			{
+				Type: "",
+				LoadTestRequest: LoadTestRequest{
+					URL:           server.URL,
+					Method:        "GET",
+					Single:        true,
+					TotalRequests: 1,
+				},
+			},
+		}
+
+		sharedVars := make(map[string]string)
+		var varsMu sync.RWMutex
+		logChan := make(chan RequestLogEntry, 1000)
+		var success, errors, activeThreads int64
+		var wg sync.WaitGroup
+
+		go func() {
+			for range logChan {
+			}
+		}()
+
+		result := executeSteps(ctx, steps, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads, &wg)
+		wg.Wait()
+		close(logChan)
+
+		if !result {
+			t.Error("Expected true from executeSteps")
+		}
+		if atomic.LoadInt64(&success) != 1 {
+			t.Errorf("Expected success == 1, got %d", atomic.LoadInt64(&success))
+		}
+	})
+}
+
+func TestExecuteSteps_RPSModeWithDurationLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Run("RPS mode stops firing after duration expires", func(t *testing.T) {
+		ctx := context.Background()
+		steps := []WorkflowStep{
+			{
+				Type: "request",
+				LoadTestRequest: LoadTestRequest{
+					URL:           server.URL,
+					Method:        "GET",
+					TotalRequests: 100,
+					Duration:      1,
+					RampUp:        0,
+				},
+			},
+		}
+
+		sharedVars := make(map[string]string)
+		var varsMu sync.RWMutex
+		logChan := make(chan RequestLogEntry, 1000)
+		var success, errors, activeThreads int64
+		var wg sync.WaitGroup
+
+		go func() {
+			for range logChan {
+			}
+		}()
+
+		result := executeSteps(ctx, steps, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads, &wg)
+		wg.Wait()
+		close(logChan)
+
+		if !result {
+			t.Error("Expected true from executeSteps")
+		}
+		if atomic.LoadInt64(&success) == 0 {
+			t.Error("Expected success > 0 for RPS mode with duration")
+		}
+	})
+}
+
+func TestExecuteSteps_ContextCancellationMidRPS(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Run("Context cancellation mid-RPS returns false", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		steps := []WorkflowStep{
+			{
+				Type: "request",
+				LoadTestRequest: LoadTestRequest{
+					URL:           server.URL,
+					Method:        "GET",
+					TotalRequests: 1000,
+					Duration:      10,
+					RampUp:        0,
+				},
+			},
+		}
+
+		sharedVars := make(map[string]string)
+		var varsMu sync.RWMutex
+		logChan := make(chan RequestLogEntry, 1000)
+		var success, errors, activeThreads int64
+		var wg sync.WaitGroup
+
+		go func() {
+			for range logChan {
+			}
+		}()
+
+		// Cancel context after 100ms
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+
+		result := executeSteps(ctx, steps, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads, &wg)
+		wg.Wait()
+		close(logChan)
+
+		if result {
+			t.Error("Expected false when context is cancelled mid-RPS")
+		}
+	})
+}
+
+func TestCalculateTargetTime_StablePhaseAfterRampUp(t *testing.T) {
+	t.Run("Returns correct time in stable phase after ramp-up", func(t *testing.T) {
+		startTimePhase := time.Now()
+		rd := LoadTestRequest{RampUp: 5, Single: false}
+		targetRPS := 10
+		numRampRequests := (targetRPS * rd.RampUp) / 2 // = 25
+		rampUpDuration := time.Duration(rd.RampUp) * time.Second
+		firingInterval := time.Second / time.Duration(targetRPS)
+
+		// Use i >= numRampRequests to fall into the else-if branch
+		i := numRampRequests + 5 // 5 requests into stable phase
+
+		got := calculateTargetTime(i, rd, targetRPS, numRampRequests, startTimePhase, rampUpDuration, firingInterval)
+
+		// Expected: startTimePhase + rampUpDuration + offset
+		// offset = float64(i - numRampRequests) / float64(targetRPS) = 5/10 = 0.5s
+		offsetStable := float64(i-numRampRequests) / float64(targetRPS)
+		expected := startTimePhase.Add(rampUpDuration).Add(time.Duration(offsetStable * float64(time.Second)))
+
+		if !got.Equal(expected) {
+			t.Errorf("calculateTargetTime() = %v, want %v (diff: %v)", got, expected, got.Sub(expected))
+		}
+	})
+
+	t.Run("First request in stable phase has zero offset", func(t *testing.T) {
+		startTimePhase := time.Now()
+		rd := LoadTestRequest{RampUp: 4, Single: false}
+		targetRPS := 20
+		numRampRequests := (targetRPS * rd.RampUp) / 2 // = 40
+		rampUpDuration := time.Duration(rd.RampUp) * time.Second
+		firingInterval := time.Second / time.Duration(targetRPS)
+
+		// i == numRampRequests means offset = 0
+		i := numRampRequests
+
+		got := calculateTargetTime(i, rd, targetRPS, numRampRequests, startTimePhase, rampUpDuration, firingInterval)
+		expected := startTimePhase.Add(rampUpDuration) // offset is 0
+
+		if !got.Equal(expected) {
+			t.Errorf("calculateTargetTime() = %v, want %v (diff: %v)", got, expected, got.Sub(expected))
+		}
+	})
+}
+
+func TestExecuteSteps_WorkersModeCancelled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	steps := []WorkflowStep{
+		{
+			Type: "request",
+			LoadTestRequest: LoadTestRequest{
+				URL:      server.URL,
+				Method:   "GET",
+				Mode:     "workers",
+				Workers:  2,
+				Duration: 10,
+				RampUp:   0,
+			},
+		},
+	}
+
+	logChan := make(chan RequestLogEntry, 1000)
+	var success, errors, activeThreads int64
+	var wg sync.WaitGroup
+
+	go func() { for range logChan {} }()
+
+	// Cancel after 200ms
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		cancel()
+	}()
+
+	result := executeSteps(ctx, steps, make(map[string]string), &sync.RWMutex{}, logChan, &success, &errors, &activeThreads, &wg)
+	wg.Wait()
+	close(logChan)
+
+	if result {
+		t.Error("Expected false when context is cancelled during workers mode")
+	}
+}
+
+func TestExecuteSteps_WaitViaMethod(t *testing.T) {
+	ctx := context.Background()
+	steps := []WorkflowStep{
+		{
+			Type: "",
+			LoadTestRequest: LoadTestRequest{URL: "0", Method: "wait"},
+		},
+	}
+
+	logChan := make(chan RequestLogEntry, 10)
+	var success, errors, activeThreads int64
+	var wg sync.WaitGroup
+
+	result := executeSteps(ctx, steps, make(map[string]string), &sync.RWMutex{}, logChan, &success, &errors, &activeThreads, &wg)
+
+	if !result {
+		t.Error("Expected true for wait via method")
+	}
+}
+
+func TestExecuteSteps_WorkersModeDefaultWorkers(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	steps := []WorkflowStep{
+		{
+			Type: "request",
+			LoadTestRequest: LoadTestRequest{
+				URL:      server.URL,
+				Method:   "GET",
+				Mode:     "workers",
+				Workers:  0, // should default to 10
+				Duration: 1,
+				RampUp:   0,
+			},
+		},
+	}
+
+	logChan := make(chan RequestLogEntry, 5000)
+	var success, errors, activeThreads int64
+	var wg sync.WaitGroup
+
+	go func() { for range logChan {} }()
+
+	result := executeSteps(ctx, steps, make(map[string]string), &sync.RWMutex{}, logChan, &success, &errors, &activeThreads, &wg)
+	wg.Wait()
+	close(logChan)
+
+	if !result {
+		t.Error("Expected true")
+	}
+	if atomic.LoadInt64(&success) == 0 {
+		t.Error("Expected some successful requests with default workers")
+	}
+}
+
+func TestExecuteSingleRequest_CaptureBody(t *testing.T) {
+	longBody := strings.Repeat("x", 3000)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(longBody))
+	}))
+	defer server.Close()
+
+	ctx := context.Background()
+	rd := LoadTestRequest{
+		URL:         server.URL,
+		Method:      "GET",
+		CaptureBody: true,
+	}
+
+	sharedVars := make(map[string]string)
+	var varsMu sync.RWMutex
+	logChan := make(chan RequestLogEntry, 1)
+	var success, errors, activeThreads int64
+
+	executeSingleRequest(ctx, rd, sharedVars, &varsMu, logChan, &success, &errors, &activeThreads)
+
+	entry := <-logChan
+	if entry.ResponseBody == "" {
+		t.Error("Expected captured response body")
+	}
+	// Body should be truncated at 2048 chars
+	if len(entry.ResponseBody) > 2048+len("...[truncated]") {
+		t.Errorf("Expected truncated body, got length %d", len(entry.ResponseBody))
+	}
+}
