@@ -5,7 +5,7 @@ import RequestsPanel from '../src/components/RequestsPanel';
 import { pt } from '../src/locales/pt';
 
 // Mock child components
-vi.mock('../src/SaveRequestForm', () => ({
+vi.mock('../src/views/SaveRequestForm', () => ({
   default: ({ requestName, onRun, onClose }) => (
     <div data-testid="save-form">
       <span>{requestName}</span>
@@ -14,13 +14,13 @@ vi.mock('../src/SaveRequestForm', () => ({
     </div>
   )
 }));
-vi.mock('../src/ConfigView', () => ({
+vi.mock('../src/views/ConfigView', () => ({
   default: () => <div data-testid="config-view">ConfigView</div>
 }));
-vi.mock('../src/DocumentationView', () => ({
+vi.mock('../src/views/DocumentationView', () => ({
   default: () => <div data-testid="doc-view">DocView</div>
 }));
-vi.mock('../src/ReportView', () => ({
+vi.mock('../src/views/ReportView', () => ({
   default: () => <div data-testid="report-view">ReportView</div>
 }));
 

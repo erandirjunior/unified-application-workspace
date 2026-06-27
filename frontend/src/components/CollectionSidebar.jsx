@@ -203,7 +203,7 @@ export default function CollectionSidebar({
             onClick={(e) => { 
               e.stopPropagation(); 
               if (rightPanelSize === 'maximized') setRightPanelSize('normal');
-              onAddRequest(collection.id, 'Action', folder.id); 
+              onAddRequest(collection.id, 'HTTP Request', folder.id); 
             }} 
             className="p-1 text-slate-400 hover:text-blue-500"
             title={t.collection.actions.newRequest}
@@ -471,7 +471,7 @@ export default function CollectionSidebar({
                 className="flex flex-col items-center justify-center gap-1 py-2 px-1 bg-blue-600/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tight"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
-                Action
+                HTTP Request
               </button>
               <button 
                 onClick={() => onAddFolder(collection.id, t.collection.newFolderPlaceholder)}

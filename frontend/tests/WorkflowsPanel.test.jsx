@@ -1,20 +1,20 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import WorkflowsPanel from '../src/components/WorkflowsPanel';
+import WorkflowsPanel from '../src/components/workflow/WorkflowsPanel';
 import { pt } from '../src/locales/pt';
 
 // Mock child components to avoid deep rendering
-vi.mock('../src/WorkflowEditorView', () => ({
+vi.mock('../src/views/WorkflowEditorView', () => ({
   default: () => <div data-testid="workflow-editor">WorkflowEditor</div>
 }));
-vi.mock('../src/SaveRequestForm', () => ({
+vi.mock('../src/views/SaveRequestForm', () => ({
   default: ({ requestName }) => <div data-testid="save-form">{requestName}</div>
 }));
-vi.mock('../src/ConfigView', () => ({
+vi.mock('../src/views/ConfigView', () => ({
   default: () => <div data-testid="config-view">ConfigView</div>
 }));
-vi.mock('../src/ReportView', () => ({
+vi.mock('../src/views/ReportView', () => ({
   default: () => <div data-testid="report-view">ReportView</div>
 }));
 

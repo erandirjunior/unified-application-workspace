@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import EnvironmentsModal from './components/EnvironmentsModal';
-import CollectionSidebar from './components/CollectionSidebar';
-import RequestsPanel from './components/RequestsPanel';
-import WorkflowsPanel from './components/WorkflowsPanel';
-import MocksPanel from './components/MocksPanel';
-import { API_BASE } from './utils/config';
+import EnvironmentsModal from '../components/EnvironmentsModal';
+import CollectionSidebar from '../components/CollectionSidebar';
+import RequestsPanel from '../components/RequestsPanel';
+import WorkflowsPanel from '../components/workflow/WorkflowsPanel';
+import MocksPanel from '../components/mocks/MocksPanel';
+import { API_BASE } from '../utils/config';
 
 export default function CollectionView({ 
   collection, t, onSelectRequest, onUpdateName, onViewDocumentation, onRunRequest, 
@@ -198,7 +198,7 @@ export default function CollectionView({
     const newId = Date.now().toString();
     const newReq = { 
       id: newId, 
-      name: 'Action', 
+      name: 'HTTP Request', 
       method: 'GET', 
       url: '', 
       responses: [], 

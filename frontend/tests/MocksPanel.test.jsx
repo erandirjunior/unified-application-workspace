@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import MocksPanel from '../src/components/MocksPanel';
+import MocksPanel from '../src/components/mocks/MocksPanel';
 import { pt } from '../src/locales/pt';
 
 describe('MocksPanel', () => {

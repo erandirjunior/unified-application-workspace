@@ -1,50 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReportView from './ReportView';
-import ConfigView from './ConfigView';
-import SaveRequestForm from './SaveRequestForm';
-import CollectionsView from './CollectionsView';
-import CollectionView from './CollectionView';
-import DocumentationView from './DocumentationView';
-import { useCollections } from './hooks/useCollections';
+import ReportView from './views/ReportView';
+import ConfigView from './views/ConfigView';
+import SaveRequestForm from './views/SaveRequestForm';
+import CollectionsView from './views/CollectionsView';
+import CollectionView from './views/CollectionView';
+import DocumentationView from './views/DocumentationView';
 import { useRequestForm } from './hooks/useRequestForm';
 import { useTestRunner } from './hooks/useTestRunner';
 import { parseCurl } from './utils/curlParser';
-import logo from './img/logo.png'; 
-import { pt } from './locales/pt';
-import { en } from './locales/en';
+import { useToast } from './contexts/ToastContext';
+import { useTheme } from './contexts/ThemeContext';
+import { useCollectionsContext } from './contexts/CollectionsContext';
+import logo from './img/logo.png';
 
 function App() {
   // Hooks de Estado de UI e Navegação
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-  const [lang, setLang] = useState(localStorage.getItem('lang') || 'pt');
+  const { theme, setTheme, toggleTheme, lang, setLang, t } = useTheme();
   const [view, setView] = useState('collections');
   const [activeTab, setActiveTab] = useState('requests');
-  const t = lang === 'pt' ? pt : en;
   const [results, setResults] = useState('');
   const [isVarsModalOpen, setIsVarsModalOpen] = useState(false);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
-  const [activeCollectionId, setActiveCollectionId] = useState(null);
   const [selectedRequestIds, setSelectedRequestIds] = useState([]);
   // Notificações e Modais
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState('success');
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmMessage, setConfirmMessage] = useState('');
-  const [onConfirmCallback, setOnConfirmCallback] = useState(null);
   const [showCurlModal, setShowCurlModal] = useState(false);
   const [curlInput, setCurlInput] = useState('');
   const [importTarget, setImportTarget] = useState({ colId: null, folderId: null });
 
-  // UI Helpers (Devem ser declarados antes de serem usados por outros hooks)
-  const showCustomToast = (message, type = 'success') => { setToastMessage(message); setToastType(type); setShowToast(true); };
-  const showCustomConfirm = (message, callback) => { setConfirmMessage(message); setOnConfirmCallback(() => callback); setShowConfirmModal(true); };
+  // UI Helpers
+  const { showCustomToast, showCustomConfirm } = useToast();
+
+  // Collections Context
+  const {
+    collections, setCollections, activeCollectionId, setActiveCollectionId, activeCollection,
+    createCollection, deleteCollection, renameCollection: updateCollectionName, reorderCollection,
+    reorderItemInCollection, updateCollectionEnvironments, setActiveEnvironment, updateFolderName,
+    deleteRequest, deleteFolder, deleteWorkflow,
+    addRequestToCollection, addFolderToCollection, moveRequestInCollection,
+    updateCollectionWorkflows, updateCollectionMockFolders
+  } = useCollectionsContext();
 
   // Hooks Customizados
-  const { collections, setCollections, ...colMethods } = useCollections();
   const { form, updateField, updateIndexedField, addListItem, removeListItem, resetForm, loadRequest, getPayload } = useRequestForm();
-  // Encontra a coleção ativa de forma reativa aos dados
-  const activeCollection = collections.find(c => c.id === activeCollectionId);
 
   // Garante que o estado do formulário sempre tenha o campo 'responses' para evitar erros de iteração
   useEffect(() => {
@@ -65,22 +62,7 @@ function App() {
   };
 
   // Efeitos e Lógica de UI (Toast e Tema)
-  useEffect(() => { // Lógica para o tema
-    const root = window.document.documentElement;
-    if (theme === 'dark') root.classList.add('dark'); else root.classList.remove('dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
-  useEffect(() => { // Lógica para o Toast
-    if (showToast) {
-      const timer = setTimeout(() => {
-        setShowToast(false);
-        setToastMessage('');
-        setToastType('success');
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
   const saveCurrentRequest = (name, colId) => {
     const finalName = name || form.requestName || 'Action';
     const newRequest = {
@@ -146,10 +128,6 @@ function App() {
     resetForm(); // Garante que o formulário comece limpo ao trocar de coleção
     setActiveTab('requests');
     setView('collection-detail');
-  };
-
-  const updateCollectionName = (id, newName) => {
-    setCollections(prev => prev.map(c => c.id === id ? { ...c, name: newName } : c));
   };
 
   const updateRequestInCollection = (silent = false) => {
@@ -297,126 +275,6 @@ function App() {
     setShowCurlModal(false);
   };
 
-  const reorderCollection = (id, direction) => {
-    const index = collections.findIndex(c => c.id === id);
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (index === -1 || newIndex < 0 || newIndex >= collections.length) return;
-
-    setCollections(prev => {
-      const result = [...prev];
-      const [removed] = result.splice(index, 1);
-      result.splice(newIndex, 0, removed);
-      return result;
-    });
-  };
-
-  const reorderItemInCollection = (colId, itemId, direction, section) => {
-    const col = collections.find(c => c.id === colId);
-    if (!col) return;
-
-    // Determina o array alvo baseado na seção
-    if (section === 'mocks') {
-      const items = col.mockFolders || [];
-      const idx = items.findIndex(i => i.id === itemId);
-      if (idx === -1) return;
-      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (newIdx < 0 || newIdx >= items.length) return;
-      setCollections(prev => prev.map(c => {
-        if (c.id !== colId) return c;
-        const result = [...(c.mockFolders || [])];
-        const [removed] = result.splice(idx, 1);
-        result.splice(newIdx, 0, removed);
-        return { ...c, mockFolders: result };
-      }));
-      return;
-    }
-
-    let canMove = false;
-    // Verifica em Workflows
-    const wfIndex = (col.workflows || []).findIndex(w => w.id === itemId);
-    if (wfIndex !== -1) {
-      const nextIdx = direction === 'up' ? wfIndex - 1 : wfIndex + 1;
-      if (nextIdx >= 0 && nextIdx < col.workflows.length) canMove = true;
-    }
-
-    const findAndCheck = (items) => {
-      const idx = items.findIndex(i => i.id === itemId);
-      if (idx !== -1) {
-        const nextIdx = direction === 'up' ? idx - 1 : idx + 1;
-        if (nextIdx >= 0 && nextIdx < items.length) canMove = true;
-        return true;
-      }
-      return items.some(i => i.type === 'folder' && findAndCheck(i.requests || []));
-    };
-
-    findAndCheck(col.requests || []);
-    if (!canMove) return;
-
-    setCollections(prev => prev.map(col => {
-      if (col.id !== colId) return col;
-
-      // Tenta reordenar nos Workflows
-      const wIdx = (col.workflows || []).findIndex(w => w.id === itemId);
-      if (wIdx !== -1) {
-        const nIdx = direction === 'up' ? wIdx - 1 : wIdx + 1;
-        const result = [...col.workflows];
-        const [removed] = result.splice(wIdx, 1);
-        result.splice(nIdx, 0, removed);
-        return { ...col, workflows: result };
-      }
-
-      const recursiveReorder = (items) => {
-        const index = items.findIndex(i => i.id === itemId);
-        if (index !== -1) {
-          const newIndex = direction === 'up' ? index - 1 : index + 1;
-          const result = [...items];
-          const [removed] = result.splice(index, 1);
-          result.splice(newIndex, 0, removed);
-          return result;
-        }
-        return items.map(i => i.type === 'folder' ? { ...i, requests: recursiveReorder(i.requests || []) } : i);
-      };
-      return { ...col, requests: recursiveReorder(col.requests) };
-    }));
-  };
-
-  const updateCollectionEnvironments = (colId, environments) => {
-    setCollections(prev => prev.map(col => 
-      col.id === colId ? { ...col, environments } : col
-    ));
-  };
-
-  const setActiveEnvironment = (colId, envId) => {
-    setCollections(prev => prev.map(col =>
-      col.id === colId ? { ...col, activeEnvironmentId: envId } : col
-    ));
-  };
-
-  const updateFolderName = (colId, newName, folderId, section = 'requests') => {
-    setCollections(prev => prev.map(collection => {
-      if (collection.id !== colId) return collection;
-      const recursiveUpdate = (items) => {
-        return items.map(item => {
-          if (item.id === folderId) {
-            return { ...item, name: newName };
-          }
-          if (item.type === 'folder') {
-            return { ...item, requests: recursiveUpdate(item.requests || []) };
-          }
-          return item;
-        });
-      };
-      if (section === 'workflows') {
-        return { ...collection, workflows: recursiveUpdate(collection.workflows || []) };
-      }
-      if (section === 'mocks') {
-        return { ...collection, mockFolders: recursiveUpdate(collection.mockFolders || []) };
-      }
-      return { ...collection, requests: recursiveUpdate(collection.requests) };
-    }));
-    showCustomToast(t.toasts.folderUpdated, 'success');
-  };
-
   const saveResponseToDoc = (colId, reqId, log) => {
     if (!colId || !reqId) return;
 
@@ -556,78 +414,6 @@ function App() {
 
   showCustomToast(t.toasts.responseSaved.replace('{status}', log.statusCode), 'success');
 };
-
-  const deleteCollection = (id) => {
-    showCustomConfirm(t.toasts.confirmDeleteCollection, () => {
-      setCollections(prev => prev.filter(c => c.id !== id));
-      showCustomToast(t.toasts.collectionDeleted, 'success');
-    });
-  };
-
-  const createCollection = (name, importedData = null) => {
-    if (importedData) {
-      setCollections([...collections, importedData]);
-    } else {
-      setCollections([...collections, { 
-        id: Date.now().toString(), 
-        name,
-        requests: [], 
-        environments: [{ id: 'default', name: 'Global', variables: [] }],
-        activeEnvironmentId: 'default',
-        workflows: []
-      }]);
-    }
-  }; // Não mostra toast aqui, pois é uma ação de criação visível
-  const deleteRequest = (colId, reqId) => {
-    showCustomConfirm(t.toasts.confirmDeleteRequest, () => {
-      setCollections(prev => prev.map(collection => {
-        if (collection.id !== colId) return collection;
-        const recursiveFilter = (items) => {
-          return items.filter(item => item.id !== reqId).map(item => item.type === 'folder' 
-              ? { ...item, requests: recursiveFilter(item.requests || []) } : item);
-        };
-        return { ...collection, requests: recursiveFilter(collection.requests) };
-      }));
-      showCustomToast(t.toasts.requestDeleted, 'success');
-    });
-  };
-
-  const deleteFolder = (colId, folderId, section = 'requests') => {
-    showCustomConfirm(t.toasts.confirmDeleteFolder, () => {
-      setCollections(prev => prev.map(collection => {
-        if (collection.id !== colId) return collection;
-        const recursiveFilter = (items) => {
-          return items.filter(item => item.id !== folderId).map(item => 
-            item.type === 'folder' 
-              ? { ...item, requests: recursiveFilter(item.requests || []) } 
-              : item
-          );
-        };
-        if (section === 'workflows') {
-          return { ...collection, workflows: recursiveFilter(collection.workflows || []) };
-        }
-        if (section === 'mocks') {
-          return { ...collection, mockFolders: recursiveFilter(collection.mockFolders || []) };
-        }
-        return { ...collection, requests: recursiveFilter(collection.requests) };
-      }));
-      showCustomToast(t.toasts.folderDeleted, 'success');
-    });
-  };
-
-  const deleteWorkflow = (colId, workflowId) => {
-    showCustomConfirm(t.toasts.confirmDeleteWorkflow, () => {
-      setCollections(prev => prev.map(collection => {
-        if (collection.id !== colId) return collection;
-        return { ...collection, workflows: (collection.workflows || []).filter(w => w.id !== workflowId) };
-      }));
-      showCustomToast(t.toasts.workflowDeleted, 'success');
-    });
-  };
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-  };
 
   // Removidas as funções addHeader, removeHeader, etc. que chamavam setters inexistentes.
   // Agora o App.jsx passa diretamente as funções do useRequestForm (addListItem, removeListItem, updateIndexedField)
@@ -1108,15 +894,15 @@ function App() {
               onUpdateEnvironments={updateCollectionEnvironments}
               onSetActiveEnvironment={setActiveEnvironment}
               onUpdateName={updateCollectionName}
-              onUpdateWorkflows={colMethods.updateCollectionWorkflows}
-              onUpdateMockFolders={colMethods.updateCollectionMockFolders}
-              onAddRequest={colMethods.addRequestToCollection}
-              onAddFolder={colMethods.addFolderToCollection}
+              onUpdateWorkflows={updateCollectionWorkflows}
+              onUpdateMockFolders={updateCollectionMockFolders}
+              onAddRequest={addRequestToCollection}
+              onAddFolder={addFolderToCollection}
               onImportCurl={(colId, folderId = null) => {
                 setImportTarget({ colId, folderId });
                 setShowCurlModal(true);
               }}
-              onMoveRequest={colMethods.moveRequestInCollection}
+              onMoveRequest={moveRequestInCollection}
               selectedRequestIds={selectedRequestIds}
               onToggleSelection={toggleRequestSelection}
               activeWorkflowId={form.activeWorkflowId}
@@ -1276,17 +1062,6 @@ function App() {
           </div>
       </main>
 
-    {showToast && (
-      <div className={`fixed bottom-8 right-8 p-4 rounded-lg shadow-lg text-white flex items-center gap-3 animate-in fade-in slide-in-from-right-8 duration-300 z-50
-        ${toastType === 'success' ? 'bg-emerald-500' : toastType === 'error' ? 'bg-rose-500' : 'bg-blue-500'}`}
-      >
-        {toastType === 'success' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
-        {toastType === 'error' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
-        {toastType === 'info' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>}
-        <span>{toastMessage}</span>
-      </div>
-    )}
-
     {/* Modal de Importação cURL */}
     {showCurlModal && ( // Curl Import Modal
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300">
@@ -1319,45 +1094,6 @@ function App() {
         </div>
       </div>
     )}
-
-    {/* Confirmation Modal */}
-    {showConfirmModal && (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-300"> {/* Confirmation Modal */}
-        <div className="bg-[#111827] rounded-3xl w-full max-w-md shadow-2xl border border-[#161E31] overflow-hidden animate-in zoom-in-95 duration-300">
-          <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-[#161E31]">
-            <h3 className="text-xl font-bold dark:text-white">Confirmação</h3>
-            <button 
-              onClick={() => setShowConfirmModal(false)} 
-              className="text-slate-400 hover:text-rose-500 transition-colors p-2 text-2xl"
-            >&times;</button>
-          </div>
-          
-          <div className="p-8 text-slate-700 dark:text-slate-300 text-lg">
-            {confirmMessage}
-          </div>
-
-          <div className="p-6 bg-[#161E31] border-t border-slate-700 flex justify-end gap-3">
-            <button 
-              onClick={() => {
-                setShowConfirmModal(false);
-                if (onConfirmCallback) {
-                  onConfirmCallback();
-                }
-              }}
-              className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-500/20 active:scale-95"
-            >
-              Confirmar
-            </button>
-            <button 
-              onClick={() => setShowConfirmModal(false)}
-              className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-all active:scale-95"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    )} 
     </div>
   );
 }

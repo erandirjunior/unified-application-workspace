@@ -107,7 +107,7 @@ describe('CollectionSidebar', () => {
 
   it('calls handleAddNewAction when Action button is clicked', () => {
     render(<CollectionSidebar {...defaultProps} />);
-    fireEvent.click(screen.getByText('Action'));
+    fireEvent.click(screen.getByText('HTTP Request'));
     expect(defaultProps.handleAddNewAction).toHaveBeenCalled();
   });
 
@@ -257,7 +257,7 @@ describe('CollectionSidebar', () => {
     fireEvent.click(screen.getByText('Auth'));
     const addBtn = screen.getByTitle(pt.collection.actions.newRequest);
     fireEvent.click(addBtn);
-    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'Action', 'folder-1');
+    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'HTTP Request', 'folder-1');
   });
 
   // Workflows tab tests

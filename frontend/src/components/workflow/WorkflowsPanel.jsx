@@ -1,8 +1,8 @@
 import React from 'react';
-import WorkflowEditorView from '../WorkflowEditorView';
-import SaveRequestForm from '../SaveRequestForm';
-import ConfigView from '../ConfigView';
-import ReportView from '../ReportView';
+import WorkflowEditorView from '../../views/WorkflowEditorView';
+import SaveRequestForm from '../../views/SaveRequestForm';
+import ConfigView from '../../views/ConfigView';
+import ReportView from '../../views/ReportView';
 
 export default function WorkflowsPanel({
   t,

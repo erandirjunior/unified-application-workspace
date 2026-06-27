@@ -264,12 +264,12 @@ export const pt = {
     sections: {
       auth: "Autenticação",
       headers: "Headers",
-      body: "Corpo da Action",
+      body: "Body",
       assertions: "Asserções (Validações)",
       extractions: "Extrair para Variável"
     },
     actions: {
-      updateRequest: "Atualizar Action",
+      updateRequest: "Atualizar HTTP Request",
       updateStep: "Atualizar Passo",
       runRequests: "EXECUTAR TESTE",
       backToCol: "Voltar para Coleção",
@@ -338,8 +338,8 @@ export const pt = {
     authUsernamePlaceholder: "Username",
     authPasswordPlaceholder: "Password",
     authApiKeyPlaceholder: "Key (ex: X-API-Key)",
-    actionNamePlaceholder: "Nome da Action...",
-    closeAction: "Fechar Action",
+    actionNamePlaceholder: "Nome do HTTP Request...",
+    closeAction: "Fechar HTTP Request",
     runBtn: "Run"
   },
   documentation: {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 // Certifique-se de que o caminho abaixo é o da imagem que você quer usar agora
-import logo from './img/logo.png'; 
+import logo from '../img/logo.png'; 
 
 export default function CollectionsView({ collections, t, onSelectRequest, onCreateCollection, onDeleteCollection, onReorderCollection, onUpdateName }) {
   const [name, setName] = useState('');

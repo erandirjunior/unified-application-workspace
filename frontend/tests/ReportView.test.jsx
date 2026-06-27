@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import ReportView from '../src/ReportView';
+import ReportView from '../src/views/ReportView';
 import { pt } from '../src/locales/pt';
 
 const mockReportData = {

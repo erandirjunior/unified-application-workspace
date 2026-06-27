@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import CollectionView from '../src/CollectionView';
+import CollectionView from '../src/views/CollectionView';
 import { pt } from '../src/locales/pt';
 
 const mockCollection = {
@@ -214,8 +214,8 @@ describe('CollectionView - handleAddNewAction', () => {
 
   it('should call onAddRequest and onSelectRequest when Action button is clicked', () => {
     render(<CollectionView {...defaultProps} />);
-    fireEvent.click(screen.getByText('Action'));
-    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'Action', null);
+    fireEvent.click(screen.getByText('HTTP Request'));
+    expect(defaultProps.onAddRequest).toHaveBeenCalledWith('col-1', 'HTTP Request', null);
     expect(defaultProps.onSelectRequest).toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import SaveRequestForm from '../src/SaveRequestForm';
+import SaveRequestForm from '../src/views/SaveRequestForm';
 
 const defaultProps = {
   onSaveRequest: vi.fn(),

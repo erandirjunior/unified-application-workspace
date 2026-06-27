@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import DocumentationView from '../src/DocumentationView';
+import DocumentationView from '../src/views/DocumentationView';
 import { pt } from '../src/locales/pt';
 
 const mockRequest = {
@@ -252,8 +252,8 @@ describe('DocumentationView', () => {
     fireEvent.click(screen.getByText('EDITOR'));
     fireEvent.click(screen.getByText(/Request Body/));
     
-    // Add body param button text is now: + CORPO DA ACTION
-    const addParamBtn = screen.getByText(/\+ CORPO DA ACTION/i);
+    // Add body param button text is now: + BODY
+    const addParamBtn = screen.getByText(/\+ BODY/i);
     fireEvent.click(addParamBtn);
     expect(defaultProps.addBodyParam).toHaveBeenCalled();
 
